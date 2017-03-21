@@ -1,0 +1,27 @@
+1
+5
+solo/output/sofm_4.out
+solo/input/solo_input.csv
+training
+5678
+0
+solo/output/eigenValue.out
+solo/output/eigenVector.out
+solo/output/accumErr.out
+solo/output/accumRR.out
+solo/output/trainProcess.out
+solo/output/freqTable.out
+solo/output/hidOutputWt.out
+solo/output/errorMap.out
+solo/output/finResult.out
+solo/output/trainWin.out
+solo/output/trainWout.out
+### Comment lines ###
+Line 1: No. of nodes - default is the number of drivers plus 1 (changeable via GUI if used)
+Line 2: multiplier for minimum number of points per node (NdaFactor) - default is 5 (ie 5*(no. of drivers+1) (changeable via GUI if used)
+Line 3: fourth output file from SOFM, used as input to SOLO
+Line 4: input data filename with path relative to current directory
+Line 5: type of run ("training" or "simulation", always "training" for SOLO)
+Line 6: seed for random number generator - default is 5678
+Line 7: "calThreshold", not used by SOLO
+Lines 8 to 18: output files from SOLO with path relative to current directory

@@ -1,0 +1,23 @@
+1
+500
+20
+0.01
+1234
+solo/input/sofm_input.csv
+solo/output/sofm_1.out
+solo/output/sofm_2.out
+solo/output/sofm_3.out
+solo/output/sofm_4.out
+50
+### Comment lines ###
+Line 1: No. of nodes - default is the number of drivers plus 1 (changeable via GUI if used)
+Line 2: No. of training iterations - default is 500 (changeable via GUI if used)
+Line 3: No. of iterations per screen output - default is 20
+Line 4: Spacing between initial weights - default is 0.01
+Line 5: Seed for random number generator - default is 1234
+Line 6: input data filename with path relative to current directory
+Line 7: first output filename with path relative to current directory
+Line 8: second output filename with path relative to current directory
+Line 9: third output filename with path relative to current directory
+Line 10: fourth output filename with path relative to current directory (used by SOLO)
+Line 11: No. iterations per write of weights to screen - default is 50
