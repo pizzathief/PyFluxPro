@@ -6,7 +6,7 @@ PyFluxPro is a suite of Python scripts integrated into a single GUI that is desi
 
 The following documentation gives basic information on how to install and use PyFluxPro.
 
-#Installation and Updating
+# Installation and Updating
 There are 3 steps to installing PyFluxPro:
 * 1. Install Python.
 * 2. Install the "git" version control software.
