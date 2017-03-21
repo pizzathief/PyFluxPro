@@ -40,23 +40,23 @@ PyFluxPro is easily installed using the "git" version control software.  This pr
 
 To install PyFluxPro, follow these steps:
 * 1. Open a command line window or terminal session and use the "cd" (shorthand for "change directory") command to navigate to the directory into which you want to install PyFluxPro.  Note that the installation process will create a subdirectory called OzFluxQC in the directory from which the install is run.
-* 2. Clone the PyFluxPro repository by typing "git clone https://github.com/OzFlux/OzFluxQC.git" at the command prompt.
-* 3. OzFluxQC is now ready to use.
+* 2. Clone the PyFluxPro repository by typing "git clone https://github.com/pisaac-ozflux/PyFluxPro.git" at the command prompt.
+* 3. PyFluxPro is now ready to use.
 
-##Updating OzFluxQC
-OzFluxQC is still being actively developed and there are frequent changes to fix bugs and add new features.  It is always a good idea to update your installation to the latest version every few days.  Updating OzFluxQC is easy when the installation was done using the "git" version control software.
+## Updating PyFluxPro
+PyFluxPro is still being actively developed and there are frequent changes to fix bugs and add new features.  It is always a good idea to update your installation to the latest version every few days.  Updating PyFluxPro is easy when the installation was done using the "git" version control software.
 
-To update an OzFluxQC installation done by "git", follow these steps:
-* 1. Open a command line window or terminal session and use the "cd" command to navigate to the OzFluxQC directory created during the installation step above.  Note that while the install is done from the directory one level above the OzFluxQC directory, the update is done from the OzFluxQC directory.
-* 2. Type "git pull origin master" at the command prompt in the OzFluxQC directory.  This will update the OzFluxQC installation.
+To update a PyFluxPro installation done by "git", follow these steps:
+* 1. Open a command line window or terminal session and use the "cd" command to navigate to the PyFluxPro directory created during the installation step above.  Note that while the install is done from the directory one level above the PyFluxPro directory, the update is done from the PyFluxPro directory.
+* 2. Type "git pull origin master" at the command prompt in the PyFluxPro directory.  This will update the PyFluxPro installation.
 
-#Running OzFluxQC
-The simplest way to run OzFluxQC is from the command line.
+# Running PyFluxPro
+The simplest way to run PyFluxPro is from the command line.
 
-To run OzFluxQC, follow these steps:
-* 1. Open a command line window or terminal session and use the "cd" command to navigate to the OzFluxQC directory.
-* 2. Type "python OzFluxQC.py" at the command prompt in the OzFluxQC directory.
-* 3. After a short time, the OzFluixQC GUI will appear.  This can take a couple of minutes when the program is run for the first time.
+To run PyFluxPro, follow these steps:
+* 1. Open a command line window or terminal session and use the "cd" command to navigate to the PyFluxPro directory.
+* 2. Type "python PyFluxPro.py" at the command prompt in the PyFluxPro directory.
+* 3. After a short time, the PyFluxPro GUI will appear.  This can take a couple of minutes when the program is run for the first time.
 
-#Using OzFluxQC
+# Using PyFluxPro
 Coming to the Wiki soon ...
