@@ -12,7 +12,7 @@ There are 3 steps to installing PyFluxPro:
 * 2. Install the "git" version control software.
 * 3. Clone the PyFluxPro repository using the "git" version control software.
 
-##Installing Python
+## Installing Python
 PyFluxPro is written for Python V2.7 and uses a number of standard and 3rd party Python modules.
 
 OzFlux uses and recommends the Anaconda (https://www.continuum.io/) Python V2.7 distribution.  This Python distribution comes with all of the modules used by PyFluxPro and all except 1 are installed by default.  Adding the 1 required module that is not installed by default is very easy, thanks to the conda package manager, and is explained below.  Using the Anaconda distribution is not essential, just very convenient, and it is possible to use any Python V2.7 environment provided the required modules are installed.  There is a list of the required modules in the /docs folder of this repository.
@@ -27,7 +27,7 @@ To install the Anaconda Python V2.7 distribution, follow these steps:
 
 At the end of this process, you should have a functioning installation of the Python language interpeter.
 
-##Installing "git"
+## Installing "git"
 The version control program "git" provides a convenient way to install OzFluxQC and to update OzFluxQC once it has been installed.
 
 To install "git", follow these steps:
@@ -35,12 +35,12 @@ To install "git", follow these steps:
 * 2. Follow the instructions on the "git" web page to install the "git" version control software.
 * 3. Accept all the defaults during the installation.
 
-##Installing OzFluxQC
-OzFluxQC is easily installed using the "git" version control software.  This process is refered to as "cloning" the OzFluxQC repository (this web page).  When OzFluxQC is installed using "git" then "git" can also be used to easily update OzFluxQC to make sure you are always using the most recent version.  This is a good idea because OzFluxQC is frequently updated to fix bugs and add new features.
+## Installing PyFluxPro
+PyFluxPro is easily installed using the "git" version control software.  This process is refered to as "cloning" the PyFluxPro repository (this web page).  When PyFluxPro is installed using "git" then "git" can also be used to easily update PyFluxPro to make sure you are always using the most recent version.  This is a good idea because PyFluxPro is frequently updated to fix bugs and add new features.
 
-To install OzFluxQC, follow these steps:
-* 1. Open a command line window or terminal session and use the "cd" (shorthand for "change directory") command to navigate to the directory into which you want to install OzFluxQC.  Note that the installation process will create a subdirectory called OzFluxQC in the directory from which the install is run.
-* 2. Clone the OzFluxQC repository by typing "git clone https://github.com/OzFlux/OzFluxQC.git" at the command prompt.
+To install PyFluxPro, follow these steps:
+* 1. Open a command line window or terminal session and use the "cd" (shorthand for "change directory") command to navigate to the directory into which you want to install PyFluxPro.  Note that the installation process will create a subdirectory called OzFluxQC in the directory from which the install is run.
+* 2. Clone the PyFluxPro repository by typing "git clone https://github.com/OzFlux/OzFluxQC.git" at the command prompt.
 * 3. OzFluxQC is now ready to use.
 
 ##Updating OzFluxQC
