@@ -21,7 +21,7 @@ To install the Anaconda Python V2.7 distribution, follow these steps:
 * 1. Download the Anaconda Python V2.7 installer for your operating system from https://www.continuum.io/downloads.
 * 2. Follow the instructions on the Anaconda web page to install the Anaconda Python V2.7 distribution.
 * 3. Accept all the defaults during the installation, including having Anaconda append the path to this Python installation to your system PATH environment variable.
-* 4. The default installation provides everything needed to run OzFluxQC with 1 exception, the module required to read and write netCDF files.  This can be installed as follows:
+* 4. The default installation provides everything needed to run PyFluxPro with 1 exception, the module required to read and write netCDF files.  This can be installed as follows:
   1. Open a command line window or terminal session.
   2. At the command prompt, type "conda install netcdf4" and follow the instructions.  Accept all of the defaults and the netCDF module will be installed.
 
