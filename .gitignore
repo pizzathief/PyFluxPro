@@ -1,0 +1,15 @@
+# python files
+*.pyc
+
+# log files
+logfiles
+
+# solo file
+solo/output/
+
+# mac files
+.DS_store
+
+# exception for .gitignore
+!.gitignore
+!.gitattributes
