@@ -11,7 +11,7 @@ import scipy
 import sys
 import pdb
 
-log = logging.getLogger('qc.rpLT')
+logger = logging.getLogger("pfp_log")
 
 # code to integrate Ian's code into OzFluxQC
 #def apply_turbulence_filter(data_dict,indicator):
@@ -265,7 +265,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
     Eo_range_fail_keys = []
     Eo_nan_fail_keys = []
     year_list = year_index_dict.keys()
-    log.info(" E0 optimised using whole year is as follows")
+    logger.info(" E0 optimised using whole year is as follows")
     for yr in year_list:
 
         # Calculate number of recs for year
@@ -287,7 +287,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
             params, error_code = optimise_all(sub_dict, params_dict)
         else:
             msg = " Less than "+str(min_pct)+ "% for year "+str(yr)+" ("+str(pct)+"%)"
-            log.warning(msg)
+            logger.warning(msg)
             params, error_code = [numpy.nan, numpy.nan], 10                                         
 
         # Assign year to pass, range_fail or nan_fail list for subsequent QC and fill
@@ -303,12 +303,12 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
         else:
             Eo_pass_keys.append(yr)
 
-        log.info(" E0 for "+str(yr) + ": " + str(round(params[0], 1)))
+        logger.info(" E0 for "+str(yr) + ": " + str(round(params[0], 1)))
     
     # Do QC on Eo
     if len(Eo_pass_keys) != len(yearsEo_dict):
         if len(Eo_nan_fail_keys) == len(yearsEo_dict):
-            log.error(" Could not find any values of Eo for any years! Exiting...")
+            logger.error(" Could not find any values of Eo for any years! Exiting...")
             raise RuntimeError
         elif len(Eo_pass_keys) != 0:
             Eo_mean = numpy.array([yearsEo_dict[i] for i in Eo_pass_keys]).mean()
@@ -320,8 +320,8 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
                 all_fail_str = ', '.join(all_fail_keys)
             else:
                 all_fail_str = all_fail_keys[0]
-            log.warning(" Eo optimisation failed for the following years: " + all_fail_str)
-            log.warning(" Eo estimated from the mean of all other years")
+            logger.warning(" Eo optimisation failed for the following years: " + all_fail_str)
+            logger.warning(" Eo estimated from the mean of all other years")
         else:
             for i in Eo_range_fail_keys:
                 if yearsEo_dict[i] < 50:
@@ -335,12 +335,12 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
                 Eo_mean = sum(l)/float(len(l))
             for i in Eo_nan_fail_keys:
                 yearsEo_dict[i] = Eo_mean
-            log.warning(" Eo estimates were out of range for all years")
-            log.warning(" Low estimates have been set to lower limit (50)")
-            log.warning(" High estimates have been set to upper limit (400)")
-            log.warning(" Parameter estimates are unlikely to be robust!")
+            logger.warning(" Eo estimates were out of range for all years")
+            logger.warning(" Low estimates have been set to lower limit (50)")
+            logger.warning(" High estimates have been set to upper limit (400)")
+            logger.warning(" Parameter estimates are unlikely to be robust!")
     else:
-        log.info(" Eo estimates passed QC for all years")
+        logger.info(" Eo estimates passed QC for all years")
         
     return yearsEo_dict, yearsQC_dict, yearsEo_raw_dict, yearsQC_raw_dict
 
@@ -357,7 +357,7 @@ def rpLT_createdict(cf,ds,series):
     section = qcutils.get_cfsection(cf,series=series,mode="quiet")
     # return without doing anything if the series isn't in a control file section
     if len(section)==0:
-        log.error("ERUsingLloydTaylor: Series "+series+" not found in control file, skipping ...")
+        logger.error("ERUsingLloydTaylor: Series "+series+" not found in control file, skipping ...")
         return
     # check that none of the drivers have missing data
     driver_list = ast.literal_eval(cf[section][series]["ERUsingLloydTaylor"]["drivers"])
@@ -365,7 +365,7 @@ def rpLT_createdict(cf,ds,series):
     for label in driver_list:
         data,flag,attr = qcutils.GetSeriesasMA(ds,label)
         if numpy.ma.count_masked(data)!=0:
-            log.error("ERUsingLloydTaylor: driver "+label+" contains missing data, skipping target "+target)
+            logger.error("ERUsingLloydTaylor: driver "+label+" contains missing data, skipping target "+target)
             return
     # create the solo directory in the data structure
     if "rpLT" not in dir(ds): ds.rpLT = {}

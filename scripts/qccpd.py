@@ -20,7 +20,7 @@ import pdb
 import qcio
 import qcutils
 
-log = logging.getLogger('qc.cpd')
+logger = logging.getLogger("pfp_log")
 
 #------------------------------------------------------------------------------
 # Return a bootstrapped sample of the passed dataframe
@@ -204,7 +204,7 @@ def cpd_main(cf):
     counts_df = pd.DataFrame(index=years_index,columns = ['Total'])
     counts_df.fillna(0,inplace = True)
     
-    log.info(' Starting CPD analysis...')
+    logger.info(' Starting CPD analysis...')
     
     # Bootstrap the data and run the CPD algorithm
     #for i in xrange(d['num_bootstraps']):
@@ -213,10 +213,10 @@ def cpd_main(cf):
         bootstrap_flag = (False if i == 0 else True)
         if bootstrap_flag == False:
             df = master_df            
-            log.info(' Analysing observational data for first pass')
+            logger.info(' Analysing observational data for first pass')
         else:
             df = pd.concat([bootstrap(master_df.loc[str(j)]) for j in years_index])
-            if i==1: log.info(' Analysing '+str(d['num_bootstraps'])+' bootstraps')
+            if i==1: logger.info(' Analysing '+str(d['num_bootstraps'])+' bootstraps')
         
         # Create nocturnal dataframe (drop all records where any one of the variables is NaN)
         temp_df = df[['Fc','Ta','ustar','xlDateTime','Year']][df['Fsd'] < d['radiation_threshold']].dropna(how = 'any',axis=0)
@@ -227,7 +227,7 @@ def cpd_main(cf):
         years_df, seasons_df, results_df = sort(temp_df, d['flux_period'], years_index, i)
         
         # Use the results df index as an iterator to run the CPD algorithm on the year/season/temperature strata
-        #if i==1: log.info(' Finding change points...')
+        #if i==1: logger.info(' Finding change points...')
         cols = ['bMod_threshold','bMod_f_max','b0','b1','bMod_CP',
                 'aMod_threshold','aMod_f_max','a0','a1','a2','norm_a1','norm_a2','aMod_CP','a1p','a2p']
         lst = []
@@ -242,7 +242,7 @@ def cpd_main(cf):
         results_df['aMod_CP'] = results_df['aMod_CP'].astype(int)
 
         # QC the results
-        #if i==1: log.info(' Doing within-sample QC...')
+        #if i==1: logger.info(' Doing within-sample QC...')
         results_df = QC1(results_df)
         #print 'Done!' 
 
@@ -252,13 +252,13 @@ def cpd_main(cf):
                 #print 'Outputting results for all years / seasons / T classes in observational dataset'
                 #results_df.to_csv(os.path.join(d['results_output_path'],'Observational_ustar_threshold_statistics.csv'))
             if 'plot_path' in d.keys() and d["plot_tclass"]:
-                log.info('Doing plotting for observational data')
+                logger.info('Doing plotting for observational data')
                 d["nFig"] = 0
                 fig_nums = plt.get_fignums()
                 if len(fig_nums)>0: d["nFig"] = fig_nums[-1] + 1
                 for j in results_df.index:
                     plot_fits(seasons_df.loc[j], results_df.loc[j], d)
-            log.info(' Outputting results for observational dataset')
+            logger.info(' Outputting results for observational dataset')
             xlwriter = pd.ExcelWriter(d['file_out'])
             xlsheet = "T class"
             results_df.to_excel(xlwriter,sheet_name=xlsheet)
@@ -282,8 +282,8 @@ def cpd_main(cf):
             progress = float(i)/float(d['num_bootstraps']-1)
             qcutils.update_progress(progress)
 
-    log.info(' Finished change point detection for all bootstraps')
-    log.info(' Starting QC')
+    logger.info(' Finished change point detection for all bootstraps')
+    logger.info(' Starting QC')
     
     # Sort by index so all years are together
     all_results_df.sort_index(inplace = True)
@@ -291,22 +291,22 @@ def cpd_main(cf):
     # Drop all years with no data remaining after QC, and return nothing if all years were dropped
     [counts_df.drop(i,inplace=True) for i in counts_df.index if counts_df.loc[i, 'Total'] == 0]    
     if counts_df.empty:
-        log.error('Insufficient data for analysis... exiting')
+        logger.error('Insufficient data for analysis... exiting')
         return
 
     # QC the combined results
-    log.info(' Doing cross-sample QC...')
+    logger.info(' Doing cross-sample QC...')
     output_stats_df = QC2(all_results_df, counts_df, d['num_bootstraps'])
     #print 'Done!' 
 
     # Calculate final values
-    log.info(' Calculating final results')
+    logger.info(' Calculating final results')
     output_stats_df = stats_calc(all_results_df, output_stats_df)    
     
     # If requested by user, plot: 1) histograms of u* thresholds for each year; 
     #                             2) normalised a1 and a2 values
     if 'plot_path' in d.keys():
-        log.info(' Plotting u* histograms for all valid b model thresholds for all valid years')
+        logger.info(' Plotting u* histograms for all valid b model thresholds for all valid years')
         for j in output_stats_df.index:
             if j in all_results_df.index:
                 plot_hist(all_results_df.loc[j, 'bMod_threshold'][all_results_df.loc[j, 'b_valid'] == True],
@@ -322,7 +322,7 @@ def cpd_main(cf):
                    #j, d)
          #for j in output_stats_df.index]
         
-        log.info(' Plotting normalised median slope parameters for all valid a model thresholds for all valid years')
+        logger.info(' Plotting normalised median slope parameters for all valid a model thresholds for all valid years')
         plot_slopes(output_stats_df[['norm_a1_median', 'norm_a2_median']], d)
     
     # Output final stats if requested by user
@@ -336,7 +336,7 @@ def cpd_main(cf):
     #print d["call_mode"]
     if d["call_mode"]!="interactive": plt.close('all')
     
-    log.info(' CPD analysis complete!')
+    logger.info(' CPD analysis complete!')
     # Return final results
     return output_stats_df
 #------------------------------------------------------------------------------
@@ -365,7 +365,7 @@ def CPD_run(cf):
     names["xlDateTime"] = "xlDateTime"
     names["Year"] = "Year"
     # read the netcdf file
-    log.info(' Reading netCDF file '+file_in)   
+    logger.info(' Reading netCDF file '+file_in)   
     ds = qcio.nc_read_series(file_in)
     dates_list = ds.series["DateTime"]["Data"]
     nrecs = int(ds.globalattributes["nc_nrecs"])
@@ -441,7 +441,7 @@ def plot_fits(temp_df,stats_df,d):
 # Plot PDF of u* values and write to specified folder           
 def plot_hist(S,mu,sig,crit_t,year,d):
     if len(S)<=1:
-        log.info(" plot_hist: 1 or less values in S for year "+str(year)+", skipping histogram ...")
+        logger.info(" plot_hist: 1 or less values in S for year "+str(year)+", skipping histogram ...")
         return
     S=S.reset_index(drop=True)
     x_low=S.min()-0.1*S.min()
@@ -564,10 +564,10 @@ def QC2(df,output_df,bootstrap_n):
     for i in output_df.index:
         if output_df['a_valid'].loc[i]==False: 
             #log.info(' Insufficient valid cases for robust diagnostic (a model) u* determination in year '+str(i))
-            log.warning(' Insufficient valid cases for '+str(i)+' (a model)')
+            logger.warning(' Insufficient valid cases for '+str(i)+' (a model)')
         if output_df['b_valid'].loc[i]==False:
             #log.info(' Insufficient valid cases for robust operational (b model) u* determination in year '+str(i))
-            log.warning(' Insufficient valid cases for '+str(i)+' (b model)')
+            logger.warning(' Insufficient valid cases for '+str(i)+' (b model)')
  
     return output_df    
     
@@ -592,14 +592,14 @@ def sort(df, flux_period, years_index, i):
     years_df['seasons'] = np.where(years_df['seasons'] < 0, 0, years_df['seasons'])
     years_df['seasons'] = years_df['seasons'].astype(int)
     if np.all(years_df['seasons'] <= 0):
-        log.error('No years with sufficient data for evaluation, exiting...')
+        logger.error('No years with sufficient data for evaluation, exiting...')
         return
     elif np.any(years_df['seasons'] <= 0):
         exclude_years_list = years_df[years_df['seasons'] <= 0].index.tolist()
         exclude_years_str= ','.join(map(str, exclude_years_list))
         #log.info(' Insufficient data for evaluation in the following years: ' + exclude_years_str + ' (excluded from analysis)')
         if i==1:
-            log.warning(' '+exclude_years_str + ' excluded from analysis (insufficient data)')
+            logger.warning(' '+exclude_years_str + ' excluded from analysis (insufficient data)')
         years_df = years_df[years_df['seasons'] > 0]
     
     # Extract overlapping series, sort by temperature and concatenate

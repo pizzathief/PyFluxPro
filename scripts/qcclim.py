@@ -16,7 +16,7 @@ import qcutils
 import sys
 import xlwt
 
-log = logging.getLogger('qc.clim')
+logger = logging.getLogger("pfp_log")
 
 def do_2dinterpolation(array_2d):
     """
@@ -208,7 +208,7 @@ def climatology(cf):
         if "Fn" in ds.series.keys() and "Fg" in ds.series.keys():
             qcts.CalculateAvailableEnergy(ds,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
         else:
-            log.warning(" Climatology: Fn or Fg not in data struicture")
+            logger.warning(" Climatology: Fn or Fg not in data struicture")
     # get the time step
     ts = int(ds.globalattributes['time_step'])
     # get the site name
@@ -235,10 +235,10 @@ def climatology(cf):
     for ThisOne in cf['Variables'].keys():
         if "AltVarName" in cf['Variables'][ThisOne].keys(): ThisOne = cf['Variables'][ThisOne]["AltVarName"]
         if ThisOne in ds.series.keys():
-            log.info(" Doing climatology for "+ThisOne)
+            logger.info(" Doing climatology for "+ThisOne)
             data,f,a = qcutils.GetSeriesasMA(ds,ThisOne,si=si,ei=ei)
             if numpy.ma.count(data)==0:
-                log.warning(" No data for "+ThisOne+", skipping ...")
+                logger.warning(" No data for "+ThisOne+", skipping ...")
                 continue
             fmt_str = get_formatstring(cf,ThisOne,fmt_def='')
             xlSheet = xlFile.add_sheet(ThisOne)
@@ -274,7 +274,7 @@ def climatology(cf):
             xlSheet = xlFile.add_sheet(ThisOne+'i(day)')
             write_data_1columnpertimestep(xlSheet, data_daily_i, ts, startdate=sdate, format_string=fmt_str)
         elif ThisOne=="EF":
-            log.info(" Doing evaporative fraction")
+            logger.info(" Doing evaporative fraction")
             EF = numpy.ma.zeros([48,12]) + float(c.missing_value)
             Hdh,f,a = qcutils.GetSeriesasMA(ds,'Hdh',si=si,ei=ei)
             Fa,f,a = qcutils.GetSeriesasMA(ds,'Fa',si=si,ei=ei)
@@ -307,7 +307,7 @@ def climatology(cf):
             xlSheet = xlFile.add_sheet('EFi(day)')
             write_data_1columnpertimestep(xlSheet, EFi, ts, startdate=ldt[0], format_string='0.00')
         elif ThisOne=="BR":
-            log.info(" Doing Bowen ratio")
+            logger.info(" Doing Bowen ratio")
             BR = numpy.ma.zeros([48,12]) + float(c.missing_value)
             Fe,f,a = qcutils.GetSeriesasMA(ds,'Fe',si=si,ei=ei)
             Fh,f,a = qcutils.GetSeriesasMA(ds,'Fh',si=si,ei=ei)
@@ -339,7 +339,7 @@ def climatology(cf):
             xlSheet = xlFile.add_sheet('BRi(day)')
             write_data_1columnpertimestep(xlSheet, BRi, ts, startdate=ldt[0], format_string='0.00')
         elif ThisOne=="WUE":
-            log.info(" Doing ecosystem WUE")
+            logger.info(" Doing ecosystem WUE")
             WUE = numpy.ma.zeros([48,12]) + float(c.missing_value)
             Fe,f,a = qcutils.GetSeriesasMA(ds,'Fe',si=si,ei=ei)
             Fc,f,a = qcutils.GetSeriesasMA(ds,'Fc',si=si,ei=ei)
@@ -371,9 +371,9 @@ def climatology(cf):
             xlSheet = xlFile.add_sheet('WUEi(day)')
             write_data_1columnpertimestep(xlSheet, WUEi, ts, startdate=ldt[0], format_string='0.00000')
         else:
-            log.warning(" qcclim.climatology: requested variable "+ThisOne+" not in data structure")
+            logger.warning(" qcclim.climatology: requested variable "+ThisOne+" not in data structure")
             continue
-    log.info(" Saving Excel file "+xl_filename)
+    logger.info(" Saving Excel file "+xl_filename)
     xlFile.save(xl_filename)
 
 def compare_eddypro():

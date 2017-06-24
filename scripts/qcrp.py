@@ -17,7 +17,7 @@ import qcutils
 import sys
 import xlrd
 
-log = logging.getLogger('qc.rp')
+logger = logging.getLogger("pfp_log")
 
 def CalculateET(ds):
     """
@@ -158,7 +158,7 @@ def ERUsingFFNET(cf,ds):
     """
     if "ffnet" not in dir(ds): return
     if "ffnet" not in sys.modules.keys():
-        log.error("ERUsingFFNET: I don't think ffnet is installed ...")
+        logger.error("ERUsingFFNET: I don't think ffnet is installed ...")
         return
     # local pointer to the datetime series
     ldt = ds.series["DateTime"]["Data"]
@@ -181,7 +181,7 @@ def ERUsingFFNET(cf,ds):
 
 def ERUsingLasslop(cf,ds):
     if "rpLL" not in dir(ds): return
-    log.info("Estimating ER using Lasslop")
+    logger.info("Estimating ER using Lasslop")
     # these should be read from the control file
     series = ds.rpLL.keys()
     info = {"window_length":int(ds.rpLL[series[0]]["window_size_days"]),
@@ -224,7 +224,7 @@ def ERUsingLasslop(cf,ds):
     ustar_night = numpy.ma.masked_where(indicator_night==0,ustar)
     ER = numpy.ma.masked_where(indicator_night==0,Fc)
     # loop over the windows and get E0
-    log.info("Estimating the rb and E0 parameters")
+    logger.info("Estimating the rb and E0 parameters")
     LT_results = qcrpLL.get_LT_params(ldt,ER,T_night,info)
     # interpolate parameters
     # this should have a check to make sure we are not interpolating with a small
@@ -247,7 +247,7 @@ def ERUsingLasslop(cf,ds):
     E0_tts = numpy.concatenate((E0_beginning,E0_middle,E0_end))
     # ***
     # and get the ecosystem respiration at the tower time step
-    log.info("Calculating ER using Lloyd-Taylor")
+    logger.info("Calculating ER using Lloyd-Taylor")
     ER_LT = qcrpLL.ER_LloydTaylor(T,rb_tts,E0_tts)
     # plot the L&T parameters and ER_LT
     #qcrpLL.plot_LTparams_ER(ldt,ER,ER_LT,LT_results)
@@ -262,7 +262,7 @@ def ERUsingLasslop(cf,ds):
     T_day = numpy.ma.masked_where(indicator_day==0,T)
     NEE_day = numpy.ma.masked_where(indicator_day==0,Fc)
     # get the Lasslop parameters
-    log.info("Estimating the Lasslop parameters")
+    logger.info("Estimating the Lasslop parameters")
     LL_results = qcrpLL.get_LL_params(ldt,Fsd_day,D_day,T_day,NEE_day,ER,LT_results,info)
     # interpolate parameters
     LL_results["alpha_int"] = qcrpLL.interp_params(LL_results["alpha"])
@@ -297,7 +297,7 @@ def ERUsingLasslop(cf,ds):
     long_name = "Activation energy from Lloyd-Taylor method used in Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
     qcutils.CreateSeries(ds,"E0_LL",E0,Flag=flag,Attr=attr)
-    log.info("Calculating ER using Lloyd-Taylor with Lasslop parameters")
+    logger.info("Calculating ER using Lloyd-Taylor with Lasslop parameters")
     ER_LL = qcrpLL.ER_LloydTaylor(T,rb,E0)
     # write ecosystem respiration modelled by Lasslop et al (2010)
     units = Fc_attr["units"]
@@ -344,7 +344,7 @@ def ERUsingLloydTaylor(cf,ds):
     Date: October 2015
     """
     if "rpLT" not in dir(ds): return
-    log.info(' Estimating ER using Lloyd-Taylor')
+    logger.info(' Estimating ER using Lloyd-Taylor')
     long_name = "Ecosystem respiration modelled by Lloyd-Taylor"
     ER_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="umol/m2/s")
     ts = int(ds.globalattributes["time_step"])
@@ -371,7 +371,7 @@ def ERUsingLloydTaylor(cf,ds):
     xl_name = nc_name.replace(".nc","_L&T.xls")
     xl_file = qcio.xl_open_write(xl_name)
     if xl_file=='':
-        log.error("ERUsingLloydTaylor: error opening Excel file "+xl_name)
+        logger.error("ERUsingLloydTaylor: error opening Excel file "+xl_name)
         return
     # loop over the series
     for series in ds.rpLT.keys():
@@ -426,7 +426,7 @@ def ERUsingLloydTaylor(cf,ds):
         # *** start of annual estimates of E0 code ***
         # this section could be a separate routine
         # Get the annual estimates of Eo
-        log.info(" Optimising fit for Eo for each year")
+        logger.info(" Optimising fit for Eo for each year")
         Eo_dict, EoQC_dict, Eo_raw_dict, EoQC_raw_dict = qcrpLT.optimise_annual_Eo(data_dict,params_dict,configs_dict,year_index_dict)
         #print 'Done!'
         # Write to result arrays
@@ -454,7 +454,7 @@ def ERUsingLloydTaylor(cf,ds):
         params_dict = {'fixed_rb': qcrpLT.make_initial_guess_dict(data_dict),
                        'free_rb': qcrpLT.make_initial_guess_dict(data_dict)}
         # Do nocturnal optimisation for each window
-        log.info(" Optimising fit for rb using nocturnal data")
+        logger.info(" Optimising fit for rb using nocturnal data")
         for date in step_date_array:
             # Get Eo for the relevant year and write to the parameters dictionary
             param_index = numpy.where(date_array == date)
@@ -822,7 +822,7 @@ def check_for_missing_data(series_list,label_list):
     for item,label in zip(series_list,label_list):
         index = numpy.where(numpy.ma.getmaskarray(item)==True)[0]
         if len(index)!=0:
-            log.error(" GetERFromFc: missing data in series "+label)
+            logger.error(" GetERFromFc: missing data in series "+label)
             return 0
     return 1
 
@@ -831,7 +831,7 @@ def get_ustar_thresholds(cf,ldt):
         ustar_dict = get_ustarthreshold_from_cpdresults(cf)
     else:
         msg = " CPD results filename not in control file"
-        log.warning(msg)
+        logger.warning(msg)
         ustar_dict = get_ustarthreshold_from_cf(cf,ldt)
     cleanup_ustar_dict(ldt,ustar_dict)
     return ustar_dict
@@ -840,7 +840,7 @@ def get_ustar_thresholds2(cf,ldt):
     ustar_dict = get_ustarthreshold_from_cpdresults(cf)
 
     msg = " CPD results filename not in control file"
-    log.warning(msg)
+    logger.warning(msg)
     ustar_dict = get_ustarthreshold_from_cf(cf,ldt)
 
     cleanup_ustar_dict(ldt,ustar_dict)
@@ -965,7 +965,7 @@ def get_evening_indicator(cf,Fsd,Fsd_syn,sa,ts):
     if num_hours<=0 or num_hours>=12:
         evening_indicator = numpy.zeros(len(Fsd))
         msg = " Evening filter period outside 0 to 12 hours, skipping ..."
-        log.warning(msg)
+        logger.warning(msg)
         return evening_indicator
     night_indicator = get_night_indicator(cf, Fsd, Fsd_syn, sa)
     day_indicator = get_day_indicator(cf, Fsd, Fsd_syn, sa)
@@ -1036,7 +1036,7 @@ def get_turbulence_indicator(cf,ldt,ustar,L,ustar_dict,ts,attr):
         turbulence_indicator = get_turbulence_indicator_ustar(ldt,ustar,ustar_dict,ts,attr)
     elif opt.lower()=="l":
         msg = " GetERfromFc: use of L as turbulence indicator not implemented yet"
-        log.warning(msg)
+        logger.warning(msg)
         #turbulence_indicator = get_turbulence_indicator_l(ldt,L,z,d,zmdonL_threshold)
     else:
         msg = " Unrecognised TurbulenceFilter option in control file"
@@ -1166,7 +1166,7 @@ def get_ustarthreshold_from_cf(cf,ldt):
     ustar_threshold_list = []
     if "ustar_threshold" in cf.keys():
         msg = " Using values from ustar_threshold section"
-        log.info(msg)
+        logger.info(msg)
         for n in cf["ustar_threshold"].keys():
             ustar_threshold_list.append(ast.literal_eval(cf["ustar_threshold"][str(n)]))
         for item in ustar_threshold_list:
@@ -1175,8 +1175,8 @@ def get_ustarthreshold_from_cf(cf,ldt):
             ustar_dict[str(year)] = {}
             ustar_dict[str(year)]["ustar_mean"] = float(item[2])
     else:
-        log.error(" No [ustar_threshold] section in control file")
-        log.error(" ... using default value of 0.25 m/s")
+        logger.error(" No [ustar_threshold] section in control file")
+        logger.error(" ... using default value of 0.25 m/s")
         startyear = ldt[0].year
         endyear = ldt[-1].year
         years = range(startyear,endyear+1)
@@ -1201,7 +1201,7 @@ def get_ustarthreshold_from_cpdresults(cf):
     ustar_dict = collections.OrderedDict()
     if "cpd_filename" not in cf["Files"]:
         msg = " CPD results filename not in control file"
-        log.warning(msg)
+        logger.warning(msg)
         return ustar_dict
     cpd_path = cf["Files"]["file_path"]
     cpd_name = cpd_path+cf["Files"]["cpd_filename"]
@@ -1251,7 +1251,7 @@ def L6_summary(cf,ds):
     Author: PRI
     Date: June 2015
     """
-    log.info(" Doing the L6 summary")
+    logger.info(" Doing the L6 summary")
     # set up a dictionary of lists
     series_dict = L6_summary_createseriesdict(cf,ds)
     # open the Excel workbook
@@ -1259,7 +1259,7 @@ def L6_summary(cf,ds):
     xl_name = nc_name.replace(".nc","_Summary.xls")
     xl_file = qcio.xl_open_write(xl_name)
     if xl_file=='':
-        log.error("L6_summary: error opening Excel file "+xl_name)
+        logger.error("L6_summary: error opening Excel file "+xl_name)
         return
     # daily averages and totals
     daily_dict = L6_summary_daily(ds,series_dict)
@@ -1542,7 +1542,7 @@ def L6_summary_daily(ds,series_dict):
     Author: PRI
     Date: June 2015
     """
-    log.info(" Doing the daily summary (data) at L6")
+    logger.info(" Doing the daily summary (data) at L6")
     dt = ds.series["DateTime"]["Data"]
     ts = int(ds.globalattributes["time_step"])
     si = qcutils.GetDateIndex(dt,str(dt[0]),ts=ts,default=0,match="startnextday")
@@ -1573,7 +1573,7 @@ def L6_summary_daily(ds,series_dict):
         else:
             msg = "Unrecognised operator ("+series_dict["daily"][item]["operator"]
             msg = msg+") for series "+item
-            log.error(msg)
+            logger.error(msg)
             continue
         # add the format to be used
         daily_dict[item]["format"] = series_dict["daily"][item]["format"]
@@ -1591,7 +1591,7 @@ def L6_summary_co2andh2o_fluxes(ds,series_dict,daily_dict):
     Author: PRI
     Date: March 2016
     """
-    log.info(" Doing the daily summary (fluxes) at L6")
+    logger.info(" Doing the daily summary (fluxes) at L6")
     sdl = series_dict["lists"]
     series_list = sdl["h2o"]+sdl["co2"]
     fluxes_dict = {}
@@ -1624,7 +1624,7 @@ def L6_summary_monthly(ds,series_dict):
     Author: PRI
     Date: July 2015
     """
-    log.info(" Doing the monthly summaries at L6")
+    logger.info(" Doing the monthly summaries at L6")
     dt = ds.series["DateTime"]["Data"]
     ts = int(ds.globalattributes["time_step"])
     si = qcutils.GetDateIndex(dt,str(dt[0]),ts=ts,default=0,match="startnextmonth")
@@ -1682,7 +1682,7 @@ def L6_summary_annual(ds,series_dict):
     Author: PRI
     Date: June 2015
     """
-    log.info(" Doing the annual summaries at L6")
+    logger.info(" Doing the annual summaries at L6")
     dt = ds.series["DateTime"]["Data"]
     ts = int(ds.globalattributes["time_step"])
     nperDay = int(24/(float(ts)/60.0)+0.5)
@@ -1743,7 +1743,7 @@ def L6_summary_cumulative(ds,series_dict):
     Author: PRI
     Date: June 2015
     """
-    log.info(" Doing the cumulative summaries at L6")
+    logger.info(" Doing the cumulative summaries at L6")
     dt = ds.series["DateTime"]["Data"]
     ts = int(ds.globalattributes["time_step"])
     si = qcutils.GetDateIndex(dt,str(dt[0]),ts=ts,default=0,match="startnextday")

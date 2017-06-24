@@ -1,15 +1,18 @@
+# standard modules
 import ast
 import copy
 import constants as c
 import datetime
-import numpy
+import logging
 import time
+# 3rd party
+import numpy
+# pf modules
 import qcrp
 import qcts
 import qcutils
-import logging
 
-log = logging.getLogger('qc.ck')
+logger = logging.getLogger("pfp_log")
 
 def ApplyQCChecks(variable):
     """
@@ -114,11 +117,11 @@ def ApplyTurbulenceFilter(cf,ds,ustar_threshold=None):
         #indicators["turbulence] = get_turbulence_indicator_l(ldt,L,z,d,zmdonL_threshold)
         indicators["turbulence"] = numpy.ones(len(ldt))
         msg = " Use of L as turbulence indicator not implemented, no filter applied"
-        log.warning(msg)
+        logger.warning(msg)
     else:
         msg = " Unrecognised turbulence filter option ("
         msg = msg+opt["turbulence_filter"]+"), no filter applied"
-        log.error(msg)
+        logger.error(msg)
         return
     # initialise the final indicator series as the turbulence indicator
     # subsequent filters will modify the final indicator series
@@ -162,13 +165,13 @@ def ApplyTurbulenceFilter(cf,ds,ustar_threshold=None):
     # loop over the series to be filtered
     for series in opt["filter_list"]:
         msg = " Applying "+opt["turbulence_filter"]+" filter to "+series
-        log.info(msg)
+        logger.info(msg)
         # get the data
         data,flag,attr = qcutils.GetSeriesasMA(ds,series)
         # continue to next series if this series has been filtered before
         if "turbulence_filter" in attr:
             msg = " Series "+series+" has already been filtered, skipping ..."
-            log.warning(msg)
+            logger.warning(msg)
             continue
         # save the non-filtered data
         qcutils.CreateSeries(ds,series+"_nofilter",data,Flag=flag,Attr=attr)
@@ -198,7 +201,7 @@ def ApplyTurbulenceFilter_checks(cf,ds):
     # return if there is no Options section in control file
     if "Options" not in cf:
         msg = " ApplyTurbulenceFilter: Options section not found in control file"
-        log.warning(msg)
+        logger.warning(msg)
         opt["OK"] = False
         return opt
     # get the value of the TurbulenceFilter key in the Options section
@@ -206,14 +209,14 @@ def ApplyTurbulenceFilter_checks(cf,ds):
     # return if turbulence filter disabled
     if opt["turbulence_filter"].lower()=="none":
         msg = " Turbulence filter disabled in control file at "+ds.globalattributes["nc_level"]
-        log.info(msg)
+        logger.info(msg)
         opt["OK"] = False
         return opt
     # check to see if filter type can be handled
     if opt["turbulence_filter"].lower() not in ["ustar","ustar_evg","l"]:
         msg = " Unrecognised turbulence filter option ("
         msg = msg+opt["turbulence_filter"]+"), no filter applied"
-        log.error(msg)
+        logger.error(msg)
         opt["OK"] = False
         return opt
     # get the list of series to be filtered
@@ -223,12 +226,12 @@ def ApplyTurbulenceFilter_checks(cf,ds):
     for item in opt["filter_list"]:
         if item not in ds.series.keys():
             msg = " Series "+item+" given in FilterList not found in data stucture"
-            log.warning(msg)
+            logger.warning(msg)
             opt["filter_list"].remove(item)
     # return if the filter list is empty
     if len(opt["filter_list"])==0:
         msg = " FilterList in control file is empty, skipping turbulence filter"
-        log.warning(msg)
+        logger.warning(msg)
         opt["OK"] = False
         return opt
     # get the value of the DayNightFilter key in the Options section
@@ -237,7 +240,7 @@ def ApplyTurbulenceFilter_checks(cf,ds):
     if opt["daynight_filter"].lower() not in ["fsd","sa","none"]:
         msg = " Unrecognised day/night filter option ("
         msg = msg+opt["daynight_filter"]+"), no filter applied"
-        log.error(msg)
+        logger.error(msg)
         opt["OK"] = False
         return opt
     # check to see if all day time values are to be accepted
@@ -254,7 +257,7 @@ def cliptorange(data, lower, upper):
 def CoordinateAh7500AndFcGaps(cf,ds,Fcvar='Fc'):
     '''Cleans up Ah_7500_Av based upon Fc gaps to for QA check on Ah_7500_Av v Ah_HMP.'''
     if not qcutils.cfoptionskeylogical(cf,Key='CoordinateAh7500&FcGaps'): return
-    log.info(' Doing the Ah_7500 check')
+    logger.info(' Doing the Ah_7500 check')
     if qcutils.cfkeycheck(cf,Base='FunctionArgs',ThisOne='AhcheckFc'):
         Fclist = ast.literal_eval(cf['FunctionArgs']['AhcheckFc'])
         Fcvar = Fclist[0]
@@ -306,11 +309,11 @@ def CoordinateFluxGaps(cf,ds,Fc_in='Fc',Fe_in='Fe',Fh_in='Fh'):
     ds.series[Fc_in]['Data']=numpy.ma.filled(Fc,float(c.missing_value))
     ds.series[Fe_in]['Data']=numpy.ma.filled(Fe,float(c.missing_value))
     ds.series[Fh_in]['Data']=numpy.ma.filled(Fh,float(c.missing_value))
-    log.info(' Finished gap co-ordination')
+    logger.info(' Finished gap co-ordination')
 
 def CreateNewSeries(cf,ds):
     '''Create a new series using the MergeSeries or AverageSeries instructions.'''
-    log.info(' Checking for new series to create')
+    logger.info(' Checking for new series to create')
     for ThisOne in cf['Variables'].keys():
         if 'MergeSeries' in cf['Variables'][ThisOne].keys():
             qcts.MergeSeries(cf,ds,ThisOne,[0,10,20,30,40,50])
@@ -324,9 +327,9 @@ def do_CSATcheck(cf,ds):
        CSATList.'''
     if "Diag_CSAT" not in ds.series.keys():
         msg = " Diag_CSAT not found in data, skipping CSAT checks ..."
-        log.warning(msg)
+        logger.warning(msg)
         return
-    log.info(' Doing the CSAT check')
+    logger.info(' Doing the CSAT check')
     CSAT_all = ['Ux','Uy','Uz',
                 'Ws_CSAT','Wd_CSAT','Wd_CSAT_Compass','Tv_CSAT',
                 'UzT','UxT','UyT','UzA','UxA','UyA','UzC','UxC','UyC',
@@ -335,13 +338,13 @@ def do_CSATcheck(cf,ds):
     for item in CSAT_all:
         if item in ds.series.keys(): CSAT_list.append(item)
     index = numpy.where(ds.series['Diag_CSAT']['Flag']!=0)
-    log.info('  CSATCheck: Diag_CSAT ' + str(numpy.size(index)))
+    logger.info('  CSATCheck: Diag_CSAT ' + str(numpy.size(index)))
     for ThisOne in CSAT_list:
         if ThisOne in ds.series.keys():
             ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
             ds.series[ThisOne]['Flag'][index] = numpy.int32(3)
         else:
-            log.error('  qcck.do_CSATcheck: series '+str(ThisOne)+' in CSATList not found in ds.series')
+            logger.error('  qcck.do_CSATcheck: series '+str(ThisOne)+' in CSATList not found in ds.series')
     if 'CSATCheck' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',CSATCheck'
 
@@ -351,11 +354,11 @@ def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
     if "DependencyCheck" not in cf[section][series].keys(): return
     if "Source" not in cf[section][series]["DependencyCheck"]:
         msg = " DependencyCheck: keyword Source not found for series "+series+", skipping ..."
-        log.error(msg)
+        logger.error(msg)
         return
     if mode=="verbose":
         msg = " Doing DependencyCheck for "+series
-        log.info(msg)
+        logger.info(msg)
     # get the precursor source list from the control file
     source_list = ast.literal_eval(cf[section][series]["DependencyCheck"]["Source"])
     # get the data
@@ -423,30 +426,30 @@ def do_EC155check(cf,ds):
     # check to see if we have a Diag_IRGA series to work with
     if "Diag_IRGA" not in ds.series.keys():
         msg = " Diag_IRGA not found in data, skipping IRGA checks ..."
-        log.warning(msg)
+        logger.warning(msg)
         return
     # seems OK to continue
-    log.info(' Doing the EC155 check')
+    logger.info(' Doing the EC155 check')
     # list of series that depend on IRGA data quality
     EC155_list = ['H2O_IRGA_Av','CO2_IRGA_Av','H2O_IRGA_Sd','CO2_IRGA_Sd','H2O_IRGA_Vr','CO2_IRGA_Vr',
                  'UzA','UxA','UyA','UzH','UxH','UyH','UzC','UxC','UyC']
     index = numpy.where(ds.series['Diag_IRGA']['Flag']!=0)
-    log.info('  EC155Check: Diag_IRGA rejects ' + str(numpy.size(index)))
+    logger.info('  EC155Check: Diag_IRGA rejects ' + str(numpy.size(index)))
     EC155_dependents = []
     for item in ['Signal_H2O','Signal_CO2','H2O_IRGA_Sd','CO2_IRGA_Sd']:
         if item in ds.series.keys(): EC155_dependents.append(item)
     for item in EC155_dependents:
         index = numpy.where(ds.series[item]['Flag']!=0)
-        log.info('  EC155Check: '+item+' rejected '+str(numpy.size(index))+' points')
+        logger.info('  EC155Check: '+item+' rejected '+str(numpy.size(index))+' points')
         ds.series['Diag_IRGA']['Flag'] = ds.series['Diag_IRGA']['Flag'] + ds.series[item]['Flag']
     index = numpy.where((ds.series['Diag_IRGA']['Flag']!=0))
-    log.info('  EC155Check: Total rejected ' + str(numpy.size(index)))
+    logger.info('  EC155Check: Total rejected ' + str(numpy.size(index)))
     for ThisOne in EC155_list:
         if ThisOne in ds.series.keys():
             ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
             ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
         else:
-            log.warning(' do_EC155check: series '+str(ThisOne)+' in EC155 list not found in data structure')
+            logger.warning(' do_EC155check: series '+str(ThisOne)+' in EC155 list not found in data structure')
     if 'EC155Check' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',EC155Check'
 
@@ -516,7 +519,7 @@ def do_IRGAcheck(cf,ds):
     # check the IRGA type against the list of suppprted devices
     if irga_type.lower() not in irga_list:
         msg = " Unrecognised IRGA type "+irga_type+" given in control file, IRGA checks skipped ..."
-        log.error(msg)
+        logger.error(msg)
         return
     # do the IRGA checks
     if irga_type.lower()=="li7500":
@@ -530,7 +533,7 @@ def do_IRGAcheck(cf,ds):
         do_EC155check(cf,ds)
     else:
         msg = " Unsupported IRGA type "+irga_type+", contact the devloper ..."
-        log.error(msg)
+        logger.error(msg)
         return
 
 def do_li7500check(cf,ds):
@@ -542,13 +545,13 @@ def do_li7500check(cf,ds):
        deviation of CO2 concentration).'''
     if "Diag_7500" not in ds.series.keys():
         msg = " Diag_7500 not found in data, skipping 7500 checks ..."
-        log.warning(msg)
+        logger.warning(msg)
         return
-    log.info(' Doing the 7500 check')
+    logger.info(' Doing the 7500 check')
     LI75List = ['Ah_7500_Av','Cc_7500_Av','Ah_7500_Sd','Cc_7500_Sd',
                 'UzA','UxA','UyA','UzC','UxC','UyC']
     index = numpy.where(ds.series['Diag_7500']['Flag']!=0)
-    log.info('  7500Check: Diag_7500 ' + str(numpy.size(index)))
+    logger.info('  7500Check: Diag_7500 ' + str(numpy.size(index)))
     LI75_dependents = []
     for item in ['AGC_7500','Ah_7500_Sd','Cc_7500_Sd','AhAh','CcCc']:
         if item in ds.series.keys(): LI75_dependents.append(item)
@@ -557,22 +560,22 @@ def do_li7500check(cf,ds):
     for item in LI75_dependents:
         if item in ds.series.keys():
             index = numpy.where(ds.series[item]['Flag']!=0)
-            log.info('  7500Check: '+item+' rejected '+str(numpy.size(index))+' points')
+            logger.info('  7500Check: '+item+' rejected '+str(numpy.size(index))+' points')
             ds.series['Diag_7500']['Flag'] = ds.series['Diag_7500']['Flag'] + ds.series[item]['Flag']
     index = numpy.where((ds.series['Diag_7500']['Flag']!=0))
-    log.info('  7500Check: Total ' + str(numpy.size(index)))
+    logger.info('  7500Check: Total ' + str(numpy.size(index)))
     for ThisOne in LI75List:
         if ThisOne in ds.series.keys():
             ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
             ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
         else:
-            log.error('  qcck.do_7500check: series '+str(ThisOne)+' in LI75List not found in ds.series')
+            logger.error('  qcck.do_7500check: series '+str(ThisOne)+' in LI75List not found in ds.series')
     if '7500Check' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',7500Check'
 
 def do_li7500acheck(cf,ds):
     #msg = " Li-7500A check not implemented yet, contact the developer ..."
-    #log.warning(msg)
+    #logger.warning(msg)
     #return
     '''Rejects data values for series specified in LI75List for times when the Diag_7500
        flag is non-zero.  If the Diag_IRGA flag is not present in the data structure passed
@@ -582,13 +585,13 @@ def do_li7500acheck(cf,ds):
        deviation of CO2 concentration).'''
     if "Diag_IRGA" not in ds.series.keys():
         msg = " Diag_IRGA not found in data, skipping IRGA checks ..."
-        log.warning(msg)
+        logger.warning(msg)
         return
-    log.info(' Doing the 7500A check')
+    logger.info(' Doing the 7500A check')
     LI75List = ['H2O_IRGA_Av','CO2_IRGA_Av','H2O_IRGA_Sd','CO2_IRGA_Sd','H2O_IRGA_Vr','CO2_IRGA_Vr',
                 'UzA','UxA','UyA','UzC','UxC','UyC']
     index = numpy.where(ds.series['Diag_IRGA']['Flag']!=0)
-    log.info('  7500ACheck: Diag_IRGA ' + str(numpy.size(index)))
+    logger.info('  7500ACheck: Diag_IRGA ' + str(numpy.size(index)))
     LI75_dependents = []
     for item in ['Signal_H2O','Signal_CO2','H2O_IRGA_Sd','CO2_IRGA_Sd','H2O_IRGA_Vr','CO2_IRGA_Vr']:
         if item in ds.series.keys(): LI75_dependents.append(item)
@@ -597,16 +600,16 @@ def do_li7500acheck(cf,ds):
     for item in LI75_dependents:
         if item in ds.series.keys():
             index = numpy.where(ds.series[item]['Flag']!=0)
-            log.info('  7500ACheck: '+item+' rejected '+str(numpy.size(index))+' points')
+            logger.info('  7500ACheck: '+item+' rejected '+str(numpy.size(index))+' points')
             ds.series['Diag_IRGA']['Flag'] = ds.series['Diag_IRGA']['Flag'] + ds.series[item]['Flag']
     index = numpy.where((ds.series['Diag_IRGA']['Flag']!=0))
-    log.info('  7500ACheck: Total ' + str(numpy.size(index)))
+    logger.info('  7500ACheck: Total ' + str(numpy.size(index)))
     for ThisOne in LI75List:
         if ThisOne in ds.series.keys():
             ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
             ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
         else:
-            #log.warning('  qcck.do_7500acheck: series '+str(ThisOne)+' in LI75List not found in ds.series')
+            #logger.warning('  qcck.do_7500acheck: series '+str(ThisOne)+' in LI75List not found in ds.series')
             pass
     if '7500ACheck' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',7500ACheck'
@@ -653,9 +656,9 @@ def do_rangecheck(cf,ds,section='',series='',code=2):
 def do_qcchecks(cf,ds,mode="verbose"):
     if "nc_level" in ds.globalattributes:
         level = str(ds.globalattributes["nc_level"])
-        if mode!="quiet": log.info(" Doing the QC checks at level "+str(level))
+        if mode!="quiet": logger.info(" Doing the QC checks at level "+str(level))
     else:
-        if mode!="quiet": log.info(" Doing the QC checks")
+        if mode!="quiet": logger.info(" Doing the QC checks")
     # get the series list from the control file
     series_list = []
     for item in ["Variables","Drivers","Fluxes"]:
@@ -664,7 +667,7 @@ def do_qcchecks(cf,ds,mode="verbose"):
             series_list = cf[item].keys()
     if len(series_list)==0:
         msg = " do_qcchecks: Variables, Drivers or Fluxes section not found in control file, skipping QC checks ..."
-        log.warning(msg)
+        logger.warning(msg)
         return
     # loop over the series specified in the control file
     # first time for general QC checks
@@ -673,7 +676,7 @@ def do_qcchecks(cf,ds,mode="verbose"):
         if series not in ds.series.keys():
             if mode!="quiet":
                 msg = " do_qcchecks: series "+series+" not found in data structure, skipping ..."
-                log.warning(msg)
+                logger.warning(msg)
             continue
         # if so, do the QC checks
         do_qcchecks_oneseries(cf,ds,section=section,series=series)
@@ -684,7 +687,7 @@ def do_qcchecks(cf,ds,mode="verbose"):
         if series not in ds.series.keys():
             if mode!="quiet":
                 msg = " do_qcchecks: series "+series+" not found in data structure, skipping ..."
-                log.warning(msg)
+                logger.warning(msg)
             continue
         # if so, do dependency check
         do_dependencycheck(cf,ds,section=section,series=series,code=23,mode="quiet")
@@ -712,7 +715,7 @@ def do_winddirectioncorrection(cf,ds,section='',series=''):
 
 def rangecheckserieslower(data,lower):
     if lower is None:
-        log.info(' rangecheckserieslower: no lower bound set')
+        logger.info(' rangecheckserieslower: no lower bound set')
         return data
     if numpy.ma.isMA(data):
         data = numpy.ma.masked_where(data<lower,data)
@@ -723,7 +726,7 @@ def rangecheckserieslower(data,lower):
 
 def rangecheckseriesupper(data,upper):
     if upper is None:
-        log.info(' rangecheckserieslower: no upper bound set')
+        logger.info(' rangecheckserieslower: no upper bound set')
         return data
     if numpy.ma.isMA(data):
         data = numpy.ma.masked_where(data>upper,data)
