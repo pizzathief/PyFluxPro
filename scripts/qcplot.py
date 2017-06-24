@@ -192,7 +192,7 @@ def plot_fingerprint(cf):
             plt.ion()
         else:
             plt.ioff()
-        fig = plt.figure(nFig,figsize=[15,10])
+        fig = plt.figure(nFig,figsize=(13,8))
         fig.clf()        
         fig.canvas.set_window_title(cf["Plots"][str(nFig)]["Title"])
         plt.figtext(0.5,0.95,title_str,horizontalalignment='center')
@@ -399,10 +399,10 @@ def plot_quickcheck(cf):
     # get the netCDF filename
     ncfilename = qcio.get_infilenamefromcf(cf)
     # get the plot width and height
-    PlotWidth_landscape = float(cf['General']['PlotWidth_landscape'])
-    PlotHeight_landscape = float(cf['General']['PlotHeight_landscape'])
-    PlotWidth_portrait = float(cf['General']['PlotWidth_portrait'])
-    PlotHeight_portrait = float(cf['General']['PlotHeight_portrait'])
+    PlotWidth_landscape = float(13)
+    PlotHeight_landscape = float(8)
+    PlotWidth_portrait = float(5)
+    PlotHeight_portrait = float(8)
     # read the netCDF file and return the data structure "ds"
     logger.info(' Opening and reading netCDF file '+ncfilename)
     ds = qcio.nc_read_series(ncfilename)
@@ -1036,7 +1036,7 @@ def plot_setup(cf,nFig):
     p['SeriesList'] = ast.literal_eval(cf['Plots'][str(nFig)]['Variables'])
     p['nGraphs'] = len(p['SeriesList'])
     p['PlotWidth'] = 13
-    p['PlotHeight'] = 9
+    p['PlotHeight'] = 8
     p['ts_YAxOrg'] = 0.08
     p['ts_XAxOrg'] = 0.06
     p['ts_XAxLen'] = 0.6

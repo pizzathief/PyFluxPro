@@ -1347,18 +1347,11 @@ def L6_summary_plotdaily(cf,ds,daily_dict):
     fig = plt.figure(figsize=(16,4))
     fig.canvas.set_window_title("Surface Energy Budget")
     plt.figtext(0.5,0.95,title_str,horizontalalignment='center')
-    plt.plot(daily_dict["DateTime"]["data"],daily_dict["Fn"]["data"],'k-',alpha=0.3)
-    plt.plot(daily_dict["DateTime"]["data"],qcts.smooth(daily_dict["Fn"]["data"],window_len=30),
-             'k-',linewidth=2,label="Fn (30 day filter)")
-    plt.plot(daily_dict["DateTime"]["data"],daily_dict["Fg"]["data"],'g-',alpha=0.3)
-    plt.plot(daily_dict["DateTime"]["data"],qcts.smooth(daily_dict["Fg"]["data"],window_len=30),
-             'g-',linewidth=2,label="Fg (30 day filter)")
-    plt.plot(daily_dict["DateTime"]["data"],daily_dict["Fh"]["data"],'r-',alpha=0.3)
-    plt.plot(daily_dict["DateTime"]["data"],qcts.smooth(daily_dict["Fh"]["data"],window_len=30),
-             'r-',linewidth=2,label="Fh (30 day filter)")
-    plt.plot(daily_dict["DateTime"]["data"],daily_dict["Fe"]["data"],'b-',alpha=0.3)
-    plt.plot(daily_dict["DateTime"]["data"],qcts.smooth(daily_dict["Fe"]["data"],window_len=30),
-             'b-',linewidth=2,label="Fe (30 day filter)")
+    for label, line in zip(["Fn", "Fg", "Fh", "Fe"], ["k-", "g-", "r-", "b-"]):
+        if label in daily_dict:
+            plt.plot(daily_dict["DateTime"]["data"], daily_dict[label]["data"], line, alpha=0.3)
+            plt.plot(daily_dict["DateTime"]["data"], qcts.smooth(daily_dict[label]["data"], window_len=30),
+                     line, linewidth=2, label=label+" (30 day filter)")
     plt.xlabel("Date")
     plt.ylabel(daily_dict["Fn"]["units"])
     plt.legend(loc='upper left',prop={'size':8})
@@ -1396,7 +1389,7 @@ def L6_summary_plotcumulative(cf,ds,cumulative_dict):
             plt.ion()
         else:
             plt.ioff()
-        fig = plt.figure(figsize=(12,12))
+        fig = plt.figure(figsize=(8,8))
         fig.canvas.set_window_title("Cumulative plots: "+item.replace("_",""))
         plt.suptitle(title_str)
         plt.subplot(221)
