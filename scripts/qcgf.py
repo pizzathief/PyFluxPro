@@ -1587,7 +1587,7 @@ def gfalternate_plotcomposite(nfig,data_dict,stat_dict,diel_avg,alternate_info,p
     else:
         plt.ioff()
     # create the figure canvas
-    fig = plt.figure(nfig,figsize=(13,9))
+    fig = plt.figure(nfig,figsize=(13,8))
     fig.canvas.set_window_title(label_tower)
     # get the plot title string
     title = alternate_info["site_name"]+" : Comparison of tower and alternate data for "+label_tower
@@ -1744,7 +1744,7 @@ def gfalternate_plotsummary(ds,alternate_info):
         plot_title = ds.cf["Alternate_Summary"][str(nFig)]["Title"]
         var_list = ast.literal_eval(ds.cf["Alternate_Summary"][str(nFig)]["Variables"])
         # set up the subplots on the page
-        fig,axs = plt.subplots(len(result_list),len(var_list),figsize=(13,9))
+        fig,axs = plt.subplots(len(result_list),len(var_list),figsize=(13,8))
         fig.canvas.set_window_title("Alternate summary: "+plot_title)
         # make a title string for the plot and render it
         title_str = "Alternate: "+plot_title+"; "+site_name+" "+datetime.datetime.strftime(startdate,"%Y-%m-%d")
@@ -2626,7 +2626,7 @@ def gfSOLO_plot(pd,dsa,dsb,driverlist,targetlabel,outputlabel,solo_info,si=0,ei=
         plt.ion()
     else:
         plt.ioff()
-    fig = plt.figure(pd["fig_num"],figsize=(13,9))
+    fig = plt.figure(pd["fig_num"],figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(targetlabel)
     plt.figtext(0.5,0.95,pd["title"],ha='center',size=16)
@@ -2846,7 +2846,7 @@ def gfSOLO_plotsummary(ds,solo_info):
         plot_title = ds.cf["SOLO_Summary"][str(nFig)]["Title"]
         var_list = ast.literal_eval(ds.cf["SOLO_Summary"][str(nFig)]["Variables"])
         # set up the subplots on the page
-        fig,axs = plt.subplots(len(result_list),len(var_list),figsize=(13,9))
+        fig,axs = plt.subplots(len(result_list),len(var_list),figsize=(13,8))
         fig.canvas.set_window_title("SOLO summary: "+plot_title)
         # make a title string for the plot and render it
         title_str = "SOLO: "+plot_title+"; "+site_name+" "+datetime.datetime.strftime(startdate,"%Y-%m-%d")

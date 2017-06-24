@@ -505,7 +505,7 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
         plt.ion()
     else:
         plt.ioff()
-    fig = plt.figure(pd["fig_num"],figsize=(13,9))
+    fig = plt.figure(pd["fig_num"],figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(targetlabel+" (FFNET): "+pd["startdate"]+" to "+pd["enddate"])
     plt.figtext(0.5,0.95,pd["title"],ha='center',size=16)
@@ -1008,7 +1008,7 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
         plt.ion()
     else:
         plt.ioff()
-    fig = plt.figure(pd["fig_num"],figsize=(13,9))
+    fig = plt.figure(pd["fig_num"],figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(targetlabel+" (SOLO): "+pd["startdate"]+" to "+pd["enddate"])
     plt.figtext(0.5,0.95,pd["title"],ha='center',size=16)

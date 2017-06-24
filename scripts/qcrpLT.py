@@ -437,7 +437,7 @@ def rpLT_plot(pd,ds,series,driverlist,targetlabel,outputlabel,LT_info,si=0,ei=-1
         plt.ion()
     else:
         plt.ioff()
-    fig = plt.figure(pd["fig_num"],figsize=(13,9))
+    fig = plt.figure(pd["fig_num"],figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(targetlabel+" (LT): "+pd["startdate"]+" to "+pd["enddate"])
     plt.figtext(0.5,0.95,pd["title"],ha='center',size=16)
@@ -630,7 +630,7 @@ def plot_windows(data_dict, configs_dict, date, noct_flag):
               
         # Plot
         date_str = datetime.datetime.strftime(date,'%Y-%m-%d')
-        fig = plt.figure(figsize = (12,8))
+        fig = plt.figure(figsize = (13,8))
         fig.patch.set_facecolor('white')
         plt.plot(x_var, y_var1, 'bo' , label = 'NEE_obs')
         plt.plot(x_var, y_var2, 'ro', label = 'NEE_est')
