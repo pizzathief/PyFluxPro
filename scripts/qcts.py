@@ -19,7 +19,7 @@ import xlwt
 import logging
 import pysolar
 
-log = logging.getLogger('qc.ts')
+logger = logging.getLogger("pfp_log")
 
 def albedo(cf,ds):
     """
@@ -31,7 +31,7 @@ def albedo(cf,ds):
         Usage qcts.albedo(ds)
         ds: data structure
         """
-    log.info(' Applying albedo constraints')
+    logger.info(' Applying albedo constraints')
     if 'albedo' not in ds.series.keys():
         if 'Fsd' in ds.series.keys() and 'Fsu' in ds.series.keys():
             Fsd,f,a = qcutils.GetSeriesasMA(ds,'Fsd')
@@ -40,7 +40,7 @@ def albedo(cf,ds):
             attr = qcutils.MakeAttributeDictionary(long_name='solar albedo',units='none',standard_name='solar_albedo')
             qcutils.CreateSeries(ds,'albedo',albedo,FList=['Fsd','Fsu'],Attr=attr)
         else:
-            log.warning('  Fsd or Fsu not in ds, albedo not calculated')
+            logger.warning('  Fsd or Fsu not in ds, albedo not calculated')
             return
     else:
         albedo,f,a = qcutils.GetSeriesasMA(ds,'albedo')
@@ -75,7 +75,7 @@ def ApplyLinear(cf,ds,ThisOne):
         """
     if ThisOne not in ds.series.keys(): return
     if qcutils.incf(cf,ThisOne) and qcutils.haskey(cf,ThisOne,'Linear'):
-        log.info('  Applying linear correction to '+ThisOne)
+        logger.info('  Applying linear correction to '+ThisOne)
         data = numpy.ma.masked_where(ds.series[ThisOne]['Data']==float(c.missing_value),ds.series[ThisOne]['Data'])
         flag = ds.series[ThisOne]['Flag'].copy()
         ldt = ds.series['DateTime']['Data']
@@ -114,7 +114,7 @@ def ApplyLinearDrift(cf,ds,ThisOne):
         """
     if ThisOne not in ds.series.keys(): return
     if qcutils.incf(cf,ThisOne) and qcutils.haskey(cf,ThisOne,'Drift'):
-        log.info('  Applying linear drift correction to '+ThisOne)
+        logger.info('  Applying linear drift correction to '+ThisOne)
         data = numpy.ma.masked_where(ds.series[ThisOne]['Data']==float(c.missing_value),ds.series[ThisOne]['Data'])
         flag = ds.series[ThisOne]['Flag']
         ldt = ds.series['DateTime']['Data']
@@ -158,7 +158,7 @@ def ApplyLinearDriftLocal(cf,ds,ThisOne):
         """
     if ThisOne not in ds.series.keys(): return
     if qcutils.incf(cf,ThisOne) and qcutils.haskey(cf,ThisOne,'LocalDrift'):
-        log.info('  Applying linear drift correction to '+ThisOne)
+        logger.info('  Applying linear drift correction to '+ThisOne)
         data = numpy.ma.masked_where(ds.series[ThisOne]['Data']==float(c.missing_value),ds.series[ThisOne]['Data'])
         flag = ds.series[ThisOne]['Flag']
         ldt = ds.series['DateTime']['Data']
@@ -201,12 +201,12 @@ def AverageSeriesByElements(cf,ds,Av_out):
     if Av_out not in cf['Variables'].keys(): return
     if Av_out in ds.averageserieslist: return
     srclist, standardname = qcutils.GetAverageSeriesKeys(cf,Av_out)
-#    log.info(' Averaging series in '+str(srclist)+' into '+Av_out)
-    log.info(' Averaging '+str(srclist)+'==>'+Av_out)
+#    logger.info(' Averaging series in '+str(srclist)+' into '+Av_out)
+    logger.info(' Averaging '+str(srclist)+'==>'+Av_out)
     
     nSeries = len(srclist)
     if nSeries==0:
-        log.error('  AverageSeriesByElements: no input series specified for'+str(Av_out))
+        logger.error('  AverageSeriesByElements: no input series specified for'+str(Av_out))
         return
     if nSeries==1:
         tmp_data = ds.series[srclist[0]]['Data'].copy()
@@ -249,12 +249,12 @@ def CalculateAvailableEnergy(ds,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg'):
         Fn_in: input net radiation in ds.  Example: 'Fn'
         Fg_in: input ground heat flux in ds.  Example: 'Fg'
         """
-    log.info(' Calculating available energy from Fn and Fg')
+    logger.info(' Calculating available energy from Fn and Fg')
     if Fn_in not in ds.series.keys():
-        log.warning(" Series "+Fn_in+" not found in data file")
+        logger.warning(" Series "+Fn_in+" not found in data file")
         return
     if Fg_in not in ds.series.keys():
-        log.warning(" Series "+Fg_in+" not found in data file")
+        logger.warning(" Series "+Fg_in+" not found in data file")
         return
     Fn,f,a = qcutils.GetSeriesasMA(ds,Fn_in)
     Fg,f,a = qcutils.GetSeriesasMA(ds,Fg_in)
@@ -292,7 +292,7 @@ def CalculateFluxes(cf,ds):
     if 'Massman' in ds.globalattributes['Functions']:
         long_name = ' and frequency response corrected'
     
-    log.info(" Calculating fluxes from covariances")
+    logger.info(" Calculating fluxes from covariances")
     if "wT" in ds.series.keys():
         ok_units = ["mC/s","Cm/s"]
         wT,flag,attr = qcutils.GetSeriesasMA(ds,"wT")
@@ -302,9 +302,9 @@ def CalculateFluxes(cf,ds):
             attr["units"] = "W/m2"
             qcutils.CreateSeries(ds,"Fhv",Fhv,Flag=flag,Attr=attr)
         else:
-            log.error(" CalculateFluxes: Incorrect units for wA, Fe not calculated")
+            logger.error(" CalculateFluxes: Incorrect units for wA, Fe not calculated")
     else:
-        log.error("  CalculateFluxes: wT not found, Fh not calculated")
+        logger.error("  CalculateFluxes: wT not found, Fh not calculated")
     if "wA" in ds.series.keys():
         wA,flag,attr = qcutils.GetSeriesasMA(ds,"wA")
         if attr["units"]=="g/m2/s":
@@ -314,9 +314,9 @@ def CalculateFluxes(cf,ds):
             attr["units"] = "W/m2"
             qcutils.CreateSeries(ds,"Fe",Fe,Flag=flag,Attr=attr)
         else:
-            log.error(" CalculateFluxes: Incorrect units for wA, Fe not calculated")
+            logger.error(" CalculateFluxes: Incorrect units for wA, Fe not calculated")
     else:
-        log.error("  CalculateFluxes: wA not found, Fe not calculated")
+        logger.error("  CalculateFluxes: wA not found, Fe not calculated")
     if "wC" in ds.series.keys():
         wC,flag,attr = qcutils.GetSeriesasMA(ds,"wC")
         if attr["units"]=="mg/m2/s":
@@ -325,9 +325,9 @@ def CalculateFluxes(cf,ds):
             attr["units"] = "mg/m2/s"
             qcutils.CreateSeries(ds,"Fc",Fc,Flag=flag,Attr=attr)
         else:
-            log.error(" CalculateFluxes: Incorrect units for wC, Fc not calculated")
+            logger.error(" CalculateFluxes: Incorrect units for wC, Fc not calculated")
     else:
-        log.error("  CalculateFluxes: wC not found, Fc not calculated")
+        logger.error("  CalculateFluxes: wC not found, Fc not calculated")
     if "uw" in ds.series.keys():
         if "vw" in ds.series.keys():
             uw,f,a = qcutils.GetSeriesasMA(ds,"uw")
@@ -342,9 +342,9 @@ def CalculateFluxes(cf,ds):
             attr["units"] = "m/s"
             qcutils.CreateSeries(ds,"ustar",us,FList=["uw","vw"],Attr=attr)
         else:
-            log.error("  CalculateFluxes: vw not found, Fm and ustar not calculated")
+            logger.error("  CalculateFluxes: vw not found, Fm and ustar not calculated")
     else:
-        log.error("  CalculateFluxes: uw not found, Fm and ustar not calculated")
+        logger.error("  CalculateFluxes: uw not found, Fm and ustar not calculated")
     if 'CalculateFluxes' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', CalculateFluxes'
 
@@ -359,7 +359,7 @@ def CalculateLongwave(ds,Fl_out,Fl_in,Tbody_in):
         Fl_in: input longwave in ds.  Example: 'Flu_raw'
         Tbody_in: input sensor body temperature in ds.  Example: 'Tbody'
         """
-    log.info(' Calculating longwave radiation')
+    logger.info(' Calculating longwave radiation')
     Fl_raw,f,a = qcutils.GetSeriesasMA(ds,Fl_in)
     Tbody,f,a = qcutils.GetSeriesasMA(ds,Tbody_in)
     Fl = Fl_raw + c.sb*(Tbody + 273.15)**4
@@ -443,11 +443,11 @@ def CalculateHumiditiesAfterGapFill(ds):
         if "RH" not in gf_list: RelativeHumidityFromq(ds)
     else:
         msg = "No humidities were gap filled!"
-        log.warning(msg)
+        logger.warning(msg)
 
 def AbsoluteHumidityFromRH(ds):
     """ Calculate absolute humidity from relative humidity. """
-    log.info(' Calculating absolute humidity from relative humidity')
+    logger.info(' Calculating absolute humidity from relative humidity')
     Ta,Ta_flag,a = qcutils.GetSeriesasMA(ds,"Ta")
     RH,RH_flag,a = qcutils.GetSeriesasMA(ds,"RH")
     Ah_new_flag = qcutils.MergeQCFlag([Ta_flag,RH_flag])
@@ -466,7 +466,7 @@ def AbsoluteHumidityFromRH(ds):
 
 def AbsoluteHumidityFromq(ds):
     """ Calculate absolute humidity from specific humidity. """
-    log.info(' Calculating absolute humidity from specific humidity')
+    logger.info(' Calculating absolute humidity from specific humidity')
     Ta,Ta_flag,a = qcutils.GetSeriesasMA(ds,"Ta")
     ps,ps_flag,a = qcutils.GetSeriesasMA(ds,"ps")
     q,q_flag,a = qcutils.GetSeriesasMA(ds,"q")
@@ -487,7 +487,7 @@ def AbsoluteHumidityFromq(ds):
 
 def RelativeHumidityFromq(ds):
     """ Calculate relative humidity from specific humidity. """
-    log.info(' Calculating relative humidity from specific humidity')
+    logger.info(' Calculating relative humidity from specific humidity')
     Ta,Ta_flag,a = qcutils.GetSeriesasMA(ds,"Ta")
     ps,ps_flag,a = qcutils.GetSeriesasMA(ds,"ps")
     q,q_flag,a = qcutils.GetSeriesasMA(ds,"q")
@@ -507,7 +507,7 @@ def RelativeHumidityFromq(ds):
     
 def RelativeHumidityFromAh(ds):
     """ Calculate relative humidity from absolute humidity. """
-    log.info(' Calculating relative humidity from absolute humidity')
+    logger.info(' Calculating relative humidity from absolute humidity')
     Ta,Ta_flag,a = qcutils.GetSeriesasMA(ds,"Ta")
     Ah,Ah_flag,a = qcutils.GetSeriesasMA(ds,"Ah")
     RH_new_flag = qcutils.MergeQCFlag([Ta_flag,Ah_flag])
@@ -572,7 +572,7 @@ def smooth(x,window_len=11,window='hanning'):
 
 def SpecificHumidityFromAh(ds):
     """ Calculate specific humidity from absolute humidity. """
-    log.info(' Calculating specific humidity from absolute humidity')
+    logger.info(' Calculating specific humidity from absolute humidity')
     Ta,Ta_flag,a = qcutils.GetSeriesasMA(ds,"Ta")
     ps,ps_flag,a = qcutils.GetSeriesasMA(ds,"ps")
     Ah,Ah_flag,a = qcutils.GetSeriesasMA(ds,"Ah")
@@ -593,7 +593,7 @@ def SpecificHumidityFromAh(ds):
 
 def SpecificHumidityFromRH(ds):
     """ Calculate specific humidity from relative humidity."""
-    log.info(' Calculating specific humidity from relative humidity')
+    logger.info(' Calculating specific humidity from relative humidity')
     Ta,Ta_flag,a = qcutils.GetSeriesasMA(ds,"Ta")
     ps,ps_flag,a = qcutils.GetSeriesasMA(ds,"ps")
     RH,RH_flag,a = qcutils.GetSeriesasMA(ds,"RH")
@@ -637,9 +637,9 @@ def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_CSAT',ps_name='
         if item not in ds.series.keys():
             msg = " CalculateMeteorologicalVariables: series "
             msg = msg + item + " not found, returning ..."
-            log.warning(msg)
+            logger.warning(msg)
             return
-    log.info(' Adding standard met variables to database')
+    logger.info(' Adding standard met variables to database')
     # get the required data series
     Ta,f,a = qcutils.GetSeriesasMA(ds,Ta_name)
     # use Tv_CSAT if it is in the data structure, otherwise use Ta
@@ -711,7 +711,7 @@ def CalculateNetRadiation(cf,ds,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fl
     Author: PRI
     Date: Sometime early on
     """
-    log.info(' Calculating net radiation from 4 components')
+    logger.info(' Calculating net radiation from 4 components')
     if Fsd_in in ds.series.keys() and Fsu_in in ds.series.keys() and Fld_in in ds.series.keys() and Flu_in in ds.series.keys():
         Fsd,f,a = qcutils.GetSeriesasMA(ds,Fsd_in)
         Fsu,f,a = qcutils.GetSeriesasMA(ds,Fsu_in)
@@ -745,7 +745,7 @@ def CheckCovarianceUnits(ds):
     Author: PRI
     Date: September 2015
     """
-    log.info(' Checking covariance units')
+    logger.info(' Checking covariance units')
     co2_list = ["UxC","UyC","UzC"]
     h2o_list = ["UxA","UyA","UzA","UxH","UyH","UzH"]
     for item in co2_list:
@@ -812,7 +812,7 @@ def CoordRotation2D(cf,ds):
     if ('Options' in cf) and ('2DCoordRotation' in cf['Options'].keys()):
         if not cf['Options'].as_bool('2DCoordRotation'): rotate = False
     if rotate:
-        log.info(' Applying 2D coordinate rotation (components and covariances)')
+        logger.info(' Applying 2D coordinate rotation (components and covariances)')
         # get the 2D and 3D wind speeds
         ws2d = numpy.ma.sqrt(Ux**2 + Uy**2)
         ws3d = numpy.ma.sqrt(Ux**2 + Uy**2 + Uz**2)
@@ -847,7 +847,7 @@ def CoordRotation2D(cf,ds):
         vw = UyUz*ct*ce - UxUz*ct*se - UxUy*st*(ce*ce-se*se) + \
              UxUx*st*ce*se - UyUy*st*ce*se                    # covariance(w,y) in natural wind coordinate system
     else:
-        log.info(' 2D coordinate rotation disabled, using unrotated components and covariances')
+        logger.info(' 2D coordinate rotation disabled, using unrotated components and covariances')
         # dummy series for rotation angles
         theta = numpy.zeros(nRecs)
         eta = numpy.zeros(nRecs)
@@ -961,7 +961,7 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='Cc'):
     """
     if 'Fc_storage' not in ds.series.keys():
         if qcutils.cfkeycheck(cf,Base='General',ThisOne='zms'):
-            log.info(' Calculating Fc storage (single height)')
+            logger.info(' Calculating Fc storage (single height)')
             nRecs = int(ds.globalattributes['nc_nrecs'])
             ts = int(ds.globalattributes['time_step'])
             zms = float(cf['General']['zms'])
@@ -987,9 +987,9 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='Cc'):
             # put the storage flux in the data structure
             qcutils.CreateSeries(ds,Fc_out,Fc_storage,FList=[CO2_in],Attr=attr_out)
         else:
-            log.error('CalculateFcStorage: zms expected in General section of control file but not found')
+            logger.error('CalculateFcStorage: zms expected in General section of control file but not found')
     else:
-        log.info('CalculateFcStorage: Fc_storage found in data structure, not calculated')
+        logger.info('CalculateFcStorage: Fc_storage found in data structure, not calculated')
 
 def CorrectFcForStorage(cf,ds,Fc_out='Fc',Fc_in='Fc',Fc_storage_in='Fc_storage'):
     """
@@ -1006,20 +1006,20 @@ def CorrectFcForStorage(cf,ds,Fc_out='Fc',Fc_in='Fc',Fc_storage_in='Fc_storage')
     if not qcutils.cfoptionskeylogical(cf,Key="ApplyFcStorage"): return
     if (Fc_in not in ds.series.keys()) or (Fc_storage_in not in ds.series.keys()):
         msg = "CorrectFcForStorage: Fc or Fc_storage not found, skipping ..."
-        log.warning(msg)
+        logger.warning(msg)
         return
-    log.info(" ***!!! Applying Fc storage term !!!***")
+    logger.info(" ***!!! Applying Fc storage term !!!***")
     Fc_raw,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,Fc_in)
     Fc_storage,Fc_storage_flag,Fc_storage_attr = qcutils.GetSeriesasMA(ds,Fc_storage_in)
     if Fc_attr["units"]!=Fc_storage_attr["units"]:
-        log.error("CorrectFcForStorage: units of Fc do not match those of storage term, storage not applied")
+        logger.error("CorrectFcForStorage: units of Fc do not match those of storage term, storage not applied")
         return
-    log.info(" Applying storage correction to Fc")
+    logger.info(" Applying storage correction to Fc")
     Fc = Fc_raw + Fc_storage
     if qcutils.cfoptionskeylogical(cf,Key="RelaxFcStorage"):
         idx=numpy.where(numpy.ma.getmaskarray(Fc)==True)[0]
         Fc[idx]=Fc_raw[idx]
-        log.info(" Replaced corrected Fc with "+str(len(idx))+" raw values")
+        logger.info(" Replaced corrected Fc with "+str(len(idx))+" raw values")
     Fc_attr["long_name"] = Fc_attr["long_name"] + ", uncorrected"
     qcutils.CreateSeries(ds,"Fc_raw",Fc_raw,Flag=Fc_flag,Attr=Fc_attr)
     Fc_attr["long_name"] = Fc_attr["long_name"].replace(", uncorrected",", corrected for storage using supplied storage term")
@@ -1053,7 +1053,7 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
         """
     # check to see if the user wants to skip the correction
     if not qcutils.cfoptionskeylogical(cf,Key="CorrectFgForStorage",default=True):
-        log.info(' CorrectFgForStorage: storage correction disabled in control file')
+        logger.info(' CorrectFgForStorage: storage correction disabled in control file')
         return
     # check to see if there is a [Soil] section in the control file
     if 'Soil' not in cf.keys():
@@ -1067,12 +1067,12 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
             cf["Soil"]["SwsDefault"] = ds.globalattributes["SwsDefault"]
         else:
             # tell the user if we can't find the information needed
-            log.warning(' CorrectFgForStorage: [Soil] section not found in control file or global attributes, Fg not corrected')
+            logger.warning(' CorrectFgForStorage: [Soil] section not found in control file or global attributes, Fg not corrected')
             return
     if Fg_in not in ds.series.keys() or Ts_in not in ds.series.keys():
-        log.warning(' CorrectFgForStorage: '+Fg_in+' or '+Ts_in+' not found in data structure, Fg not corrected')
+        logger.warning(' CorrectFgForStorage: '+Fg_in+' or '+Ts_in+' not found in data structure, Fg not corrected')
         return
-    log.info(' Correcting soil heat flux for storage')
+    logger.info(' Correcting soil heat flux for storage')
     # put the contents of the soil section into the global attributes
     for item in cf["Soil"].keys(): ds.globalattributes[item] = cf["Soil"][item]
     d = max(0.0,min(0.5,float(cf['Soil']['FgDepth'])))
@@ -1087,7 +1087,7 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     Sws,Sws_flag,Sws_attr = qcutils.GetSeriesasMA(ds,Sws_in)
     iom = numpy.where(numpy.mod(Sws_flag,10)!=0)[0]
     if len(iom)!=0:
-        log.warning('  CorrectFgForStorage: Sws_default used for '+str(len(iom))+' values')
+        logger.warning('  CorrectFgForStorage: Sws_default used for '+str(len(iom))+' values')
         Sws[iom] = Sws_default
         Sws_flag[iom] = numpy.int32(22)
     # get the soil temperature difference from time step to time step
@@ -1170,7 +1170,7 @@ def CorrectSWC(cf,ds):
             TDR_t: threshold parameter for switching from exponential to logarithmic model
         """
     if not qcutils.cfoptionskeylogical(cf,Key='CorrectSWC'): return
-    log.info(' Correcting soil moisture data ...')
+    logger.info(' Correcting soil moisture data ...')
     SWCempList = ast.literal_eval(cf['Soil']['empSWCin'])
     SWCoutList = ast.literal_eval(cf['Soil']['empSWCout'])
     SWCattr = ast.literal_eval(cf['Soil']['SWCattr'])
@@ -1191,7 +1191,7 @@ def CorrectSWC(cf,ds):
     SWC_t = float(cf['Soil']['SWC_t'])
     
     for i in range(len(SWCempList)):
-        log.info('  Applying empirical correction to '+SWCempList[i])
+        logger.info('  Applying empirical correction to '+SWCempList[i])
         invar = SWCempList[i]
         outvar = SWCoutList[i]
         attr = SWCattr[i]
@@ -1214,7 +1214,7 @@ def CorrectSWC(cf,ds):
         qcutils.CreateSeries(ds,outvar,Sws_out,FList=[invar],Attr=attr)
     if cf['Soil']['TDR']=='Yes':
         for i in range(len(TDRempList)):
-            log.info('  Applying empirical correction to '+TDRempList[i])
+            logger.info('  Applying empirical correction to '+TDRempList[i])
             invar = TDRempList[i]
             outvar = TDRoutList[i]
             attr = TDRattr[i]
@@ -1245,7 +1245,7 @@ def CorrectWindDirection(cf,ds,Wd_in):
         ds: data structure
         Wd_in: input/output wind direction variable in ds.  Example: 'Wd_CSAT'
         """
-    log.info(' Correcting wind direction')
+    logger.info(' Correcting wind direction')
     Wd,f,a = qcutils.GetSeriesasMA(ds,Wd_in)
     ldt = ds.series['DateTime']['Data']
     KeyList = cf['Variables'][Wd_in]['CorrectWindDirection'].keys()
@@ -1287,7 +1287,7 @@ def do_attributes(cf,ds):
         cf: control file
         ds: data structure
         """
-    log.info(' Getting the attributes given in control file')
+    logger.info(' Getting the attributes given in control file')
     if 'Global' in cf.keys():
         for gattr in cf['Global'].keys():
             ds.globalattributes[gattr] = cf['Global'][gattr]
@@ -1355,21 +1355,21 @@ def DoFunctions(cf,ds):
         if "Function" not in cf["Variables"][var].keys(): continue
         if "func" not in cf["Variables"][var]["Function"].keys():
             msg = " DoFunctions: 'func' keyword not found in [Functions] for "+var
-            log.error(msg)
+            logger.error(msg)
             continue
         function_string = cf["Variables"][var]["Function"]["func"]
         function_name = function_string.split("(")[0]
         if function_name not in implemented_functions:
             msg = " DoFunctions: Requested function "+function_name+" not imlemented, skipping ..."
-            log.error(msg)
+            logger.error(msg)
             continue
         function_args = function_string.split("(")[1].replace(")","").split(",")
         result = getattr(qcfunc,function_name)(ds,var,*function_args)
         msg = " Completed function for "+var
-        log.info(msg)
+        logger.info(msg)
 
 def CalculateStandardDeviations(cf,ds):
-    log.info(' Getting variances from standard deviations & vice versa')
+    logger.info(' Getting variances from standard deviations & vice versa')
     if 'AhAh' in ds.series.keys() and 'Ah_7500_Sd' not in ds.series.keys():
         AhAh,flag,attr = qcutils.GetSeriesasMA(ds,'AhAh')
         Ah_7500_Sd = numpy.ma.sqrt(AhAh)
@@ -1443,10 +1443,10 @@ def CalculateStandardDeviations(cf,ds):
 
 def do_mergeseries(ds,target,srclist,mode="verbose"):
     if mode.lower()!="quiet":
-        log.info(' Merging '+str(srclist)+' ==> '+target)
+        logger.info(' Merging '+str(srclist)+' ==> '+target)
     if srclist[0] not in ds.series.keys():
         if mode.lower()!="quiet":
-            log.error('  MergeSeries: primary input series '+srclist[0]+' not found')
+            logger.error('  MergeSeries: primary input series '+srclist[0]+' not found')
             return
     data = ds.series[srclist[0]]['Data'].copy()
     flag1 = ds.series[srclist[0]]['Flag'].copy()
@@ -1467,7 +1467,7 @@ def do_mergeseries(ds,target,srclist,mode="verbose"):
             data[index] = ds.series[label]['Data'][index].copy()  # replace bad primary with good secondary
             flag1[index] = ds.series[label]['Flag'][index].copy()
         else:
-            log.error(" MergeSeries: secondary input series "+label+" not found")
+            logger.error(" MergeSeries: secondary input series "+label+" not found")
     attr["long_name"] = attr["long_name"]+", merged from " + SeriesNameString
     qcutils.CreateSeries(ds,target,data,Flag=flag1,Attr=attr)
 
@@ -1484,7 +1484,7 @@ def do_solo(cf,ds4,Fc_in='Fc',Fe_in='Fe',Fh_in='Fh',Fc_out='Fc',Fe_out='Fe',Fh_o
         Fe_out = outvars[1]
         Fh_out = outvars[2]
     # add relevant meteorological values to L3 data
-    log.info(' Adding standard met variables to database')
+    logger.info(' Adding standard met variables to database')
     CalculateMeteorologicalVariables(ds4)
     ds4.globalattributes['L4Functions'] = ds4.globalattributes['L4Functions']+', CalculateMetVars'
     if Fe_in in ds4.series.keys():
@@ -1526,9 +1526,9 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
         Accepts meteorological constants or variables
         """
     if 'DisableFcWPL' in cf['Options'] and cf['Options'].as_bool('DisableFcWPL'):
-        log.warning(" WPL correction for Fc disabled in control file")
+        logger.warning(" WPL correction for Fc disabled in control file")
         return
-    log.info(' Applying WPL correction to Fc')
+    logger.info(' Applying WPL correction to Fc')
     Fc_raw,Fc_raw_flag,Fc_raw_attr = qcutils.GetSeriesasMA(ds,Fc_raw_in)
     Fh,f,a = qcutils.GetSeriesasMA(ds,Fh_in)
     Fe,f,a = qcutils.GetSeriesasMA(ds,Fe_in)
@@ -1538,18 +1538,18 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
     Ah,Ah_flag,Ah_attr = qcutils.GetSeriesasMA(ds,Ah_in)
     if Ah_attr["units"]!="g/m3":
         msg = " Fc_WPL: units for Ah ("+Ah_attr["units"]+") are incorrect"
-        log.error(msg)
+        logger.error(msg)
         sys.exit()
     Ah = Ah*c.g2kg                                # absolute humidity from g/m3 to kg/m3
     Cc,Cc_flag,Cc_attr = qcutils.GetSeriesasMA(ds,Cc_in)
     if Cc_attr["units"]!="mg/m3":
         if Cc_attr["units"]=="umol/mol":
             msg = " Fc_WPL: CO2 units ("+Cc_attr["units"]+") converted to mg/m3"
-            log.warning(msg)
+            logger.warning(msg)
             Cc = mf.co2_mgpm3fromppm(Cc,Ta,ps)
         else:
             msg = " Fc_WPL: unrecognised units ("+Cc_attr["units"]+") for Cc"
-            log.error(msg)
+            logger.error(msg)
             sys.exit()
     rhod,f,a = qcutils.GetSeriesasMA(ds,'rhod')
     RhoCp,f,a = qcutils.GetSeriesasMA(ds,'RhoCp')
@@ -1594,9 +1594,9 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
         Accepts meteorological constants or variables
         """
     if 'DisableFeWPL' in cf['Options'] and cf['Options'].as_bool('DisableFeWPL'):
-        log.warning(" WPL correction for Fe disabled in control file")
+        logger.warning(" WPL correction for Fe disabled in control file")
         return
-    log.info(' Applying WPL correction to Fe')
+    logger.info(' Applying WPL correction to Fe')
     if qcutils.cfkeycheck(cf,Base='FunctionArgs',ThisOne='EWPL'):
         Eargs = ast.literal_eval(cf['FunctionArgs']['EWPL'])
         Fe_wpl_out = Eargs[0]
@@ -1612,7 +1612,7 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
     Ah,Ah_flag,Ah_attr = qcutils.GetSeriesasMA(ds,Ah_in)
     if Ah_attr["units"]!="g/m3":
         msg = " Fe_WPL: incorrect units for Ah"
-        log.error(msg)
+        logger.error(msg)
         sys.exit()
     ps,f,a = qcutils.GetSeriesasMA(ds,ps_in)
     rhod,f,a = qcutils.GetSeriesasMA(ds,'rhod')     # density dry air
@@ -1659,7 +1659,7 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_CSAT',q_in='q',wA_in='wA',w
      All outputs are written to the data structure.
       Fh_out   - label of sensible heat flux, default is 'Fh'
     '''
-    log.info(' Converting virtual Fh to Fh')
+    logger.info(' Converting virtual Fh to Fh')
     # get the input series
     Fhv,f,a = qcutils.GetSeriesasMA(ds,Fhv_in)              # get the virtual heat flux
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_in)                # get the virtual temperature, C
@@ -1702,7 +1702,7 @@ def FilterUstar(cf,ds,ustar_in='ustar',ustar_out='ustar_filtered'):
     """
     if ustar_out not in cf['Variables'].keys(): return
     if 'ustar_threshold' in cf['Variables'][ustar_out].keys():
-        log.info(' Filtering ustar to remove values below threshold')
+        logger.info(' Filtering ustar to remove values below threshold')
         ustar_threshold = float(cf['Variables'][ustar_out]['ustar_threshold'])
         ustar,ustar_flag,ustar_attr = qcutils.GetSeriesasMA(ds,ustar_in)
         index = numpy.ma.where(ustar<=ustar_threshold)[0]
@@ -1713,7 +1713,7 @@ def FilterUstar(cf,ds,ustar_in='ustar',ustar_out='ustar_filtered'):
         attr = qcutils.MakeAttributeDictionary(long_name=descr,units=units)
         qcutils.CreateSeries(ds,ustar_out,ustar,Flag=ustar_flag,Attr=attr)
     else:
-        log.error(' ustar threshold (ustar_threshold) not found in '+ustar_out+' section of control file')
+        logger.error(' ustar threshold (ustar_threshold) not found in '+ustar_out+' section of control file')
 
 def get_averages(Data):
     """
@@ -1919,7 +1919,7 @@ def get_qcflag(ds):
         Usage qcts.get_qcflag(ds)
         ds: data structure
         """
-    log.info(' Setting up the QC flags')
+    logger.info(' Setting up the QC flags')
     nRecs = len(ds.series['xlDateTime']['Data'])
     for ThisOne in ds.series.keys():
         ds.series[ThisOne]['Flag'] = numpy.zeros(nRecs,dtype=numpy.int32)
@@ -1936,7 +1936,7 @@ def get_synthetic_fsd(ds):
     Author: PRI
     Date: Sometime in 2014
     """
-    log.info(' Calculating synthetic Fsd')
+    logger.info(' Calculating synthetic Fsd')
     # get the latitude and longitude
     lat = float(ds.globalattributes["latitude"])
     lon = float(ds.globalattributes["longitude"])
@@ -1960,7 +1960,7 @@ def get_synthetic_fsd(ds):
     qcutils.CreateSeries(ds,"solar_altitude",alt_solar,Flag=flag,Attr=attr)
 
 def InvertSign(ds,ThisOne):
-    log.info(' Inverting sign of '+ThisOne)
+    logger.info(' Inverting sign of '+ThisOne)
     index = numpy.where(abs(ds.series[ThisOne]['Data']-float(c.missing_value))>c.eps)[0]
     ds.series[ThisOne]['Data'][index] = float(-1)*ds.series[ThisOne]['Data'][index]
 
@@ -1982,7 +1982,7 @@ def InterpolateOverMissing(ds,series='',maxlen=0):
     if maxlen==0: return
     # check that series is in the data structure
     if series not in ds.series.keys():
-        log.error("InterpolateOverMissing: series "+series+" not found in data structure")
+        logger.error("InterpolateOverMissing: series "+series+" not found in data structure")
         return
     # convert the Python datetime to a number
     DateNum = date2num(ds.series['DateTime']['Data'])
@@ -1996,7 +1996,7 @@ def InterpolateOverMissing(ds,series='',maxlen=0):
     iom = numpy.where(abs(data_org-float(c.missing_value))<=c.eps)[0]
     # return if there is not enough data to use
     if len(iog)<2:
-        log.info(' InterpolateOverMissing: Less than 2 good points available for series '+str(series))
+        logger.info(' InterpolateOverMissing: Less than 2 good points available for series '+str(series))
         return
     # linear interpolation function
     f = interpolate.interp1d(DateNum[iog],data_org[iog],bounds_error=False,fill_value=float(c.missing_value))
@@ -2041,7 +2041,7 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
     #if not qcutils.cfoptionskeylogical(cf,Key='Massman'):
         #return
     if 'Massman' not in cf:
-        log.info(' Massman section not found in control file, no corrections applied')
+        logger.info(' Massman section not found in control file, no corrections applied')
         return
     #if qcutils.cfkeycheck(cf,Base='FunctionArgs',ThisOne='MassmanVars'):
         #MArgs = ast.literal_eval(cf['FunctionArgs']['MassmanVars'])
@@ -2059,7 +2059,7 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
         #wT_out = MOut[6]
         #wA_out = MOut[7]
         #wC_out = MOut[8]
-    log.info(' Correcting for flux loss from spectral attenuation')
+    logger.info(' Correcting for flux loss from spectral attenuation')
     zmd = float(cf['Massman']['zmd'])             # z-d for site
     if ("angle" in cf["Massman"] and
         "CSATarm" in cf["Massman"] and
@@ -2081,7 +2081,7 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
         lLong = numpy.float(0)
     else:
         msg = " Required separation information not found in Massman section of control file"
-        log.error(msg)
+        logger.error(msg)
         return
     # *** Massman_1stpass starts here ***
     #  The code for the first and second passes is very similar.  It would be useful to make them the
@@ -2205,14 +2205,14 @@ def MergeSeriesUsingDict(ds,merge_order=""):
     if "merge" not in dir(ds): raise Exception("MergeSeriesUsingDict: No merge dictionary in ds")
     if merge_order not in ds.merge.keys():
         msg = "MergeSeriesUsingDict: merge_order ("+merge_order+") not found in merge dictionary"
-        log.info(msg)
+        logger.info(msg)
         return
     # loop over the entries in ds.merge
     for target in ds.merge[merge_order].keys():
         srclist = ds.merge[merge_order][target]["source"]
-        log.info(' Merging '+str(srclist)+' ==> '+target)
+        logger.info(' Merging '+str(srclist)+' ==> '+target)
         if srclist[0] not in ds.series.keys():
-            log.error('  MergeSeries: primary input series '+srclist[0]+' not found')
+            logger.error('  MergeSeries: primary input series '+srclist[0]+' not found')
             continue
         data = ds.series[srclist[0]]['Data'].copy()
         flag1 = ds.series[srclist[0]]['Flag'].copy()
@@ -2233,14 +2233,14 @@ def MergeSeriesUsingDict(ds,merge_order=""):
                 data[index] = ds.series[label]['Data'][index].copy()  # replace bad primary with good secondary
                 flag1[index] = ds.series[label]['Flag'][index].copy()
             else:
-                log.error(" MergeSeries: secondary input series "+label+" not found")
+                logger.error(" MergeSeries: secondary input series "+label+" not found")
         attr["long_name"] = attr["long_name"]+", merged from " + SeriesNameString
         qcutils.CreateSeries(ds,target,data,Flag=flag1,Attr=attr)
     del ds.merge[merge_order]
 
 def MergeHumidities(cf,ds,convert_units=False):
     if "Ah" not in cf["Variables"] and "RH" not in cf["Variables"] and "q" not in cf["Variables"]:
-        log.error(" MergeHumidities: No humidities found in control file, returning ...")
+        logger.error(" MergeHumidities: No humidities found in control file, returning ...")
         return
     if "Ah" in cf["Variables"]:
         MergeSeries(cf,ds,"Ah",[0,10],convert_units=convert_units)
@@ -2274,19 +2274,19 @@ def MergeSeries(cf,ds,series,okflags,convert_units=False):
     srclist, standardname = qcutils.GetMergeSeriesKeys(cf,series,section=section)
     nSeries = len(srclist)
     if nSeries==0:
-        log.warning(' MergeSeries: no input series specified for '+str(series))
+        logger.warning(' MergeSeries: no input series specified for '+str(series))
         return
     if nSeries==1:
-        log.info(' Merging '+str(srclist)+'==>'+series)
+        logger.info(' Merging '+str(srclist)+'==>'+series)
         if srclist[0] not in ds.series.keys():
-            log.warning('  MergeSeries: primary input series '+srclist[0]+' not found for '+str(series))
+            logger.warning('  MergeSeries: primary input series '+srclist[0]+' not found for '+str(series))
             return
         mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,srclist[0])
         SeriesNameString = srclist[0]
     else:
-        log.info(' Merging '+str(srclist)+'==>'+series)
+        logger.info(' Merging '+str(srclist)+'==>'+series)
         if srclist[0] not in ds.series.keys():
-            log.warning('  MergeSeries: primary input series '+srclist[0]+' not found for '+str(series))
+            logger.warning('  MergeSeries: primary input series '+srclist[0]+' not found for '+str(series))
             return
         primary_series = srclist[0]
         mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,primary_series)
@@ -2297,14 +2297,14 @@ def MergeSeries(cf,ds,series,okflags,convert_units=False):
                 ndata,nflag,nattr = qcutils.GetSeriesasMA(ds,secondary_series)
                 if nattr["units"]!=mattr["units"]:
                     msg = " "+secondary_series+" units don't match "+primary_series+" units"
-                    log.warning(msg)
+                    logger.warning(msg)
                     if convert_units:
                         msg = " "+secondary_series+" units converted from "+nattr["units"]+" to "+mattr["units"]
-                        log.info(msg)
+                        logger.info(msg)
                         ndata = qcutils.convert_units_func(ds,ndata,nattr["units"],mattr["units"])
                     else:
                         msg = " MergeSeries: "+secondary_series+" ignored"
-                        log.error(msg)
+                        logger.error(msg)
                         continue
                 SeriesNameString = SeriesNameString+', '+secondary_series
                 indx1 = numpy.zeros(numpy.size(mdata),dtype=numpy.int)
@@ -2318,13 +2318,13 @@ def MergeSeries(cf,ds,series,okflags,convert_units=False):
                 mdata[index] = ndata[index]       # replace bad primary with good secondary
                 mflag[index] = nflag[index]
             else:
-                log.warning('  MergeSeries: secondary input series'+secondary_series+'not found')
+                logger.warning('  MergeSeries: secondary input series'+secondary_series+'not found')
     ds.mergeserieslist.append(series)
     mattr["long_name"] = mattr["long_name"]+", merged from " + SeriesNameString
     qcutils.CreateSeries(ds,series,mdata,Flag=mflag,Attr=mattr)
 
 def PT100(ds,T_out,R_in,m):
-    log.info(' Calculating temperature from PT100 resistance')
+    logger.info(' Calculating temperature from PT100 resistance')
     R,f,a = qcutils.GetSeriesasMA(ds,R_in)
     R = m*R
     T = (-c.PT100_alpha+numpy.sqrt(c.PT100_alpha**2-4*c.PT100_beta*(-R/100+1)))/(2*c.PT100_beta)
@@ -2332,7 +2332,7 @@ def PT100(ds,T_out,R_in,m):
     qcutils.CreateSeries(ds,T_out,T,FList=[R_in],Attr=attr)
 
 def ReplaceRotatedCovariance(cf,ds,rot_cov_label,non_cov_label):
-    log.info(' Replacing missing '+rot_cov_label+' when '+non_cov_label+' is good')
+    logger.info(' Replacing missing '+rot_cov_label+' when '+non_cov_label+' is good')
     cr_data,cr_flag,cr_attr = qcutils.GetSeriesasMA(ds,rot_cov_label)
     cn_data,cn_flag,cn_attr = qcutils.GetSeriesasMA(ds,non_cov_label)
     index = numpy.where((numpy.ma.getmaskarray(cr_data)==True)&
@@ -2388,9 +2388,9 @@ def ReplaceOnDiff(cf,ds,series=''):
                                                                  ds.series[ThisOne],ds.series[alt_varname],
                                                                  RListEntry)
                     else:
-                        log.error('ReplaceOnDiff: Neither AltFileName nor AltVarName given in control file')
+                        logger.error('ReplaceOnDiff: Neither AltFileName nor AltVarName given in control file')
     else:
-        log.error('ReplaceOnDiff: No input series specified')
+        logger.error('ReplaceOnDiff: No input series specified')
 
 def ReplaceWhereMissing(Destination,Primary,Secondary,FlagOffset=None,FlagValue=None):
     #print time.strftime('%X')+' Merging series '+Primary+' and '+Secondary+' into '+Destination
@@ -2428,7 +2428,7 @@ def ReplaceWhenDiffExceedsRange(DateTime,Destination,Primary,Secondary,RList):
     s_flag = Secondary['Flag'].copy()
     # truncate the longest series if the sizes do not match
     if numpy.size(p_data)!=numpy.size(s_data):
-        log.warning(' ReplaceWhenDiffExceedsRange: Series lengths differ, longest will be truncated')
+        logger.warning(' ReplaceWhenDiffExceedsRange: Series lengths differ, longest will be truncated')
         if numpy.size(p_data)>numpy.size(s_data):
             p_data = p_data[0:numpy.size(s_data)]
         if numpy.size(s_data)>numpy.size(p_data):
@@ -2494,17 +2494,17 @@ def TaFromTv(cf,ds,Ta_out='Ta_CSAT',Tv_in='Tv_CSAT',Ah_in='Ah',RH_in='RH',q_in='
     # NOTE: the virtual temperature is used in place of the air temperature
     #       to calculate the vapour pressure from the absolute humidity, the
     #       approximation involved here is of the order of 1%.
-    log.info(' Calculating Ta from Tv')
+    logger.info(' Calculating Ta from Tv')
     # check to see if we have enough data to proceed
     if Tv_in not in ds.series.keys():
-        log.error(" TaFromTv: sonic virtual temperature ("+str(Tv_in)+") not found in data structure")
+        logger.error(" TaFromTv: sonic virtual temperature ("+str(Tv_in)+") not found in data structure")
         return
     if Ah_in not in ds.series.keys() and RH_in not in ds.series.keys() and q_in not in ds.series.keys():
         labstr = str(Ah_in)+","+str(RH_in)+","+str(q_in)
-        log.error(" TaFromTv: no humidity data ("+labstr+") found in data structure")
+        logger.error(" TaFromTv: no humidity data ("+labstr+") found in data structure")
         return
     if ps_in not in ds.series.keys():
-        log.error(" TaFromTv: pressure ("+str(ps_in)+") not found in data structure")
+        logger.error(" TaFromTv: pressure ("+str(ps_in)+") not found in data structure")
         return
     # we seem to have enough to continue
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_in)

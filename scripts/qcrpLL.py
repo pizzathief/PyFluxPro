@@ -7,7 +7,7 @@ import numpy
 import qcutils
 from scipy.optimize import curve_fit
 
-log = logging.getLogger('qc.rpLL')
+logger = logging.getLogger("pfp_log")
 
 def ER_LloydTaylor(T,rb,E0):
     return rb*numpy.exp(E0*(1/(c.Tref-c.T0)-1/(T-c.T0)))
@@ -269,10 +269,10 @@ def get_LT_params(ldt,ER,T,info,mode="verbose"):
     if mode=="verbose":
         if len(missed_dates["start_date"])!=0:
             msg = " No solution found for the following dates:"
-            log.warning(msg)
+            logger.warning(msg)
             for sd,ed in zip(missed_dates["start_date"],missed_dates["end_date"]):
                 msg = "  "+str(sd)+" to "+str(ed)
-                log.warning(msg)
+                logger.warning(msg)
     return LT_results
 
 def plot_LLparams(LT_results,LL_results):
@@ -318,7 +318,7 @@ def rpLL_createdict(cf,ds,series):
     section = qcutils.get_cfsection(cf,series=series,mode="quiet")
     # return without doing anything if the series isn't in a control file section
     if len(section)==0:
-        log.error("ERUsingLasslop: Series "+series+" not found in control file, skipping ...")
+        logger.error("ERUsingLasslop: Series "+series+" not found in control file, skipping ...")
         return
     # check that none of the drivers have missing data
     driver_list = ast.literal_eval(cf[section][series]["ERUsingLasslop"]["drivers"])
@@ -326,7 +326,7 @@ def rpLL_createdict(cf,ds,series):
     for label in driver_list:
         data,flag,attr = qcutils.GetSeriesasMA(ds,label)
         if numpy.ma.count_masked(data)!=0:
-            log.error("ERUsingLasslop: driver "+label+" contains missing data, skipping target "+target)
+            logger.error("ERUsingLasslop: driver "+label+" contains missing data, skipping target "+target)
             return
     # create the solo directory in the data structure
     if "rpLL" not in dir(ds): ds.rpLL = {}

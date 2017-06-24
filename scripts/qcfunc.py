@@ -1,8 +1,14 @@
+# standard modules
 import datetime
+import logging
+# 3rd party
 import dateutil
-import meteorologicalfunctions as mf
 import numpy
+# PFP modules
+import meteorologicalfunctions as mf
 import qcutils
+
+logger = logging.getLogger("pfp_log")
 
 def AhfromRH(ds,Ah_out,RH_in,Ta_in):
     """
@@ -21,11 +27,11 @@ def AhfromRH(ds,Ah_out,RH_in,Ta_in):
     for item in [RH_in,Ta_in]:
         if item not in ds.series.keys():
             msg = " AhfromRH: Requested series "+item+" not found, "+Ah_out+" not calculated"
-            log.error(msg)
+            logger.error(msg)
             return 0
     if Ah_out in ds.series.keys():
         msg = " AhfromRH: Output series "+Ah_out+" already exists, skipping ..."
-        log.error(msg)
+        logger.error(msg)
         return 0
     RH_data,RH_flag,RH_attr = qcutils.GetSeriesasMA(ds,RH_in)
     Ta_data,Ta_flag,Ta_attr = qcutils.GetSeriesasMA(ds,Ta_in)
@@ -53,11 +59,11 @@ def AhfromMR(ds,Ah_out,MR_in,Ta_in,ps_in):
     for item in [MR_in,Ta_in,ps_in]:
         if item not in ds.series.keys():
             msg = " AhfromMR: Requested series "+item+" not found, "+Ah_out+" not calculated"
-            log.error(msg)
+            logger.error(msg)
             return 0
     if Ah_out in ds.series.keys():
         msg = " AhfromMR: Output series "+Ah_out+" already exists, skipping ..."
-        log.error(msg)
+        logger.error(msg)
         return 0
     MR_data,MR_flag,MR_attr = qcutils.GetSeriesasMA(ds,MR_in)
     Ta_data,Ta_flag,Ta_attr = qcutils.GetSeriesasMA(ds,Ta_in)
@@ -101,7 +107,7 @@ def DateTimeFromDoY(ds,Year_in,DoY_in,Hdh_in):
 
 def DateTimeFromTimeStamp(ds,TimeStamp_in,fmt=""):
     if TimeStamp_in not in ds.series.keys():
-        log.error(" Required series "+TimeStamp_in+" not found")
+        logger.error(" Required series "+TimeStamp_in+" not found")
         return 0
     TimeStamp = ds.series[TimeStamp_in]["Data"]
     # guard against empty fields in what we assume is the datetime
@@ -135,10 +141,10 @@ def DateTimeFromTimeStamp(ds,TimeStamp_in,fmt=""):
     
 def DateTimeFromDateAndTimeString(ds,DateString_in,TimeString_in):
     if DateString_in not in ds.series.keys():
-        log.error(" Requested date series "+DateString_in+" not found")
+        logger.error(" Requested date series "+DateString_in+" not found")
         return 0
     if TimeString_in not in ds.series.keys():
-        log.error(" Requested time series "+TimeString_in+" not found")
+        logger.error(" Requested time series "+TimeString_in+" not found")
         return 0
     DateString = ds.series[DateString_in]["Data"]
     TimeString = ds.series[TimeString_in]["Data"]
