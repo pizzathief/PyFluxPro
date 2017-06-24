@@ -559,6 +559,24 @@ def CreateDatetimeRange(start,stop,step=datetime.timedelta(minutes=30)):
         start = start + step
     return result
 
+def create_empty_variable(label, nrecs):
+    """
+    Purpose:
+     Returns an empty variable.  Data values are set to -9999, flag values are set to 1
+     and default values for the attributes.
+    Usage:
+     variable = pfp_utils.create_empty_variable(label, nrecs)
+     where label is the variable label
+           nrecs is the number of elements in the variable data
+    Author: PRI
+    Date: December 2016
+    """
+    data = numpy.ones(nrecs, dtype=numpy.float64)*float(c.missing_value)
+    flag = numpy.ones(nrecs, dtype=numpy.int32)
+    attr = make_attribute_dictionary()
+    variable = {"Label":label, "Data":data, "Flag":flag, "Attr":attr}
+    return variable
+
 def CreateVariableFromDictionary(ds,variable):
     """
     Purpose:
@@ -1688,6 +1706,34 @@ def MakeAttributeDictionary(**kwargs):
                 attr[item] = str(c.small_value)+","+str(c.large_value)
             else:
                 attr[item] = "not defined"
+    attr["missing_value"] = c.missing_value
+    return copy.deepcopy(attr)
+
+def make_attribute_dictionary(**kwargs):
+    """
+    Purpose:
+     Make an empty attribute dictionary.
+    Usage:
+     attr_new = pfp_utils.make_attribute_dictionary(long_name = "some string",attr_exist)
+     where long_name is an attribute to be written to the new attribute dictionary
+           attr_exist is an existing attribute dictionary
+    Author: PRI
+    Date: Back in the day
+    """
+    default_list = ['ancillary_variables', 'height', 'instrument', 'serial_number',
+                    'standard_name', 'long_name', 'units']
+    attr = {}
+    for item in kwargs:
+        if isinstance(item, dict):
+            for entry in item:
+                attr[entry] = item[entry]
+        else:
+            attr[item] = kwargs.get(item, 'not defined')
+        if item in default_list:
+            default_list.remove(item)
+    if len(default_list) != 0:
+        for item in default_list:
+            attr[item] = 'not defined'
     attr["missing_value"] = c.missing_value
     return copy.deepcopy(attr)
 
