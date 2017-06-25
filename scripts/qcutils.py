@@ -1537,7 +1537,7 @@ def get_UTCfromlocaltime(ds):
             ds.globalattributes["time_zone"] = time_zone
     logger.info(' Getting the UTC datetime from the local datetime')
     # get the number of records
-    nRecs = len(ds.series['xlDateTime']['Data'])
+    nRecs = int(ds.globalattributes["nc_nrecs"])
     # get the time zone
     tz = ds.globalattributes["time_zone"]
     # create a timezone object
@@ -1950,7 +1950,8 @@ def UpdateGlobalAttributes(cf,ds,level):
     ds.globalattributes["nc_level"] = str(level)
     ds.globalattributes["EPDversion"] = sys.version
     # put the control file name into the global attributes
-    ds.globalattributes["controlfile_name"] = cf["controlfile_name"]
+    if "controlfile_name" in cf:
+        ds.globalattributes["controlfile_name"] = cf["controlfile_name"]
     if "Global" in cf:
         for item in cf["Global"].keys():
             if item not in ds.globalattributes.keys():

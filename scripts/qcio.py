@@ -1366,7 +1366,7 @@ def nc_concatenate(cf):
     # and make sure we have all of the meteorological variables
     qcts.CalculateMeteorologicalVariables(ds)
     # re-calculate the synthetic Fsd
-    qcts.get_synthetic_fsd(ds)
+    #qcts.get_synthetic_fsd(ds)
     # re-apply the quality control checks (range, diurnal and rules)
     qcck.do_qcchecks(cf,ds)
     # update the global attributes for this level
@@ -2318,6 +2318,8 @@ def xl_write_series(ds, xlfullname, outputlist=None):
             xlAttrSheet.write(xlrow,xlcol_attrvalue,str(ds.series[ThisOne]['Attr'][Attr]))
             xlrow = xlrow + 1
     # write the Excel date/time to the data and the QC flags as the first column
+    if "xlDateTime" not in ds.series:
+        qcutils.get_xldatefromdatetime(ds)
     xlDateTime,f,a = qcutils.GetSeries(ds,"xlDateTime")
     logger.info(' Writing the datetime to Excel file '+xlfullname)
     d_xf = xlwt.easyxf(num_format_str='dd/mm/yyyy hh:mm')
