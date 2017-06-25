@@ -204,11 +204,13 @@ def climatology(cf):
     xlFile = xlwt.Workbook()
     ds = qcio.nc_read_series(nc_filename)
     # calculate Fa if it is not in the data structure
+    got_Fa = True
     if "Fa" not in ds.series.keys():
         if "Fn" in ds.series.keys() and "Fg" in ds.series.keys():
             qcts.CalculateAvailableEnergy(ds,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
         else:
-            logger.warning(" Climatology: Fn or Fg not in data struicture")
+            got_Fa = False
+            logger.warning(" Fn or Fg not in data struicture")
     # get the time step
     ts = int(ds.globalattributes['time_step'])
     # get the site name
@@ -273,7 +275,7 @@ def climatology(cf):
             data_daily_i = do_2dinterpolation(data_daily)
             xlSheet = xlFile.add_sheet(ThisOne+'i(day)')
             write_data_1columnpertimestep(xlSheet, data_daily_i, ts, startdate=sdate, format_string=fmt_str)
-        elif ThisOne=="EF":
+        elif ThisOne=="EF" and got_Fa:
             logger.info(" Doing evaporative fraction")
             EF = numpy.ma.zeros([48,12]) + float(c.missing_value)
             Hdh,f,a = qcutils.GetSeriesasMA(ds,'Hdh',si=si,ei=ei)
@@ -371,7 +373,7 @@ def climatology(cf):
             xlSheet = xlFile.add_sheet('WUEi(day)')
             write_data_1columnpertimestep(xlSheet, WUEi, ts, startdate=ldt[0], format_string='0.00000')
         else:
-            logger.warning(" qcclim.climatology: requested variable "+ThisOne+" not in data structure")
+            logger.warning(" Requested variable "+ThisOne+" not in data structure")
             continue
     logger.info(" Saving Excel file "+xl_filename)
     xlFile.save(xl_filename)

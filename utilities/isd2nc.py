@@ -276,7 +276,7 @@ logging.info("Reading config file")
 cf = ConfigObj(cf_file_path)
 
 site_list = list(cf.keys())
-for site in ["US-Mpj"]:
+for site in ["US-Wjs"]:
     # construct the output file path
     nc_out_path = os.path.join(cf[site]["out_base_path"],site,"Data","ISD",site+"_ISD.nc")
     # construct the config dictionary for the concatenate routine

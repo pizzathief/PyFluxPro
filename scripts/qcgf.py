@@ -753,12 +753,15 @@ def gfalternate_createdict(cf,ds,series,ds_alt):
             else:
                 logger.info("gfAlternate: unrecognised fit option for series "+output+", used OLS")
         # correct for lag?
-        ds.alternate[output]["lag"] = "yes"
         if "lag" in cf[section][series]["GapFillFromAlternate"][output]:
             if cf[section][series]["GapFillFromAlternate"][output]["lag"].lower() in ["no","false"]:
                 ds.alternate[output]["lag"] = "no"
+            elif cf[section][series]["GapFillFromAlternate"][output]["lag"].lower() in ["yes","true"]:
+                ds.alternate[output]["lag"] = "yes"
             else:
                 logger.info("gfAlternate: unrecognised lag option for series "+output)
+        else:
+            ds.alternate[output]["lag"] = "yes"
         # choose specific alternate variable?
         if "usevars" in cf[section][series]["GapFillFromAlternate"][output]:
             ds.alternate[output]["usevars"] = ast.literal_eval(cf[section][series]["GapFillFromAlternate"][output]["usevars"])
@@ -798,7 +801,7 @@ def gfalternate_done(ds,alt_gui):
         for i in plt.get_fignums():
             plt.close(i)
     # write Excel spreadsheet with fit statistics
-    #qcio.xl_write_AlternateStats(ds)
+    qcio.xl_write_AlternateStats(ds)
     # put the return code into ds.alternate
     ds.returncodes["alternate"] = "normal"
 
@@ -1924,7 +1927,7 @@ def gfalternate_run_gui(ds_tower,ds_alt,alt_gui,alternate_info):
     else:
         logger.error("GapFillFromAlternate: unrecognised period option")
     # write Excel spreadsheet with fit statistics
-    qcio.xl_write_AlternateStats(ds_tower)
+    #qcio.xl_write_AlternateStats(ds_tower)
 
 def gfalternate_run_nogui(cf,ds_tower,ds_alt,alternate_info):
     # populate the alternate_info dictionary with things that will be useful
@@ -2154,12 +2157,15 @@ def gfalternate_updatedict(cf,ds_tower,ds_alt):
                 #else:
                     #log.info("gfAlternate: unrecognised thru0 option for series "+output)
             # correct for lag?
-            ds_tower.alternate[output]["lag"] = "yes"
             if "lag" in cf[section][series]["GapFillFromAlternate"][output]:
                 if cf[section][series]["GapFillFromAlternate"][output]["lag"].lower() in ["no","false"]:
                     ds_tower.alternate[output]["lag"] = "no"
+                elif cf[section][series]["GapFillFromAlternate"][output]["lag"].lower() in ["yes","true"]:
+                    ds_tower.alternate[output]["lag"] = "yes"
                 else:
                     logger.info("gfAlternate: unrecognised lag option for series "+output)
+            else:
+                ds_tower.alternate[output]["lag"] = "yes"
             # alternate data variable name if different from name used in control file
             if "alternate_name" in cf[section][series]["GapFillFromAlternate"][output]:
                 ds_tower.alternate[output]["alternate_name"] = cf[section][series]["GapFillFromAlternate"][output]["alternate_name"]

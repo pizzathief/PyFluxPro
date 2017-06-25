@@ -1,11 +1,11 @@
 [Files]
     erai_path = /home/peter/AmeriFlux/ERAI/
-    erai_file = ERAI_2012.nc
+    erai_file = ERAI_2007.nc
 
 [Sites]
     [[US-Mpj]]
         out_filepath = /home/peter/AmeriFlux/Sites/US-Mpj/Data/ERAI/
-        out_filename = US-Mpj_ERAI_2012.nc
+        out_filename = US-Mpj_ERAI_2007.nc
         site_name = "Mountainair Pinyon-juniper"
         site_timezone = "US/Mountain"
         site_latitude = "34.4385"
@@ -13,7 +13,7 @@
         site_timestep = 30
     [[US-Wjs]]
         out_filepath = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ERAI/
-        out_filename = US-Wjs_ERAI_2012.nc
+        out_filename = US-Wjs_ERAI_2007.nc
         site_name = "Willard Juniper savannah"
         site_timezone = "US/Mountain"
         site_latitude = "34.4255"

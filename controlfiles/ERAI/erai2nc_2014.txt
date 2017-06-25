@@ -11,6 +11,14 @@
         site_latitude = "34.4385"
         site_longitude = "-106.2377"
         site_timestep = 30
+    [[US-Wjs]]
+        out_filepath = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ERAI/
+        out_filename = US-Wjs_ERAI_2014.nc
+        site_name = "Willard Juniper savannah"
+        site_timezone = "US/Mountain"
+        site_latitude = "34.4255"
+        site_longitude = "-105.8615"
+        site_timestep = 30
 
 [Variables]
     [[Fsd]]
