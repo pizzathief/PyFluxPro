@@ -20,7 +20,7 @@ except ImportError:
     #log.error("ERUsingFFNET: Unable to import module ffnet")
     pass
 
-log = logging.getLogger('qc.rpNN')
+logger = logging.getLogger("pfp_log")
 
 def rpFFNET_gui(cf,ds,FFNET_info):
     ldt = ds.series["DateTime"]["Data"]
@@ -282,7 +282,7 @@ def rpFFNET_createdict(cf,ds,series):
     section = qcutils.get_cfsection(cf,series=series,mode="quiet")
     # return without doing anything if the series isn't in a control file section
     if len(section)==0:
-        log.error("ERUsingFFNET: Series "+series+" not found in control file, skipping ...")
+        logger.error("ERUsingFFNET: Series "+series+" not found in control file, skipping ...")
         return
     # check that none of the drivers have missing data
     driver_list = ast.literal_eval(cf[section][series]["ERUsingFFNET"]["drivers"])
@@ -290,7 +290,7 @@ def rpFFNET_createdict(cf,ds,series):
     for label in driver_list:
         data,flag,attr = qcutils.GetSeriesasMA(ds,label)
         if numpy.ma.count_masked(data)!=0:
-            log.error("ERUsingFFNET: driver "+label+" contains missing data, skipping target "+target)
+            logger.error("ERUsingFFNET: driver "+label+" contains missing data, skipping target "+target)
             return
     # create the ffnet directory in the data structure
     if "ffnet" not in dir(ds): ds.ffnet = {}
@@ -352,7 +352,7 @@ def rpFFNET_main(ds,rpFFNET_info):
     """
     startdate = rpFFNET_info["startdate"]
     enddate = rpFFNET_info["enddate"]
-    log.info(" Estimating ER using FFNET")
+    logger.info(" Estimating ER using FFNET")
     # read the control file again, this allows the contents of the control file to
     # be changed with the FFNET GUI still displayed
     cfname = ds.globalattributes["controlfile_name"]
@@ -376,10 +376,10 @@ def rpFFNET_main(ds,rpFFNET_info):
     ei = qcutils.GetDateIndex(ldt,enddate,ts=ts,default=-1,match="exact")
     # check the start and end indices
     if si >= ei:
-        log.error(" ERUsingFFNET: end datetime index ("+str(ei)+") smaller that start ("+str(si)+")")
+        logger.error(" ERUsingFFNET: end datetime index ("+str(ei)+") smaller that start ("+str(si)+")")
         return
     if si==0 and ei==-1:
-        log.error(" ERUsingFFNET: no start and end datetime specified, using all data")
+        logger.error(" ERUsingFFNET: no start and end datetime specified, using all data")
         nRecs = int(ds.globalattributes["nc_nrecs"])
     else:
         nRecs = ei - si + 1
@@ -399,7 +399,7 @@ def rpFFNET_main(ds,rpFFNET_info):
         target = ds.ffnet[series]["target"]
         d,f,a = qcutils.GetSeriesasMA(ds,target,si=si,ei=ei)
         if numpy.ma.count(d)<rpFFNET_info["min_points"]:
-            log.error("rpFFNET: Less than "+str(rpFFNET_info["min_points"])+" points available for series "+series+" ...")
+            logger.error("rpFFNET: Less than "+str(rpFFNET_info["min_points"])+" points available for series "+series+" ...")
             ds.ffnet[series]["results"]["No. points"].append(float(0))
             results_list = ds.ffnet[series]["results"].keys()
             for item in ["startdate","enddate","No. points"]:
@@ -433,7 +433,7 @@ def rpFFNET_main(ds,rpFFNET_info):
         elif len(hidden_layers)==2:
             arch = (ndrivers,int(hidden_layers[0]),int(hidden_layers[1]),1)
         else:
-            log.error("ERUsingFFNET: more than 2 hidden layers specified, using 1 ("+str(ndrivers)+")")
+            logger.error("ERUsingFFNET: more than 2 hidden layers specified, using 1 ("+str(ndrivers)+")")
             arch = (ndrivers,ndrivers,1)
         if rpFFNET_info["connection"]=="standard":
             conec = ffnet.mlgraph(arch,biases=True)
@@ -457,7 +457,7 @@ def rpFFNET_main(ds,rpFFNET_info):
             try:
                 net.train_rprop(input_train,target_train)
             except:
-                log.warning("rpFFNET: Rprop training failed, using TNC ...")
+                logger.warning("rpFFNET: Rprop training failed, using TNC ...")
                 net.train_tnc(input_train,target_train)
         else:
             raise Exception("rpFFNET: unrecognised FFNET training option")
@@ -505,7 +505,7 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
         plt.ion()
     else:
         plt.ioff()
-    fig = plt.figure(pd["fig_num"],figsize=(13,9))
+    fig = plt.figure(pd["fig_num"],figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(targetlabel+" (FFNET): "+pd["startdate"]+" to "+pd["enddate"])
     plt.figtext(0.5,0.95,pd["title"],ha='center',size=16)
@@ -837,7 +837,7 @@ def rpSOLO_createdict(cf,ds,series):
     section = qcutils.get_cfsection(cf,series=series,mode="quiet")
     # return without doing anything if the series isn't in a control file section
     if len(section)==0:
-        log.error("ERUsingSOLO: Series "+series+" not found in control file, skipping ...")
+        logger.error("ERUsingSOLO: Series "+series+" not found in control file, skipping ...")
         return
     # check that none of the drivers have missing data
     driver_list = ast.literal_eval(cf[section][series]["ERUsingSOLO"]["drivers"])
@@ -845,7 +845,7 @@ def rpSOLO_createdict(cf,ds,series):
     for label in driver_list:
         data,flag,attr = qcutils.GetSeriesasMA(ds,label)
         if numpy.ma.count_masked(data)!=0:
-            log.error("ERUsingSOLO: driver "+label+" contains missing data, skipping target "+target)
+            logger.error("ERUsingSOLO: driver "+label+" contains missing data, skipping target "+target)
             return
     # create the solo directory in the data structure
     if "solo" not in dir(ds): ds.solo = {}
@@ -907,7 +907,7 @@ def rpSOLO_main(ds,solo_info,SOLO_gui=None):
     """
     startdate = solo_info["startdate"]
     enddate = solo_info["enddate"]
-    log.info(" Estimating ER using SOLO")
+    logger.info(" Estimating ER using SOLO")
     # read the control file again, this allows the contents of the control file to
     # be changed with the SOLO GUI still displayed
     cfname = ds.globalattributes["controlfile_name"]
@@ -931,10 +931,10 @@ def rpSOLO_main(ds,solo_info,SOLO_gui=None):
     ei = qcutils.GetDateIndex(ldt,enddate,ts=ts,default=-1,match="exact")
     # check the start and end indices
     if si >= ei:
-        log.error(" ERUsingSOLO: end datetime index ("+str(ei)+") smaller that start ("+str(si)+")")
+        logger.error(" ERUsingSOLO: end datetime index ("+str(ei)+") smaller that start ("+str(si)+")")
         return
     if si==0 and ei==-1:
-        log.error(" ERUsingSOLO: no start and end datetime specified, using all data")
+        logger.error(" ERUsingSOLO: no start and end datetime specified, using all data")
         nRecs = int(ds.globalattributes["nc_nrecs"])
     else:
         nRecs = ei - si + 1
@@ -954,7 +954,7 @@ def rpSOLO_main(ds,solo_info,SOLO_gui=None):
         target = ds.solo[series]["target"]
         d,f,a = qcutils.GetSeriesasMA(ds,target,si=si,ei=ei)
         if numpy.ma.count(d)<solo_info["min_points"]:
-            log.error("rpSOLO: Less than "+str(solo_info["min_points"])+" points available for series "+target+" ...")
+            logger.error("rpSOLO: Less than "+str(solo_info["min_points"])+" points available for series "+target+" ...")
             ds.solo[series]["results"]["No. points"].append(float(0))
             results_list = ds.solo[series]["results"].keys()
             for item in ["startdate","enddate","No. points"]:
@@ -1008,7 +1008,7 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
         plt.ion()
     else:
         plt.ioff()
-    fig = plt.figure(pd["fig_num"],figsize=(13,9))
+    fig = plt.figure(pd["fig_num"],figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(targetlabel+" (SOLO): "+pd["startdate"]+" to "+pd["enddate"])
     plt.figtext(0.5,0.95,pd["title"],ha='center',size=16)
@@ -1304,7 +1304,7 @@ def rpSOLO_run_nogui(cf,ds,solo_info):
     #log.info(" Gap filling "+str(series_list)+" using SOLO")
     if solo_info["peropt"]==1:
         rpSOLO_main(ds,solo_info)
-        log.info(" Finished manual run ...")
+        logger.info(" Finished manual run ...")
     elif solo_info["peropt"]==2:
         # get the start datetime entered in the SOLO GUI
         startdate = dateutil.parser.parse(solo_info["startdate"])
@@ -1323,7 +1323,7 @@ def rpSOLO_run_nogui(cf,ds,solo_info):
         #gfSOLO_autocomplete(dsa,dsb,solo_info)
         ## plot the summary statistics
         #gfSOLO_plotsummary(dsb,solo_info)
-        log.info(" Finished auto (monthly) run ...")
+        logger.info(" Finished auto (monthly) run ...")
     elif solo_info["peropt"]==3:
         # get the start datetime entered in the SOLO GUI
         startdate = dateutil.parser.parse(solo_info["startdate"])
@@ -1343,7 +1343,7 @@ def rpSOLO_run_nogui(cf,ds,solo_info):
         #gfSOLO_autocomplete(dsa,dsb,solo_info)
         ## plot the summary statistics
         #gfSOLO_plotsummary(dsb,solo_info)
-        log.info(" Finished auto (days) run ...")
+        logger.info(" Finished auto (days) run ...")
     elif solo_info["peropt"]==4:
         if len(solo_info["startdate"])==0: solo_info["startdate"] = solo_info["file_startdate"]
         startdate = dateutil.parser.parse(solo_info["startdate"])
@@ -1361,7 +1361,7 @@ def rpSOLO_run_nogui(cf,ds,solo_info):
             enddate = startdate+dateutil.relativedelta.relativedelta(years=1)
             solo_info["startdate"] = startdate.strftime("%Y-%m-%d")
             solo_info["enddate"] = enddate.strftime("%Y-%m-%d")
-        log.info(" Finished auto (yearly) run ...")
+        logger.info(" Finished auto (yearly) run ...")
 
 def rpSOLO_runseqsolo(ds,driverlist,targetlabel,outputlabel,nRecs,si=0,ei=-1):
     '''
@@ -1432,7 +1432,7 @@ def rpSOLO_runseqsolo(ds,driverlist,targetlabel,outputlabel,nRecs,si=0,ei=-1):
             ds.series[outputlabel]["Attr"]["comment2"] = "Drivers were "+str(driverlist)
         return 1
     else:
-        log.error(' SOLO_runseqsolo: SEQSOLO did not run correctly, check the SOLO GUI and the log files')
+        logger.error(' SOLO_runseqsolo: SEQSOLO did not run correctly, check the SOLO GUI and the log files')
         return 0
 
 def rpSOLO_runsofm(ds,SOLO_gui,driverlist,targetlabel,nRecs,si=0,ei=-1):
@@ -1450,7 +1450,7 @@ def rpSOLO_runsofm(ds,SOLO_gui,driverlist,targetlabel,nRecs,si=0,ei=-1):
         driver,flag,attr = qcutils.GetSeries(ds,TheseOnes,si=si,ei=ei)
         index = numpy.where(abs(driver-float(c.missing_value)<c.eps))[0]
         if len(index)!=0:
-            log.error(' SOLO_runsofm: c.missing_value found in driver '+TheseOnes+' at lines '+str(index))
+            logger.error(' SOLO_runsofm: c.missing_value found in driver '+TheseOnes+' at lines '+str(index))
             badlines = badlines+index.tolist()
         sofminputdata[:,i] = driver[:]
         i = i + 1
@@ -1458,7 +1458,7 @@ def rpSOLO_runsofm(ds,SOLO_gui,driverlist,targetlabel,nRecs,si=0,ei=-1):
         nBad = len(badlines)
         goodlines = [x for x in range(0,nRecs) if x not in badlines]
         sofminputdata = sofminputdata[goodlines,:]
-        log.info(' SOLO_runsofm: removed '+str(nBad)+' lines from sofm input file')
+        logger.info(' SOLO_runsofm: removed '+str(nBad)+' lines from sofm input file')
         nRecs = len(goodlines)
     # now write the drivers to the SOFM input file
     sofmfile = open('solo/input/sofm_input.csv','wb')
@@ -1479,7 +1479,7 @@ def rpSOLO_runsofm(ds,SOLO_gui,driverlist,targetlabel,nRecs,si=0,ei=-1):
     if os.path.exists('solo/output/sofm_4.out'):
         return 1
     else:
-        log.error(' SOLO_runsofm: SOFM did not run correctly, check the GUI and the log files')
+        logger.error(' SOLO_runsofm: SOFM did not run correctly, check the GUI and the log files')
         return 0
 
 def rpSOLO_runsolo(ds,driverlist,targetlabel,nRecs,si=0,ei=-1):
@@ -1529,7 +1529,7 @@ def rpSOLO_runsolo(ds,driverlist,targetlabel,nRecs,si=0,ei=-1):
     if os.path.exists('solo/output/eigenValue.out'):
         return 1
     else:
-        log.error(' SOLO_runsolo: SOLO did not run correctly, check the SOLO GUI and the log files')
+        logger.error(' SOLO_runsolo: SOLO did not run correctly, check the SOLO GUI and the log files')
         return 0
 
 def rpSOLO_setnodesEntry(SOLO_gui,drivers,default=2):

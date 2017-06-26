@@ -1,0 +1,51 @@
+[Files]
+    erai_path = /home/peter/AmeriFlux/ERAI/
+    erai_file = ERAI_2013.nc
+
+[Sites]
+    [[US-Mpj]]
+        out_filepath = /home/peter/AmeriFlux/Sites/US-Mpj/Data/ERAI/
+        out_filename = US-Mpj_ERAI_2013.nc
+        site_name = "Mountainair Pinyon-juniper"
+        site_timezone = "US/Mountain"
+        site_latitude = "34.4385"
+        site_longitude = "-106.2377"
+        site_timestep = 30
+    [[US-Wjs]]
+        out_filepath = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ERAI/
+        out_filename = US-Wjs_ERAI_2013.nc
+        site_name = "Willard Juniper savannah"
+        site_timezone = "US/Mountain"
+        site_latitude = "34.4255"
+        site_longitude = "-105.8615"
+        site_timestep = 30
+
+[Variables]
+    [[Fsd]]
+        erai_name = ssrd
+    [[Fn_sw]]
+        erai_name = ssr
+    [[Fld]]
+        erai_name = strd
+    [[Fn_lw]]
+        erai_name = str
+    [[Ta]]
+        erai_name = t2m
+    [[Sws]]
+        erai_name = swvl1
+    [[Ts]]
+        erai_name = stl1
+    [[u]]
+        erai_name = u10
+    [[v]]
+        erai_name = v10
+    [[ps]]
+        erai_name = sp
+    [[Precip]]
+        erai_name = tp
+    [[Fh]]
+        erai_name = sshf
+    [[Fe]]
+        erai_name = slhf
+    [[Habl]]
+        erai_name = blh

@@ -7,8 +7,10 @@
         Format = "0"
     [[q]]
         Format = "0.0000"
-    [[Cc]]
+    [[CO2]]
         Format = "0.0"
+    [[H2O]]
+        Format = "0.00"
     [[Ws]]
         Format = "0.00"
     [[Wd]]

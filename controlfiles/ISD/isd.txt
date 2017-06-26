@@ -1,0 +1,83 @@
+[US-Mpj]
+    isd_base_path = /home/peter/AmeriFlux/ISD
+    start_year = 2007
+    end_year = 2016
+    latitude = 34.4385
+    longitude = -106.2377
+    elevation = 2196
+    time_zone = US/Mountain
+    time_step = 30
+    isd_sites = 999999-03048, 999999-03033, 723650-23050
+    out_base_path = /home/peter/AmeriFlux/Sites/
+
+[US-Seg]
+    isd_base_path = /home/peter/AmeriFlux/ISD
+    start_year = 2007
+    end_year = 2016
+    latitude = 34.3623
+    longitude = -106.702
+    elevation = 1596
+    time_zone = US/Mountain
+    time_step = 30
+    isd_sites = 999999-03048, 723620-99999, 723650-23050
+    out_base_path = /home/peter/AmeriFlux/Sites/
+
+[US-Ses]
+    isd_base_path = /home/peter/AmeriFlux/ISD
+    start_year = 2007
+    end_year = 2016
+    latitude = 34.3349
+    longitude = -106.7442
+    elevation = 1604
+    time_zone = US/Mountain
+    time_step = 30
+    isd_sites = 999999-03048, 723620-99999, 723650-23050
+    out_base_path = /home/peter/AmeriFlux/Sites/
+
+[US-Vcm]
+    isd_base_path = /home/peter/AmeriFlux/ISD
+    start_year = 2007
+    end_year = 2016
+    latitude = 35.8884
+    longitude = -106.5321
+    elevation = 3030
+    time_zone = US/Mountain
+    time_step = 30
+    isd_sites = 999999-03062, 723654-93091, 723656-23049
+    out_base_path = /home/peter/AmeriFlux/Sites/
+
+[US-Vcp]
+    isd_base_path = /home/peter/AmeriFlux/ISD
+    start_year = 2007
+    end_year = 2016
+    latitude = 35.8642
+    longitude = -106.5967
+    elevation = 2500
+    time_zone = US/Mountain
+    time_step = 30
+    isd_sites = 999999-03062, 723654-93091, 723656-23049
+    out_base_path = /home/peter/AmeriFlux/Sites/
+
+#[US-Vcs]
+#    isd_base_path = /home/peter/AmeriFlux/ISD
+#    start = 2007
+#    end = 2016
+#    latitude = 
+#    longitude = 
+#    elevation = 
+#    time_zone = US/Mountain
+#    time_step = 30
+#    isd = 999999-03062, 723654-93091, 723656-23049
+#    out_file_path = /home/peter/AmeriFlux/Sites/US-Vcs/Data/ISD/US-Vcs_ISD.nc
+
+[US-Wjs]
+    isd_base_path = /home/peter/AmeriFlux/ISD
+    start_year = 2007
+    end_year = 2016
+    latitude = 34.4255
+    longitude = -105.8615
+    elevation = 1931
+    time_zone = US/Mountain
+    time_step = 30
+    isd_sites = 999999-03048, 999999-03033, 723650-23050, 722677-03027
+    out_base_path = /home/peter/AmeriFlux/Sites/

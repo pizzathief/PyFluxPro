@@ -19,7 +19,7 @@ import Tkinter,tkSimpleDialog
 import xlrd
 import xlwt
 
-log = logging.getLogger('qc.utils')
+logger = logging.getLogger("pfp_log")
 
 def bp(fx,tao):
     """
@@ -121,7 +121,7 @@ def CheckTimeStep(ds):
     # check to see if ww have any time step problems
     if len(index)!=0:
         has_gaps = True
-        log.warning(" CheckTimeStep: "+str(len(index))+" problems found with the time stamp")
+        logger.warning(" CheckTimeStep: "+str(len(index))+" problems found with the time stamp")
     return has_gaps
 
 def CheckUnits(ds,label,units,convert_units=False):
@@ -143,13 +143,13 @@ def CheckUnits(ds,label,units,convert_units=False):
     if attr["units"]==units: return
     if convert_units:
         msg = " Units for "+label+" converted from "+attr["units"]+" to "+units
-        log.info(msg)
+        logger.info(msg)
         new_data = convert_units_func(ds,data,attr["units"],units)
         attr["units"] = units
         CreateSeries(ds,label,new_data,Flag=flag,Attr=attr)
     else:
         msg = " Units mismatch but conversion disabled"
-        log.error(msg)
+        logger.error(msg)
         sys.exit()
 
 def contiguous_regions(condition):
@@ -184,7 +184,7 @@ def ConvertCO2Units(cf,ds,Cc='Cc'):
         if 'CO2Units' in cf['Options']:
             Cc_units_out = str(cf['Options']['CO2Units'])
     if Cc_units_out!=Cc_units_in:
-        log.info(' Converting CO2 concentration from '+Cc_units_in+' to '+Cc_units_out)
+        logger.info(' Converting CO2 concentration from '+Cc_units_in+' to '+Cc_units_out)
         if Cc_units_out=="umol/mol" and Cc_units_in=="mg/m3":
             c_mgpm3,flag,attr = GetSeriesasMA(ds,Cc)
             T,f,a = GetSeriesasMA(ds,'Ta')
@@ -204,9 +204,9 @@ def ConvertCO2Units(cf,ds,Cc='Cc'):
             attr["standard_name"] = "mass_concentration_of_carbon_dioxide_in_air"
             CreateSeries(ds,Cc,c_mgpm3,Flag=flag,Attr=attr)
         else:
-            log.info('  ConvertCO2Units: input or output units for CO2 concentration not recognised')
+            logger.info('  ConvertCO2Units: input or output units for CO2 concentration not recognised')
     else:
-        log.info(" CO2 concentration already in requested units")
+        logger.info(" CO2 concentration already in requested units")
 
 def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
     if 'Options' not in cf: return
@@ -217,7 +217,7 @@ def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
     if Fc in ds.series.keys():
         Fc_units_in = ds.series[Fc]['Attr']['units']
         if Fc_units_out!=Fc_units_in:
-            log.info(' Converting CO2 flux from '+Fc_units_in+' to '+Fc_units_out)
+            logger.info(' Converting CO2 flux from '+Fc_units_in+' to '+Fc_units_out)
             if Fc_units_out=="umol/m2/s" and Fc_units_in=="mg/m2/s":
                 Fc_mgpm2ps,flag,attr = GetSeriesasMA(ds,Fc)
                 Fc_umolpm2ps = mf.Fc_umolpm2psfrommgpm2ps(Fc_mgpm2ps)
@@ -233,12 +233,12 @@ def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
                 attr["standard_name"] = "not defined"
                 CreateSeries(ds,Fc,Fc_mgpm2ps,Flag=flag,Attr=attr)
             else:
-                log.info('  ConvertFcUnits: input or output units for Fc unrecognised')
+                logger.info('  ConvertFcUnits: input or output units for Fc unrecognised')
     # convert units of Fc_storage if required, just go with boiler plate for now
     if Fc_storage in ds.series.keys():
         Fc_storage_units_in = ds.series[Fc_storage]['Attr']['units']
         if Fc_units_out!=Fc_storage_units_in:
-            log.info(' Converting CO2 storage flux from '+Fc_storage_units_in+' to '+Fc_units_out)
+            logger.info(' Converting CO2 storage flux from '+Fc_storage_units_in+' to '+Fc_units_out)
             if Fc_units_out=="umol/m2/s" and Fc_storage_units_in=="mg/m2/s":
                 Fc_storage_mgpm2ps,flag,attr = GetSeriesasMA(ds,Fc_storage)
                 Fc_storage_umolpm2ps = mf.Fc_umolpm2psfrommgpm2ps(Fc_storage_mgpm2ps)
@@ -252,7 +252,7 @@ def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
                 attr["units"] = Fc_units_out
                 CreateSeries(ds,Fc_storage,Fc_storage_mgpm2ps,Flag=flag,Attr=attr)
             else:
-                log.info('  ConvertFcUnits: input or output units for Fc_storage unrecognised')
+                logger.info('  ConvertFcUnits: input or output units for Fc_storage unrecognised')
 
 def convert_units_func(ds,old_data,old_units,new_units,mode="quiet"):
     """
@@ -281,36 +281,36 @@ def convert_units_func(ds,old_data,old_units,new_units,mode="quiet"):
     #if old_units.replace(" ","")=="umolm-2s-1": old_units="umol/m2/s"
     if old_units not in ok_list:
         msg = " Unrecognised units in quantity provided ("+old_units+")"
-        log.error(msg)
+        logger.error(msg)
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     elif new_units not in ok_list:
         msg = " Unrecognised units requested ("+new_units+")"
-        log.error(msg)
+        logger.error(msg)
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     elif new_units in co2_list:
         if old_units in co2_list:
             new_data = convert_units_co2(ds,old_data,old_units,new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
-            log.error(msg)
+            logger.error(msg)
             new_data = numpy.ma.array(old_data,copy=True,mask=True)
     elif new_units in h2o_list:
         if old_units in h2o_list:
             new_data = convert_units_h2o(ds,old_data,old_units,new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
-            log.error(msg)
+            logger.error(msg)
             new_data = numpy.ma.array(old_data,copy=True,mask=True)            
     elif new_units in t_list:
         if old_units in t_list:
             new_data = convert_units_t(ds,old_data,old_units,new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
-            log.error(msg)
+            logger.error(msg)
             new_data = numpy.ma.array(old_data,copy=True,mask=True)            
     else:
         msg = "Unrecognised units combination "+old_units+" and "+new_units
-        log.error(msg)
+        logger.error(msg)
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     return new_data
 
@@ -353,7 +353,7 @@ def convert_units_co2(ds,old_data,old_units,new_units):
         new_data = mf.Fc_umolpm2psfrommgpm2ps(old_data)
     else:
         msg = " Unrecognised conversion from "+old_units+" to "+new_units
-        log.error(msg)
+        logger.error(msg)
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     return new_data
 
@@ -389,7 +389,7 @@ def convert_units_h2o(ds,old_data,old_units,new_units):
         new_data = old_data/float(100)
     else:
         msg = " Unrecognised conversion from "+old_units+" to "+new_units
-        log.error(msg)
+        logger.error(msg)
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     return new_data
 
@@ -417,7 +417,7 @@ def convert_units_t(ds,old_data,old_units,new_units):
         new_data = old_data-c.C2K
     else:
         msg = " Unrecognised conversion from "+old_units+" to "+new_units
-        log.error(msg)
+        logger.error(msg)
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     return new_data
 
@@ -559,6 +559,24 @@ def CreateDatetimeRange(start,stop,step=datetime.timedelta(minutes=30)):
         start = start + step
     return result
 
+def create_empty_variable(label, nrecs):
+    """
+    Purpose:
+     Returns an empty variable.  Data values are set to -9999, flag values are set to 1
+     and default values for the attributes.
+    Usage:
+     variable = pfp_utils.create_empty_variable(label, nrecs)
+     where label is the variable label
+           nrecs is the number of elements in the variable data
+    Author: PRI
+    Date: December 2016
+    """
+    data = numpy.ones(nrecs, dtype=numpy.float64)*float(c.missing_value)
+    flag = numpy.ones(nrecs, dtype=numpy.int32)
+    attr = make_attribute_dictionary()
+    variable = {"Label":label, "Data":data, "Flag":flag, "Attr":attr}
+    return variable
+
 def CreateVariableFromDictionary(ds,variable):
     """
     Purpose:
@@ -598,7 +616,7 @@ def CreateVariableFromDictionary(ds,variable):
 def file_exists(filename,mode="verbose"):
     if not os.path.exists(filename):
         if mode=="verbose":
-            log.error(' File '+filename+' not found')
+            logger.error(' File '+filename+' not found')
         return False
     else:
         return True
@@ -628,7 +646,7 @@ def FindIndicesOfBInA(a,b):
     """
     if len(set(a))!=len(a):
         msg = " FindIndicesOfBInA: first argument contains duplicate values"
-        log.warning(msg)
+        logger.warning(msg)
     tmpset = set(a)
     indices = [i for i,item in enumerate(b) if item in tmpset]
     return indices
@@ -678,7 +696,7 @@ def FixNonIntegralTimeSteps(ds,fixtimestepmethod=""):
     ts = int(ds.globalattributes["time_step"])
     ldt = ds.series["DateTime"]["Data"]
     dt_diffs = numpy.array([(ldt[i]-rounddttots(ldt[i],ts=ts)).total_seconds() for i in range(1,len(ldt))])
-    log.info(" Maximum drift is "+str(numpy.max(dt_diffs))+" seconds, minimum drift is "+str(numpy.min(dt_diffs))+" seconds")
+    logger.info(" Maximum drift is "+str(numpy.max(dt_diffs))+" seconds, minimum drift is "+str(numpy.min(dt_diffs))+" seconds")
     ans = fixtimestepmethod
     if ans=="": ans = raw_input("Do you want to [Q]uit, [I]nterploate or [R]ound? ")
     if ans.lower()[0]=="q":
@@ -688,10 +706,10 @@ def FixNonIntegralTimeSteps(ds,fixtimestepmethod=""):
         print "Interpolation to regular time step not implemented yet ..."
         sys.exit()
     if ans.lower()[0]=="r":
-        log.info(" Rounding to the nearest time step")
+        logger.info(" Rounding to the nearest time step")
         ldt_rounded = [rounddttots(dt,ts=ts) for dt in ldt]
         rdt = numpy.array([(ldt_rounded[i]-ldt_rounded[i-1]).total_seconds() for i in range(1,len(ldt))])
-        log.info(" Maximum time step is now "+str(numpy.max(rdt))+" seconds, minimum time step is now "+str(numpy.min(rdt)))
+        logger.info(" Maximum time step is now "+str(numpy.max(rdt))+" seconds, minimum time step is now "+str(numpy.min(rdt)))
         # replace the existing datetime series with the datetime series rounded to the nearest time step
         ds.series["DateTime"]["Data"] = ldt_rounded
     ds.globalattributes['nc_nrecs'] = len(ds.series["DateTime"]["Data"])
@@ -763,7 +781,7 @@ def FixTimeStep(ds,fixtimestepmethod="round"):
     dtmax = numpy.max(dt)
     if dtmin < ts*60:
         # duplicate or overlapping times found
-        log.info(' FixTimeStep: duplicate or overlapping times found, removing ...')
+        logger.info(' FixTimeStep: duplicate or overlapping times found, removing ...')
         RemoveDuplicateRecords(ds)
         dt = get_timestep(ds)
         dtmin = numpy.min(dt)
@@ -773,8 +791,8 @@ def FixTimeStep(ds,fixtimestepmethod="round"):
         # non-integral time steps found
         # indices of elements where time step not equal to default
         index = numpy.where(numpy.min(numpy.mod(dt,ts*60))!=0 or numpy.max(numpy.mod(dt,ts*60))!=0)[0]
-        log.info(" FixTimeStep: Non-integral time steps found "+str(len(index))+" times out of "+str(nRecs))
-        log.info(" FixTimeStep: Maximum time step was "+str(numpy.max(dt))+" seconds, minimum time step was "+str(numpy.min(dt)))
+        logger.info(" FixTimeStep: Non-integral time steps found "+str(len(index))+" times out of "+str(nRecs))
+        logger.info(" FixTimeStep: Maximum time step was "+str(numpy.max(dt))+" seconds, minimum time step was "+str(numpy.min(dt)))
         FixNonIntegralTimeSteps(ds,fixtimestepmethod=fixtimestepmethod)
         dt = get_timestep(ds)
         dtmin = numpy.min(dt)
@@ -782,7 +800,7 @@ def FixTimeStep(ds,fixtimestepmethod="round"):
         #log.info("After FixNonIntegralTimeSteps:"+str(dtmin)+" "+str(dtmax))
     if dtmax > ts*60:
         # time gaps found
-        log.info(' FixTimeStep: one or more time gaps found, inserting times ...')
+        logger.info(' FixTimeStep: one or more time gaps found, inserting times ...')
         FixTimeGaps(ds)
         dt = get_timestep(ds)
         dtmin = numpy.min(dt)
@@ -794,7 +812,7 @@ def GetAverageSeriesKeys(cf,ThisOne):
         if 'Source' in cf['Variables'][ThisOne]['AverageSeries'].keys():
             alist = ast.literal_eval(cf['Variables'][ThisOne]['AverageSeries']['Source'])
         else:
-            log.error('  GetAverageSeriesKeys: key "Source" not in control file AverageSeries section for '+ThisOne)
+            logger.error('  GetAverageSeriesKeys: key "Source" not in control file AverageSeries section for '+ThisOne)
             alist = []
         if 'standard_name' in cf['Variables'][ThisOne]['AverageSeries'].keys():
             standardname = str(cf['Variables'][ThisOne]['AverageSeries']['standard_name'])
@@ -802,7 +820,7 @@ def GetAverageSeriesKeys(cf,ThisOne):
             standardname = "not defined"
     else:
         standardname = "not defined"
-        log.info('  GetAverageSeriesKeys: '+ThisOne+ ' not in control file or it does not have the "AverageSeries" key')
+        logger.info('  GetAverageSeriesKeys: '+ThisOne+ ' not in control file or it does not have the "AverageSeries" key')
         alist = []
     return alist, standardname
 
@@ -817,9 +835,9 @@ def GetAltName(cf,ds,ThisOne):
         if ThisOne in cf['Variables'].keys():
             ThisOne = cf['Variables'][ThisOne]['AltVarName']
             if ThisOne not in ds.series.keys():
-                log.error('GetAltName: alternate variable name not in ds')
+                logger.error('GetAltName: alternate variable name not in ds')
         else:
-            log.error('GetAltName: cant find ',ThisOne,' in ds or control file')
+            logger.error('GetAltName: cant find ',ThisOne,' in ds or control file')
     return ThisOne
 
 def GetAltNameFromCF(cf,ThisOne):
@@ -867,19 +885,19 @@ def GetRangesFromCF(cf,ThisOne,mode="verbose"):
         else:
             if mode.lower()!="quiet":
                 msg = "GetRangesFromCF: Lower key not in control file for "+str(ThisOne)
-                log.info(msg)
+                logger.info(msg)
             lower = None
         if 'Upper' in cf['Variables'][ThisOne].keys():
             upper = float(cf['Variables'][ThisOne]['Upper'])
         else:
             if mode.lower()!="quiet":
                 msg = "GetRangesFromCF: Upper key not in control file for "+str(ThisOne)
-                log.info(msg)
+                logger.info(msg)
             upper = None
     else:
         if mode.lower()!="quiet":
             msg = "GetRangesFromCF: "+str(ThisOne)+" not in control file"
-            log.info(msg)
+            logger.info(msg)
         lower, upper = None
     return lower, upper
 
@@ -964,7 +982,7 @@ def GetDateIndex(dts,date,ts=30,default=0,match='exact'):
                 # iterate until the minutes equal 0
                 i = i - 1
     else:
-        log.error("GetDateIndex: Unrecognised match option")
+        logger.error("GetDateIndex: Unrecognised match option")
     return i
 
 def GetGlobalAttributeValue(cf,ds,ThisOne):
@@ -972,7 +990,7 @@ def GetGlobalAttributeValue(cf,ds,ThisOne):
         if ThisOne in cf['General'].keys():
             ds.globalattributes[ThisOne] = cf['General'][ThisOne]
         else:
-            log.error('  GetGlobalAttributeValue: global attribute '+ThisOne+' was not found in the netCDF file or in the control file')
+            logger.error('  GetGlobalAttributeValue: global attribute '+ThisOne+' was not found in the netCDF file or in the control file')
             ds.globalattributes[ThisOne] = None
     return ds.globalattributes[ThisOne]
 
@@ -981,7 +999,7 @@ def GetMergeSeriesKeys(cf,ThisOne,section=''):
     if 'Source' in cf[section][ThisOne]['MergeSeries'].keys():
         mlist = ast.literal_eval(cf[section][ThisOne]['MergeSeries']['Source'])
     else:
-        log.error('  GetMergeSeriesKeys: key "Source" not in control file MergeSeries section for '+ThisOne)
+        logger.error('  GetMergeSeriesKeys: key "Source" not in control file MergeSeries section for '+ThisOne)
         mlist = []
     if 'standard_name' in cf[section][ThisOne]['MergeSeries'].keys():
         standardname = str(cf[section][ThisOne]['MergeSeries']['standard_name'])
@@ -1193,14 +1211,14 @@ def get_cfsection(cf,series='',mode='quiet'):
     sectionlist = ['Variables','Drivers','Fluxes','Respiration','Partition','ER','GPP','NEE']
     if len(series)==0:
         msgtxt = ' get_cfsection: no input series specified'
-        if mode!='quiet': log.info(msgtxt)
+        if mode!='quiet': logger.info(msgtxt)
         return section
     for ThisSection in sectionlist:
         if ThisSection in cf.keys():
             if series in cf[ThisSection]: section = ThisSection
     if len(section)==0:
         msgtxt = ' get_cfsection: series '+str(series)+' not found in control file'
-        if mode!='quiet': log.info(msgtxt)
+        if mode!='quiet': logger.info(msgtxt)
     return section
 
 def get_coverage_groups(ds,rad=None,met=None,flux=None,soil=None):
@@ -1261,7 +1279,7 @@ def get_datetimefromxldate(ds):
         Thanks to John Machin for the quick and dirty code
          see http://stackoverflow.com/questions/1108428/how-do-i-read-a-date-in-excel-format-in-python'''
 
-    log.info(' Getting the Python datetime series from the Excel datetime')
+    logger.info(' Getting the Python datetime series from the Excel datetime')
     xldate = ds.series['xlDateTime']['Data']
     nRecs = len(ds.series['xlDateTime']['Data'])
     datemode = int(ds.globalattributes['xl_datemode'])
@@ -1282,9 +1300,9 @@ def get_datetimefromymdhms(ds):
     day, hour, minute and second series stored in the netCDF file.'''
     SeriesList = ds.series.keys()
     if 'Year' not in SeriesList or 'Month' not in SeriesList or 'Day' not in SeriesList or 'Hour' not in SeriesList or 'Minute' not in SeriesList or 'Second' not in SeriesList:
-        log.info(' get_datetimefromymdhms: unable to find all datetime fields required')
+        logger.info(' get_datetimefromymdhms: unable to find all datetime fields required')
         return
-    log.info(' Getting the date and time series')
+    logger.info(' Getting the date and time series')
     nRecs = get_nrecs(ds)
     ts = ds.globalattributes["time_step"]
     ds.series[unicode('DateTime')] = {}
@@ -1348,7 +1366,7 @@ def get_keyvaluefromcf(cf,sections,key,default=None,mode="quiet"):
     """
     if len(sections)<1:
         msg = " get_keyvaluefromsections: no sections specified"
-        if mode.lower()!="quiet": log.info(msg)
+        if mode.lower()!="quiet": logger.info(msg)
     if sections[0] in cf:
         section = cf[sections[0]]
         if len(sections)>1:
@@ -1357,17 +1375,17 @@ def get_keyvaluefromcf(cf,sections,key,default=None,mode="quiet"):
                     section = section[item]
                 else:
                     msg = " get_keyvaluefromcf: Sub section "+item+" not found in control file, used default ("+str(default)+")"
-                    if mode.lower()!="quiet": log.info(msg)
+                    if mode.lower()!="quiet": logger.info(msg)
                     value = default
         if key in section:
             value = section[key]
         else:
             msg = " get_keyvaluefromcf: Key "+key+" not found in section, used default ("+str(default)+")"
-            if mode.lower()!="quiet": log.info(msg)
+            if mode.lower()!="quiet": logger.info(msg)
             value = default
     else:
         msg = " get_keyvaluefromcf: Section "+sections[0]+" not found in control file, used default ("+str(default)+")"
-        if mode.lower()!="quiet": log.error(msg)
+        if mode.lower()!="quiet": logger.error(msg)
         value = default
     return value
 
@@ -1389,7 +1407,7 @@ def get_label_list_from_cf(cf):
     else:
         label_list = []
         msg = "No Variables, Drivers or Fluxes section found in control file"
-        log.error(msg)
+        logger.error(msg)
     return label_list
 
 def get_missingingapfilledseries(ds):
@@ -1430,13 +1448,13 @@ def get_missingingapfilledseries(ds):
         if len(idx)!=0:
             gap_found = True
             msg = " Missing points ("+str(len(idx))+") found in "+series
-            log.error(msg)
+            logger.error(msg)
             #ldt_missing = [ldt[i] for i in idx]
             #msg = " The first 10 missing data is at datetimes "+str(ldt_missing[0:9])
             #log.error(msg)
     if not gap_found:
         msg = " No missing values found in gap filled series"
-        log.info(msg)
+        logger.info(msg)
 
 def get_number_from_heightstring(height):
     z = str(height)
@@ -1504,22 +1522,22 @@ def get_UTCfromlocaltime(ds):
     '''
     # check the time_zone global attribute is set, we cant continue without it
     if "time_zone" not in ds.globalattributes.keys():
-        log.warning("get_UTCfromlocaltime: time_zone not in global attributes, checking elsewhere ...")
+        logger.warning("get_UTCfromlocaltime: time_zone not in global attributes, checking elsewhere ...")
         if "site_name" in ds.globalattributes.keys():
             site_name = ds.globalattributes["site_name"]
         else:
-            log.warning("get_UTCfromlocaltime: site_name not in global attributes, skipping UTC calculation ...")
+            logger.warning("get_UTCfromlocaltime: site_name not in global attributes, skipping UTC calculation ...")
             return
         time_zone,found = get_timezone(site_name,prompt="no")
         if not found:
-            log.warning("get_UTCfromlocaltime: site_name not in time zone dictionary")
+            logger.warning("get_UTCfromlocaltime: site_name not in time zone dictionary")
             return
         else:
-            log.info("get_UTCfromlocaltime: time_zone found in time zone dictionary")
+            logger.info("get_UTCfromlocaltime: time_zone found in time zone dictionary")
             ds.globalattributes["time_zone"] = time_zone
-    log.info(' Getting the UTC datetime from the local datetime')
+    logger.info(' Getting the UTC datetime from the local datetime')
     # get the number of records
-    nRecs = len(ds.series['xlDateTime']['Data'])
+    nRecs = int(ds.globalattributes["nc_nrecs"])
     # get the time zone
     tz = ds.globalattributes["time_zone"]
     # create a timezone object
@@ -1613,7 +1631,7 @@ def get_ymdhmsfromxldate(ds):
         cf: control file
         ds: data structure
         """
-    log.info(' Getting date and time variables')
+    logger.info(' Getting date and time variables')
     # get the date mode of the original Excel datetime
     datemode = int(ds.globalattributes['xl_datemode'])
     nRecs = len(ds.series['xlDateTime']['Data'])
@@ -1691,6 +1709,34 @@ def MakeAttributeDictionary(**kwargs):
     attr["missing_value"] = c.missing_value
     return copy.deepcopy(attr)
 
+def make_attribute_dictionary(**kwargs):
+    """
+    Purpose:
+     Make an empty attribute dictionary.
+    Usage:
+     attr_new = pfp_utils.make_attribute_dictionary(long_name = "some string",attr_exist)
+     where long_name is an attribute to be written to the new attribute dictionary
+           attr_exist is an existing attribute dictionary
+    Author: PRI
+    Date: Back in the day
+    """
+    default_list = ['ancillary_variables', 'height', 'instrument', 'serial_number',
+                    'standard_name', 'long_name', 'units']
+    attr = {}
+    for item in kwargs:
+        if isinstance(item, dict):
+            for entry in item:
+                attr[entry] = item[entry]
+        else:
+            attr[item] = kwargs.get(item, 'not defined')
+        if item in default_list:
+            default_list.remove(item)
+    if len(default_list) != 0:
+        for item in default_list:
+            attr[item] = 'not defined'
+    attr["missing_value"] = c.missing_value
+    return copy.deepcopy(attr)
+
 def MakeQCFlag(ds,SeriesList):
     flag = []
     if len(SeriesList)<=0:
@@ -1700,7 +1746,7 @@ def MakeQCFlag(ds,SeriesList):
         if SeriesList[0] in ds.series.keys():
             flag = ds.series[SeriesList[0]]['Flag'].copy()
         else:
-            log.error('  MakeQCFlag: series '+str(SeriesList[0])+' not in ds.series')
+            logger.error('  MakeQCFlag: series '+str(SeriesList[0])+' not in ds.series')
     if len(SeriesList)>1:
         for ThisOne in SeriesList:
             if ThisOne in ds.series.keys():
@@ -1713,7 +1759,7 @@ def MakeQCFlag(ds,SeriesList):
                     tmp_flag[index] = 0                               # set them all to 0
                     flag = numpy.maximum(flag,tmp_flag)               # now take the maximum
             else:
-                log.error('  MakeQCFlag: series '+ThisOne+' not in ds.series')
+                logger.error('  MakeQCFlag: series '+ThisOne+' not in ds.series')
     return flag.astype(numpy.int32)
 
 def MAtoSeries(Series):
@@ -1761,7 +1807,7 @@ def nxMom_nxScalar_alpha(zoL):
 def path_exists(pathname,mode="verbose"):
     if not os.path.isdir(pathname):
         if mode=="verbose":
-            log.error(' Path '+pathname+' not found')
+            logger.error(' Path '+pathname+' not found')
         return False
     else:
         return True
@@ -1843,7 +1889,7 @@ def round_datetime(ds,mode="nearest_timestep"):
         rldt = [rounddttoseconds(dt) for dt in ldt]
     else:
         # unrecognised option for mode, return original datetime series
-        log.error(" round_datetime: unrecognised mode ("+str(mode)+")"+" ,returning original time series")
+        logger.error(" round_datetime: unrecognised mode ("+str(mode)+")"+" ,returning original time series")
         rldt = ds.series["DateTime"]["Data"]
     # replace the original datetime series with the rounded one
     ds.series["DateTime"]["Data"] = rldt
@@ -1904,7 +1950,8 @@ def UpdateGlobalAttributes(cf,ds,level):
     ds.globalattributes["nc_level"] = str(level)
     ds.globalattributes["EPDversion"] = sys.version
     # put the control file name into the global attributes
-    ds.globalattributes["controlfile_name"] = cf["controlfile_name"]
+    if "controlfile_name" in cf:
+        ds.globalattributes["controlfile_name"] = cf["controlfile_name"]
     if "Global" in cf:
         for item in cf["Global"].keys():
             if item not in ds.globalattributes.keys():

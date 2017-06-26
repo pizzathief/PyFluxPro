@@ -15,7 +15,7 @@ import qcio
 import qcutils
 import logging
 
-log = logging.getLogger('qc.plot')
+logger = logging.getLogger("pfp_log")
 
 def get_diurnalstats(DecHour,Data,dt):
     nInts = 24*int((60/dt)+0.5)
@@ -192,7 +192,7 @@ def plot_fingerprint(cf):
             plt.ion()
         else:
             plt.ioff()
-        fig = plt.figure(nFig,figsize=[15,10])
+        fig = plt.figure(nFig,figsize=(13,8))
         fig.clf()        
         fig.canvas.set_window_title(cf["Plots"][str(nFig)]["Title"])
         plt.figtext(0.5,0.95,title_str,horizontalalignment='center')
@@ -213,7 +213,7 @@ def plot_fingerprint(cf):
             ed = datetime.datetime.toordinal(ldt[-1])
             if nc_varname not in ds[infilename].series.keys():
                 msg = " Variable "+nc_varname+" not found in data structure, skipping ..."
-                log.warning(msg)
+                logger.warning(msg)
                 continue
             data,flag,attr = qcutils.GetSeriesasMA(ds[infilename],nc_varname,si=si,ei=ei)
             data = qcck.cliptorange(data,fp_info["variables"][var]["Lower"],fp_info["variables"][var]["Upper"])
@@ -286,9 +286,9 @@ def plot_fluxnet(cf):
     plt.ion()
     for series in series_list:
         if series not in ds.series.keys():
-            log.error("Series "+series+" not found in input file, skipping ...")
+            logger.error("Series "+series+" not found in input file, skipping ...")
             continue
-        log.info(" Doing plot for "+series)
+        logger.info(" Doing plot for "+series)
         data,flag,attr = qcutils.GetSeriesasMA(ds,qcutils.GetAltName(cf,ds,series))
         nFig = nFig + 1
         fig = plt.figure(nFig,figsize=(10.9,7.5))
@@ -310,7 +310,7 @@ def plottimeseries(cf,nFig,dsa,dsb,si,ei):
     dt = int(dsa.globalattributes['time_step'])
     Month = dsa.series['Month']['Data'][0]
     p = plot_setup(cf,nFig)
-    log.info(' Plotting series: '+str(p['SeriesList']))
+    logger.info(' Plotting series: '+str(p['SeriesList']))
     #L1XArray = numpy.array(dsa.series['DateTime']['Data'][si:ei])
     #L2XArray = numpy.array(dsb.series['DateTime']['Data'][si:ei])
     L1XArray = dsa.series['DateTime']['Data'][si:ei]
@@ -389,7 +389,7 @@ def plottimeseries(cf,nFig,dsa,dsb,si,ei):
                 plt.setp(bar_ax.get_xticklabels(), visible=False)
             #if n > 0: plt.setp(bar_ax.get_xticklabels(), visible=False)
         else:
-            log.error('  plttimeseries: series '+ThisOne+' not in data structure')
+            logger.error('  plttimeseries: series '+ThisOne+' not in data structure')
     fig.show()
     fname = 'plots/'+SiteName.replace(' ','')+'_'+Level+'_'+p['PlotDescription'].replace(' ','')+'.png'
     fig.savefig(fname,format='png')
@@ -399,14 +399,14 @@ def plot_quickcheck(cf):
     # get the netCDF filename
     ncfilename = qcio.get_infilenamefromcf(cf)
     # get the plot width and height
-    PlotWidth_landscape = float(cf['General']['PlotWidth_landscape'])
-    PlotHeight_landscape = float(cf['General']['PlotHeight_landscape'])
-    PlotWidth_portrait = float(cf['General']['PlotWidth_portrait'])
-    PlotHeight_portrait = float(cf['General']['PlotHeight_portrait'])
+    PlotWidth_landscape = float(13)
+    PlotHeight_landscape = float(8)
+    PlotWidth_portrait = float(5)
+    PlotHeight_portrait = float(8)
     # read the netCDF file and return the data structure "ds"
-    log.info(' Opening and reading netCDF file '+ncfilename)
+    logger.info(' Opening and reading netCDF file '+ncfilename)
     ds = qcio.nc_read_series(ncfilename)
-    if len(ds.series.keys())==0: log.error(' netCDF file '+ncfilename+' not found'); sys.exit()
+    if len(ds.series.keys())==0: logger.error(' netCDF file '+ncfilename+' not found'); sys.exit()
     # get the time step
     ts = int(ds.globalattributes['time_step'])
     # get the site name
@@ -426,7 +426,7 @@ def plot_quickcheck(cf):
     StartDate = str(DateTime[0])
     EndDate = str(DateTime[-1])
     # get the 30 minute data from the data structure
-    log.info(' Getting data from data structure ')
+    logger.info(' Getting data from data structure ')
     #  radiation first ...
     Mnth_30min,flag,attr = qcutils.GetSeriesasMA(ds,qcutils.GetAltName(cf,ds,'Month'),si=si,ei=ei)
     Hour_30min,flag,attr = qcutils.GetSeriesasMA(ds,qcutils.GetAltName(cf,ds,'Hour'),si=si,ei=ei)
@@ -481,7 +481,7 @@ def plot_quickcheck(cf):
     
     # *** start of section based on 30 minute data ***
     # scatter plot of (Fh+Fe) versys Fa, all data
-    log.info(' Doing surface energy balance plots ')
+    logger.info(' Doing surface energy balance plots ')
     mask = numpy.ma.mask_or(Fa_30min.mask,Fe_30min.mask)
     mask = numpy.ma.mask_or(mask,Fh_30min.mask)
     Fa_SEB = numpy.ma.array(Fa_30min,mask=mask)     # apply the mask
@@ -533,7 +533,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # *** start of section based on daily averages ***
-    log.info(' Getting daily averages from 30 minute data ')
+    logger.info(' Getting daily averages from 30 minute data ')
     MTFmt = mdt.DateFormatter('%m/%Y')
     # reshape the 1D array of 30 minute data into a 2D array of (nDays,ntsInDay)
     DT_daily = DateTime[0::ntsInDay]
@@ -626,7 +626,7 @@ def plot_quickcheck(cf):
     Rain_daily_sum = numpy.ma.sum(Rain_daily,axis=1)
     Rain_daily_num = numpy.ma.count(Rain_daily,axis=1)
     # plot the SEB, EF and Wue
-    log.info(' Doing the daily ratios plot ')
+    logger.info(' Doing the daily ratios plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_landscape,PlotHeight_landscape))
     fig.canvas.set_window_title("Daily Average Ratios")
@@ -669,7 +669,7 @@ def plot_quickcheck(cf):
     Flu_day_num = numpy.ma.count(Flu_day,axis=1)
     Fn_day_num = numpy.ma.count(Fn_day,axis=1)
     Fg_day_num = numpy.ma.count(Fg_day,axis=1)
-    log.info(' Doing the daily radiation plot ')
+    logger.info(' Doing the daily radiation plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_landscape,PlotHeight_landscape))
     fig.canvas.set_window_title("Daily Average Radiation")
@@ -713,7 +713,7 @@ def plot_quickcheck(cf):
     Fc_night_num = numpy.ma.count(Fc_night,axis=1)
     # ... now plot the day time averages with the colour of the points controlled
     #     by the number of values used to get the average
-    log.info(' Doing the daily fluxes plot ')
+    logger.info(' Doing the daily fluxes plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_landscape,PlotHeight_landscape))
     fig.canvas.set_window_title("Daily Average Fluxes")
@@ -741,7 +741,7 @@ def plot_quickcheck(cf):
     CO2_day_num = numpy.ma.count(CO2_day,axis=1)
     Ws_daily_avg = numpy.ma.average(Ws_daily,axis=1)      # get the daily average
     Ws_daily_num = numpy.ma.count(Ws_daily,axis=1)
-    log.info(' Doing the daily meteorology plot ')
+    logger.info(' Doing the daily meteorology plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_landscape,PlotHeight_landscape))
     fig.canvas.set_window_title("Daily Average Meteorology")
@@ -772,7 +772,7 @@ def plot_quickcheck(cf):
     Fg_daily_avg = numpy.ma.average(Fg_daily,axis=1)      # get the daily average
     Rain_daily_sum = numpy.ma.sum(Rain_daily,axis=1)
     Rain_daily_num = numpy.ma.count(Rain_daily,axis=1)
-    log.info(' Doing the daily soil data plot ')
+    logger.info(' Doing the daily soil data plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_landscape,PlotHeight_landscape))
     fig.canvas.set_window_title("Daily Average Soil")
@@ -790,7 +790,7 @@ def plot_quickcheck(cf):
     # *** start of section for diurnal plots by month ***
     MnthList = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     # plot Fsd
-    log.info(' Doing the diurnal Fsd by month plot ')
+    logger.info(' Doing the diurnal Fsd by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fsd")
@@ -820,7 +820,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Fa
-    log.info(' Doing the diurnal Fa by month plot ')
+    logger.info(' Doing the diurnal Fa by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fa")
@@ -850,7 +850,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Fn
-    log.info(' Doing the diurnal Fn by month plot ')
+    logger.info(' Doing the diurnal Fn by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fn")
@@ -880,7 +880,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Fg
-    log.info(' Doing the diurnal Fg by month plot ')
+    logger.info(' Doing the diurnal Fg by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fg")
@@ -910,7 +910,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Ts
-    log.info(' Doing the diurnal Ts by month plot ')
+    logger.info(' Doing the diurnal Ts by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Ts")
@@ -940,7 +940,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Fh
-    log.info(' Doing the diurnal Fh by month plot ')
+    logger.info(' Doing the diurnal Fh by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fh")
@@ -970,7 +970,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Fe
-    log.info(' Doing the diurnal Fe by month plot ')
+    logger.info(' Doing the diurnal Fe by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fe")
@@ -1000,7 +1000,7 @@ def plot_quickcheck(cf):
     # draw the plot on the screen
     plt.draw()
     # plot Fc
-    log.info(' Doing the diurnal Fc by month plot ')
+    logger.info(' Doing the diurnal Fc by month plot ')
     nFig = nFig + 1
     fig = plt.figure(nFig,figsize=(PlotWidth_portrait,PlotHeight_portrait))
     fig.canvas.set_window_title("Diurnal Fc")
@@ -1036,7 +1036,7 @@ def plot_setup(cf,nFig):
     p['SeriesList'] = ast.literal_eval(cf['Plots'][str(nFig)]['Variables'])
     p['nGraphs'] = len(p['SeriesList'])
     p['PlotWidth'] = 13
-    p['PlotHeight'] = 9
+    p['PlotHeight'] = 8
     p['ts_YAxOrg'] = 0.08
     p['ts_XAxOrg'] = 0.06
     p['ts_XAxLen'] = 0.6
@@ -1157,7 +1157,7 @@ def plotxy(cf,nFig,plt_cf,dsa,dsb,si,ei):
     plt.figtext(0.5,0.95,SiteName+': '+PlotDescription,ha='center',size=16)
     XSeries = ast.literal_eval(plt_cf['XSeries'])
     YSeries = ast.literal_eval(plt_cf['YSeries'])
-    log.info(' Plotting xy: '+str(XSeries)+' v '+str(YSeries))
+    logger.info(' Plotting xy: '+str(XSeries)+' v '+str(YSeries))
     if dsa == dsb:
         for xname,yname in zip(XSeries,YSeries):
             xa,flag,attr = qcutils.GetSeriesasMA(dsa,xname,si=si,ei=ei)
@@ -1217,7 +1217,7 @@ def xyplot(x,y,sub=[1,1,1],regr=0,thru0=0,title=None,xlabel=None,ylabel=None,fna
             eqnstr = 'r = %.3f'%(r[0][1])
             plt.text(0.5,0.89,eqnstr,fontsize=8,horizontalalignment='center',transform=ax.transAxes)
         else:
-            log.info("xyplot: nothing to plot!")
+            logger.info("xyplot: nothing to plot!")
     if thru0!=0:
         x = x[:,numpy.newaxis]
         a, _, _, _ = numpy.linalg.lstsq(x, y)
