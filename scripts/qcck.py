@@ -365,6 +365,7 @@ def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
         # check the precursor is in the data structure
         if item not in ds.series.keys():
             msg = " DependencyCheck: "+series+" precursor series "+item+" not found, skipping ..."
+            log.warning(msg)
             continue
         # get the precursor data
         precursor_data,precursor_flag,precursor_attr = qcutils.GetSeriesasMA(ds,item)
