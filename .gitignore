@@ -4,8 +4,10 @@
 # log files
 logfiles
 
-# solo file
-solo/output/
+# solo files
+solo/output
+solo/inf
+solo/input
 
 # mac files
 .DS_store

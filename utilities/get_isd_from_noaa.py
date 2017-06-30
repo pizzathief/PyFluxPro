@@ -25,20 +25,24 @@ isd_sites["2016"] = ["999999-03048","999999-03033","723650-23050","722677-03027"
 
 year_list = list(isd_sites.keys())
 isd_base_path = os.path.join("pub","data","noaa")
-out_base_path = "/home/peter/AmeriFlux/ISD"
+home_path = os.path.expanduser("~")
+out_base_path = os.path.join(home_path,"AmeriFlux","ISD")
 
 ftp = ftplib.FTP("ftp.ncdc.noaa.gov","ftp","pisaac.ozflux@gmail.com")
 
 for year in year_list:
     isd_year_dir = os.path.join(isd_base_path,year)
     isd_file_list = ftp.nlst(isd_year_dir)
+    out_year_path = os.path.join(out_base_path,year)
+    if not os.path.exists(out_year_path):
+        os.makedirs(out_year_path)
     for isd_site in isd_sites[year]:
         isd_file_name = isd_site+"-"+year+".gz"
         isd_file_path = os.path.join(isd_year_dir,isd_file_name)
         #print isd_file_path
         if isd_file_path in isd_file_list:
             print "Getting data for "+isd_site+" for year "+year
-            out_file_path = os.path.join(out_base_path,year,isd_file_name)
+            out_file_path = os.path.join(out_year_path,isd_file_name)
             #print "Asking for: ",isd_file_name
             #print "Writing to: ",out_file_path
             ftp.retrbinary("RETR " + isd_file_path, open(out_file_path, 'wb').write)

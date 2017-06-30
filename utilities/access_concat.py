@@ -86,7 +86,7 @@ def set_globalattributes(ds_60minutes,info):
     return
 
 def get_accessdata(cf,ds_60minutes,f,info):
-	  # latitude and longitude, chose central pixel of 3x3 grid
+            # latitude and longitude, chose central pixel of 3x3 grid
     ds_60minutes.globalattributes["latitude"] = f.variables["lat"][1]
     ds_60minutes.globalattributes["longitude"] = f.variables["lon"][1]
     # list of variables to process
@@ -245,7 +245,7 @@ def get_relativehumidity(ds_60minutes):
                                                    units='%',standard_name='not defined')
             qcutils.CreateSeries(ds_60minutes,RH_label,RH,Flag=f,Attr=attr)
     return
-    
+
 def get_absolutehumidity(ds_60minutes):
     for i in range(0,3):
         for j in range(0,3):
@@ -289,16 +289,16 @@ def get_radiation(ds_60minutes):
             Flu = Fld - Fn_lw
             Fn = (Fsd-Fsu)+(Fld-Flu)
             attr = qcutils.MakeAttributeDictionary(long_name='Up-welling long wave',
-                                               standard_name='surface_upwelling_longwave_flux_in_air',
-                                               units='W/m2')
+                                                   standard_name='surface_upwelling_longwave_flux_in_air',
+                                                   units='W/m2')
             qcutils.CreateSeries(ds_60minutes,label_Flu,Flu,Flag=f,Attr=attr)
             attr = qcutils.MakeAttributeDictionary(long_name='Up-welling short wave',
-                                               standard_name='surface_upwelling_shortwave_flux_in_air',
-                                               units='W/m2')
+                                                   standard_name='surface_upwelling_shortwave_flux_in_air',
+                                                   units='W/m2')
             qcutils.CreateSeries(ds_60minutes,label_Fsu,Fsu,Flag=f,Attr=attr)
             attr = qcutils.MakeAttributeDictionary(long_name='Calculated net radiation',
-                                               standard_name='surface_net_allwave_radiation',
-                                               units='W/m2')
+                                                   standard_name='surface_net_allwave_radiation',
+                                                   units='W/m2')
             qcutils.CreateSeries(ds_60minutes,label_Fn,Fn,Flag=f,Attr=attr)
     return
 
@@ -314,8 +314,8 @@ def get_groundheatflux(ds_60minutes):
             Fe,f,a = qcutils.GetSeriesasMA(ds_60minutes,label_Fe)
             Fg = Fn - Fh - Fe
             attr = qcutils.MakeAttributeDictionary(long_name='Calculated ground heat flux',
-                                               standard_name='downward_heat_flux_in_soil',
-                                               units='W/m2')
+                                                   standard_name='downward_heat_flux_in_soil',
+                                                   units='W/m2')
             qcutils.CreateSeries(ds_60minutes,label_Fg,Fg,Flag=f,Attr=attr)
     return
 
@@ -329,7 +329,7 @@ def get_availableenergy(ds_60miutes):
             Fg,f,a = qcutils.GetSeriesasMA(ds_60minutes,label_Fg)
             Fa = Fn - Fg
             attr = qcutils.MakeAttributeDictionary(long_name='Calculated available energy',
-                                               standard_name='not defined',units='W/m2')
+                                                   standard_name='not defined',units='W/m2')
             qcutils.CreateSeries(ds_60minutes,label_Fa,Fa,Flag=f,Attr=attr)
     return
 
