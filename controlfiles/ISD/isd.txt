@@ -1,83 +1,65 @@
-[US-Mpj]
+[Files]
     isd_base_path = /home/peter/AmeriFlux/ISD
-    start_year = 2007
-    end_year = 2016
-    latitude = 34.4385
-    longitude = -106.2377
-    elevation = 2196
-    time_zone = US/Mountain
-    time_step = 30
-    isd_sites = 999999-03048, 999999-03033, 723650-23050
-    out_base_path = /home/peter/AmeriFlux/Sites/
+    out_base_path = /home/peter/AmeriFlux/Sites
 
-[US-Seg]
-    isd_base_path = /home/peter/AmeriFlux/ISD
-    start_year = 2007
-    end_year = 2016
-    latitude = 34.3623
-    longitude = -106.702
-    elevation = 1596
-    time_zone = US/Mountain
-    time_step = 30
-    isd_sites = 999999-03048, 723620-99999, 723650-23050
-    out_base_path = /home/peter/AmeriFlux/Sites/
-
-[US-Ses]
-    isd_base_path = /home/peter/AmeriFlux/ISD
-    start_year = 2007
-    end_year = 2016
-    latitude = 34.3349
-    longitude = -106.7442
-    elevation = 1604
-    time_zone = US/Mountain
-    time_step = 30
-    isd_sites = 999999-03048, 723620-99999, 723650-23050
-    out_base_path = /home/peter/AmeriFlux/Sites/
-
-[US-Vcm]
-    isd_base_path = /home/peter/AmeriFlux/ISD
-    start_year = 2007
-    end_year = 2016
-    latitude = 35.8884
-    longitude = -106.5321
-    elevation = 3030
-    time_zone = US/Mountain
-    time_step = 30
-    isd_sites = 999999-03062, 723654-93091, 723656-23049
-    out_base_path = /home/peter/AmeriFlux/Sites/
-
-[US-Vcp]
-    isd_base_path = /home/peter/AmeriFlux/ISD
-    start_year = 2007
-    end_year = 2016
-    latitude = 35.8642
-    longitude = -106.5967
-    elevation = 2500
-    time_zone = US/Mountain
-    time_step = 30
-    isd_sites = 999999-03062, 723654-93091, 723656-23049
-    out_base_path = /home/peter/AmeriFlux/Sites/
-
-#[US-Vcs]
-#    isd_base_path = /home/peter/AmeriFlux/ISD
-#    start = 2007
-#    end = 2016
-#    latitude = 
-#    longitude = 
-#    elevation = 
-#    time_zone = US/Mountain
-#    time_step = 30
-#    isd = 999999-03062, 723654-93091, 723656-23049
-#    out_file_path = /home/peter/AmeriFlux/Sites/US-Vcs/Data/ISD/US-Vcs_ISD.nc
-
-[US-Wjs]
-    isd_base_path = /home/peter/AmeriFlux/ISD
-    start_year = 2007
-    end_year = 2016
-    latitude = 34.4255
-    longitude = -105.8615
-    elevation = 1931
-    time_zone = US/Mountain
-    time_step = 30
-    isd_sites = 999999-03048, 999999-03033, 723650-23050, 722677-03027
-    out_base_path = /home/peter/AmeriFlux/Sites/
+[Sites]
+    [[US-Mpj]]
+        start_year = 2007
+        end_year = 2016
+        site_name = "Mountainair Pinyon-juniper"
+        site_latitude = 34.4385
+        site_longitude = -106.2377
+        site_altitude = 2196
+        site_timezone = US/Mountain
+        site_timestep = 30
+        isd_sites = 999999-03048, 999999-03033, 723650-23050
+    [[US-Seg]]
+        start_year = 2007
+        end_year = 2016
+        site_name = "Sevilleta grassland"
+        site_latitude = 34.3623
+        site_longitude = -106.702
+        site_altitude = 1596
+        site_timezone = US/Mountain
+        site_timestep = 30
+        isd_sites = 999999-03048, 723620-99999, 723650-23050
+    [[US-Ses]]
+        start_year = 2007
+        end_year = 2016
+        site_name = "Sevilleta shrubland"
+        site_latitude = 34.3349
+        site_longitude = -106.7442
+        site_altitude = 1604
+        site_timezone = US/Mountain
+        site_timestep = 30
+        isd_sites = 999999-03048, 723620-99999, 723650-23050
+    [[US-Vcm]]
+        start_year = 2007
+        end_year = 2016
+        site_name = "Valles Caldera Mixed Conifer"
+        site_latitude = 35.8884
+        site_longitude = -106.5321
+        site_altitude = 3030
+        site_timezone = US/Mountain
+        site_timestep = 30
+        isd_sites = 999999-03062, 723654-93091, 723656-23049
+    [[US-Vcp]]
+        start_year = 2007
+        end_year = 2016
+        site_name = "Valles Caldera Ponderosa Pine"
+        site_latitude = 35.8642
+        site_longitude = -106.5967
+        site_altitude = 2500
+        site_timezone = US/Mountain
+        site_timestep = 30
+        isd_sites = 999999-03062, 723654-93091, 723656-23049
+    [[US-Wjs]]
+        start_year = 2007
+        end_year = 2016
+        site_name = "Willard Juniper savannah"
+        site_latitude = 34.4255
+        site_longitude = -105.8615
+        site_altitude = 1931
+        site_timezone = US/Mountain
+        site_timestep = 30
+        isd_sites = 999999-03048, 999999-03033, 723650-23050, 722677-03027
