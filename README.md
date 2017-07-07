@@ -40,7 +40,7 @@ PyFluxPro is easily installed using the "git" version control software.  This pr
 
 To install PyFluxPro, follow these steps:
 * 1. Open a command line window or terminal session and use the "cd" (shorthand for "change directory") command to navigate to the directory into which you want to install PyFluxPro.  Note that the installation process will create a subdirectory called PyFluxPro in the directory from which the install is run.
-* 2. Clone the PyFluxPro repository by typing "git clone https://github.com/pisaac-ozflux/PyFluxPro.git" at the command prompt.
+* 2. Clone the PyFluxPro repository by typing "git clone https://github.com/OzFlux/PyFluxPro.git" at the command prompt.
 * 3. PyFluxPro is now ready to use.
 
 ## Updating PyFluxPro
