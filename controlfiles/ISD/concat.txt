@@ -1,0 +1,21 @@
+[Options]
+    Truncate = No
+    TruncateThreshold = 50
+    SeriesToCheck = ,
+    MaxGapInterpolate = 0
+    NumberOfDimensions = 1
+    FixTimeStepMethod = round
+[Files]
+    [[In]]
+        0 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2007.nc
+        1 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2008.nc
+        2 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2009.nc
+        3 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2010.nc
+        4 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2011.nc
+        5 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2012.nc
+        6 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2013.nc
+        7 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2014.nc
+        8 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2015.nc
+        9 = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD_2016.nc
+    [[Out]]
+        ncFileName = /home/peter/AmeriFlux/Sites/US-Wjs/Data/ISD/US-Wjs_ISD.nc

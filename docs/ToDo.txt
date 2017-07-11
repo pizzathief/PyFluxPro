@@ -1,0 +1,31 @@
+PyFluxPro: Things to fix
+
+Climatology
+1) fix climatology
+   - change 3x3 tile for smarter way of dealing with edges
+
+L4
+1) alternate fit statistics written to file after each manual run
+   - fixed 2017-06-25 but not fully tested
+2) do OLS fit when plotted even if number filled is 0
+3) include lag in statistics on alternate plot
+4) trap start datetime >= end datetime when doing manual runs
+5) crash at US-Mpj for 2016-07-01 to 2016-07-04 manual run
+16:53:36 INFO  Gap fill with alternate: US-Mpj for 2016-07-01 to 2016-10-01
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/home/peter/anaconda2/lib/python2.7/lib-tk/Tkinter.py", line 1537, in __call__
+    return self.func(*args)
+  File "scripts/qcgf.py", line 441, in <lambda>
+    alt_gui.runButton = Tkinter.Button(alt_gui,text="Run",command=lambda:gfalternate_run_gui(ds4,ds_alt,alt_gui,alternate_info))
+  File "scripts/qcgf.py", line 1852, in gfalternate_run_gui
+    gfalternate_main(ds_tower,ds_alt,alternate_info)
+  File "scripts/qcgf.py", line 1553, in gfalternate_main
+    gfalternate_loadoutputdata(ds_tower,data_dict,alternate_info)
+  File "scripts/qcgf.py", line 1376, in gfalternate_loadoutputdata
+    (numpy.ma.getmaskarray(data_dict[label_output][label_alternate]["fitcorr"])==False))[0]
+ValueError: operands could not be broadcast together with shapes (0,) (1510,)
+6) do precipitation as cumulative over period
+7) do WD as components
+8) plot alernate statistics
+9) QC of ISD and ERAI data
