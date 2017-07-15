@@ -320,33 +320,49 @@ def CreateNewSeries(cf,ds):
         if 'AverageSeries' in cf['Variables'][ThisOne].keys():
             qcts.AverageSeriesByElements(cf,ds,ThisOne)
 
-def do_CSATcheck(cf,ds):
-    '''Rejects data values for series specified in CSATList for times when the Diag_CSAT
-       flag is non-zero.  If the Diag_CSAT flag is not present in the data structure passed
-       to this routine, it is constructed from the QC flags of the series specified in
-       CSATList.'''
-    if "Diag_CSAT" not in ds.series.keys():
-        msg = " Diag_CSAT not found in data, skipping CSAT checks ..."
+def do_SONICcheck(cf, ds, code=3):
+    """
+    Purpose:
+     Does an implicit dependency check using the sonic diagnostic.
+    Usage:
+    Side effects:
+    Assumptions:
+    History:
+     Started life in OzFluxQC as do_CSATcheck()
+    Author: PRI
+    Date: Back in the day
+    """
+    series_list = list(ds.series.keys())
+    if "Diag_SONIC" in series_list:
+        pass
+    elif "Diag_CSAT" in series_list:
+        ds.series["Diag_SONIC"] = copy.deepcopy(ds.series["Diag_CSAT"])
+    else:
+        msg = " Sonic diagnostics not found in data, skipping sonic checks ..."
         logger.warning(msg)
         return
-    logger.info(' Doing the CSAT check')
-    CSAT_all = ['Ux','Uy','Uz',
-                'Ws_CSAT','Wd_CSAT','Wd_CSAT_Compass','Tv_CSAT',
-                'UzT','UxT','UyT','UzA','UxA','UyA','UzC','UxC','UyC',
-                'UxUz','UyUz','UxUy','UxUx','UyUy','UzUz']
-    CSAT_list = []
-    for item in CSAT_all:
-        if item in ds.series.keys(): CSAT_list.append(item)
-    index = numpy.where(ds.series['Diag_CSAT']['Flag']!=0)
-    logger.info('  CSATCheck: Diag_CSAT ' + str(numpy.size(index)))
-    for ThisOne in CSAT_list:
-        if ThisOne in ds.series.keys():
-            ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(3)
+    logger.info(" Doing the sonic check")
+    sonic_all = ["Ux", "Uy", "Uz",
+                "Ws_CSAT", "Wd_CSAT", "Wd_CSAT_Compass",
+                "Ws_SONIC", "Wd_SONIC", "Wd_SONIC_Compass",
+                "Tv_CSAT", "Tv_CSAT_Av", "Tv_CSAT_Vr",
+                "Tv_SONIC", "Tv_SONIC_Av", "Tv_SONIC_Vr",
+                "UzT", "UxT", "UyT", "UzA", "UxA", "UyA", "UzC", "UxC", "UyC",
+                "UxUz", "UyUz", "UxUy", "UxUx", "UyUy", "UzUz"]
+    sonic_list = []
+    for item in sonic_all:
+        if item in series_list:
+            sonic_list.append(item)
+    index = numpy.where(ds.series['Diag_SONIC']['Flag'] != 0)
+    msg = "  SONICCheck: Diag_SONIC rejected "+str(numpy.size(index))+" points"
+    logger.info(msg)
+    for label in sonic_list:
+        if label in ds.series.keys():
+            ds.series[label]["Data"][index] = numpy.float64(c.missing_value)
+            ds.series[label]["Flag"][index] = numpy.int32(code)
         else:
-            logger.error('  qcck.do_CSATcheck: series '+str(ThisOne)+' in CSATList not found in ds.series')
-    if 'CSATCheck' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',CSATCheck'
+            logger.error("  SONICcheck: series "+str(label)+" not found in data")
+    return
 
 def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
     if len(section)==0 and len(series)==0: return
@@ -368,7 +384,7 @@ def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
         # check the precursor is in the data structure
         if item not in ds.series.keys():
             msg = " DependencyCheck: "+series+" precursor series "+item+" not found, skipping ..."
-            log.warning(msg)
+            logger.warning(msg)
             continue
         # get the precursor data
         precursor_data,precursor_flag,precursor_attr = qcutils.GetSeriesasMA(ds,item)
@@ -537,42 +553,72 @@ def do_IRGAcheck(cf,ds):
         logger.error(msg)
         return
 
-def do_li7500check(cf,ds):
+def do_li7500check(cf, ds, code=4):
     '''Rejects data values for series specified in LI75List for times when the Diag_7500
        flag is non-zero.  If the Diag_7500 flag is not present in the data structure passed
        to this routine, it is constructed from the QC flags of the series specified in
        LI75Lisat.  Additional checks are done for AGC_7500 (the LI-7500 AGC value),
        Ah_7500_Sd (standard deviation of absolute humidity) and Cc_7500_Sd (standard
        deviation of CO2 concentration).'''
-    if "Diag_7500" not in ds.series.keys():
-        msg = " Diag_7500 not found in data, skipping 7500 checks ..."
+    series_list = list(ds.series.keys())
+    # check we have an IRGA diagnostics series to use
+    if "Diag_IRGA" in series_list:
+        pass
+    elif "Diag_7500" in series_list:
+        # backward compatibility with early OFQC
+        ds.series["Diag_IRGA"] = copy.deepcopy(ds.series["Diag_7500"])
+    else:
+        msg = " IRGA diagnostics not found in data, skipping IRGA checks ..."
         logger.warning(msg)
         return
-    logger.info(' Doing the 7500 check')
-    LI75List = ['Ah_7500_Av','Cc_7500_Av','Ah_7500_Sd','Cc_7500_Sd',
-                'UzA','UxA','UyA','UzC','UxC','UyC']
-    index = numpy.where(ds.series['Diag_7500']['Flag']!=0)
-    logger.info('  7500Check: Diag_7500 ' + str(numpy.size(index)))
-    LI75_dependents = []
-    for item in ['AGC_7500','Ah_7500_Sd','Cc_7500_Sd','AhAh','CcCc']:
-        if item in ds.series.keys(): LI75_dependents.append(item)
-    if "Ah_7500_Sd" and "AhAh" in LI75_dependents: LI75_dependents.remove("AhAh")
-    if "Cc_7500_Sd" and "CcCc" in LI75_dependents: LI75_dependents.remove("CcCc")
-    for item in LI75_dependents:
-        if item in ds.series.keys():
-            index = numpy.where(ds.series[item]['Flag']!=0)
-            logger.info('  7500Check: '+item+' rejected '+str(numpy.size(index))+' points')
-            ds.series['Diag_7500']['Flag'] = ds.series['Diag_7500']['Flag'] + ds.series[item]['Flag']
-    index = numpy.where((ds.series['Diag_7500']['Flag']!=0))
-    logger.info('  7500Check: Total ' + str(numpy.size(index)))
-    for ThisOne in LI75List:
-        if ThisOne in ds.series.keys():
-            ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
-        else:
-            logger.error('  qcck.do_7500check: series '+str(ThisOne)+' in LI75List not found in ds.series')
-    if '7500Check' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',7500Check'
+    logger.info(" Doing the LI-7500 check")
+    # let's check the contents of ds and see what we have to work with
+    # first, list everything we may have once used for some kind of LI-7500 output
+    # we do this for backwards compatibility
+    irga_list_all = ["Ah_7500_Av", "Ah_7500_Sd", "Ah_IRGA_Av", "Ah_IRGA_Sd",
+                     "Cc_7500_Av", "Cc_7500_Sd", "Cc_7500_Av", "Cc_7500_Sd",
+                     "H2O_IRGA_Av", "H2O_IRGA_Vr","CO2_IRGA_Av", "CO2_IRGA_Vr",
+                     "UzA", "UxA", "UyA", "UzC", "UxC", "UyC"]
+    # now get a list of what is actually there
+    irga_list = []
+    for label in series_list:
+        if label in irga_list_all:
+            irga_list.append(label)
+    # now tell the user how many points the IRGA diagnostic will remove
+    index = numpy.where(ds.series["Diag_IRGA"]["Flag"] != 0)
+    msg = "  Diag_IRGA rejected "+str(numpy.size(index))+" points"
+    logger.info(msg)
+    # and then we start with the dependents
+    # and again we list everything we may have used in the past for backwards compatibility
+    irga_dependents_all = ["AGC_7500", "AGC_IRGA",
+                           "Ah_7500_Sd","Cc_7500_Sd",
+                           "Ah_IRGA_Sd", "Cc_IRGA_Sd",
+                           "H2O_IRGA_Sd", "CO2_IRGA_Sd",
+                           "AhAh","CcCc",
+                           "Ah_IRGA_Vr", "Cc_IRGA_Vr",
+                           "H2O_IRGA_Vr", "CO2_IRGA_Vr"]
+    # and then check to see what we actually have to work with
+    irga_dependents = []
+    for label in irga_dependents_all:
+        if label in series_list:
+            irga_dependents.append(label)
+    # and then remove variances where variances and standard deviations are duplicated
+    std_list = ["Ah_7500_Sd", "Cc_7500_Sd", "Ah_IRGA_Sd", "Cc_IRGA_Sd", "H2O_IRGA_Sd", "CO2_IRGA_Sd"]
+    var_list = ["AhAh",       "CcCc",       "AhAh",       "CcCc",       "H2O_IRGA_Vr", "CO2_IRGA_Vr"]
+    irga_dependents_nodups = copy.deepcopy(irga_dependents)
+    for std, var in zip(std_list, var_list):
+        if (std in irga_dependents) and (var in irga_dependents):
+            irga_dependents_nodups.remove(var)
+    # now we can do the business
+    for label in irga_dependents_nodups:
+        index = numpy.where(ds.series[label]["Flag"] != 0)
+        logger.info("  IRGACheck: "+label+" rejected "+str(numpy.size(index))+" points")
+        ds.series["Diag_IRGA"]["Flag"] = ds.series["Diag_IRGA"]["Flag"] + ds.series[label]["Flag"]
+    index = numpy.where((ds.series["Diag_IRGA"]["Flag"] != 0))
+    logger.info("  IRGACheck: Total rejected is " + str(numpy.size(index)))
+    for label in irga_dependents:
+        ds.series[label]['Data'][index] = numpy.float64(c.missing_value)
+        ds.series[label]['Flag'][index] = numpy.int32(code)
 
 def do_li7500acheck(cf,ds):
     #msg = " Li-7500A check not implemented yet, contact the developer ..."

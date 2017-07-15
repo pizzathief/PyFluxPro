@@ -92,7 +92,7 @@ def l2qc(cf,ds1):
     # apply the quality control checks (range, diurnal, exclude dates and exclude hours
     qcck.do_qcchecks(cf,ds2)
     # do the CSAT diagnostic check
-    qcck.do_CSATcheck(cf,ds2)
+    qcck.do_SONICcheck(cf,ds2)
     # do the IRGA diagnostic check
     qcck.do_IRGAcheck(cf,ds2)
     # constrain albedo estimates to full sun angles
@@ -109,54 +109,15 @@ def l2qc(cf,ds1):
 
 def l3qc(cf,ds2):
     """
-        Corrections
-        Generates L3 from L2 data
-        
-        Functions performed:
-            qcts.AddMetVars (optional)
-            qcts.CorrectSWC (optional*)
-            qcck.do_linear (all sites)
-            qcutils.GetMergeList + qcts.MergeSeries Ah_EC (optional)x
-            qcts.TaFromTv (optional)
-            qcutils.GetMergeList + qcts.MergeSeries Ta_EC (optional)x
-            qcts.CoordRotation2D (all sites)
-            qcts.MassmanApprox (optional*)y
-            qcts.Massman (optional*)y
-            qcts.CalculateFluxes (used if Massman not optioned)x
-            qcts.CalculateFluxesRM (used if Massman optioned)y
-            qcts.FhvtoFh (all sites)
-            qcts.Fe_WPL (WPL computed on fluxes, as with Campbell algorithm)+x
-            qcts.Fc_WPL (WPL computed on fluxes, as with Campbell algorithm)+x
-            qcts.Fe_WPLcov (WPL computed on kinematic fluxes (ie, covariances), as with WPL80)+y
-            qcts.Fc_WPLcov (WPL computed on kinematic fluxes (ie, covariances), as with WPL80)+y
-            qcts.CalculateNetRadiation (optional)
-            qcutils.GetMergeList + qcts.MergeSeries Fsd (optional)
-            qcutils.GetMergeList + qcts.MergeSeries Fn (optional*)
-            qcts.InterpolateOverMissing (optional)
-            AverageSeriesByElements (optional)
-            qcts.CorrectFgForStorage (all sites)
-            qcts.Average3SeriesByElements (optional)
-            qcts.CalculateAvailableEnergy (optional)
-            qcck.do_qcchecks (all sites)
-            qcck.gaps (optional)
-            
-            *:  requires ancillary measurements for paratmerisation
-            +:  each site requires one pair, either Fe_WPL & Fc_WPL (default) or Fe_WPLCov & FcWPLCov
-            x:  required together in option set
-            y:  required together in option set
-        """
+    """
     # make a copy of the L2 data
     ds3 = copy.deepcopy(ds2)
     # set some attributes for this level    
     qcutils.UpdateGlobalAttributes(cf,ds3,"L3")
-    # initialise the global attribute to document the functions used
-    ds3.globalattributes['Functions'] = ''
     # put the control file name into the global attributes
     ds3.globalattributes['controlfile_name'] = cf['controlfile_name']
     # check to see if we have any imports
     qcgf.ImportSeries(cf,ds3)
-    # correct measured soil water content using empirical relationship to collected samples
-    qcts.CorrectSWC(cf,ds3)
     # apply linear corrections to the data
     qcck.do_linear(cf,ds3)
     # merge whatever humidities are available
@@ -169,7 +130,7 @@ def l3qc(cf,ds2):
     # calculate humidities (absolute, specific and relative) from whatever is available
     qcts.CalculateHumidities(ds3)
     # merge the 7500 CO2 concentration
-    qcts.MergeSeries(cf,ds3,'Cc',[0,10],convert_units=True)
+    qcts.MergeSeries(cf,ds3,'CO2',[0,10],convert_units=True)
     # PRI - disable CO2 units conversion from whatever to mg/m3
     #     - this step is, as far as I can see, redundant, see qcts.Fc_WPL()
     #qcutils.CheckUnits(ds3,"Cc","mg/m3",convert_units=True)
@@ -191,15 +152,18 @@ def l3qc(cf,ds2):
         qcts.Fe_WPL(cf,ds3)
         qcts.Fc_WPL(cf,ds3)
     # convert CO2 units if required
-    qcutils.ConvertCO2Units(cf,ds3,Cc='Cc')
+    qcutils.ConvertCO2Units(cf,ds3,Cc='CO2')
     # calculate Fc storage term - single height only at present
     qcts.CalculateFcStorage(cf,ds3)
     # convert Fc and Fc_storage units if required
     qcutils.ConvertFcUnits(cf,ds3,Fc='Fc',Fc_storage='Fc_storage')
+    # merge Fc and Fc_storage series if required
+    qcts.MergeSeries(cf, ds3, 'Fc', [0,10])
+    qcts.MergeSeries(cf, ds3, 'Fc_storage', [0,10])
     # correct Fc for storage term - only recommended if storage calculated from profile available
-    qcts.CorrectFcForStorage(cf,ds3)
+    qcts.CorrectFcForStorage(cf, ds3)
     # merge the incoming shortwave radiation
-    qcts.MergeSeries(cf,ds3,'Fsd',[0,10])
+    qcts.MergeSeries(cf, ds3, 'Fsd', [0,10])
     # calculate the net radiation from the Kipp and Zonen CNR1
     qcts.CalculateNetRadiation(cf,ds3,Fn_out='Fn_KZ',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
     qcts.MergeSeries(cf,ds3,'Fn',[0,10])
@@ -223,8 +187,6 @@ def l3qc(cf,ds2):
     qcts.CalculateAvailableEnergy(ds3,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
     # create new series using MergeSeries or AverageSeries
     qcck.CreateNewSeries(cf,ds3)
-    # create a series of daily averaged soil moisture interpolated back to the time step
-    #qcts.DailyAverageSws_Interpolated(cf,ds3,Sws_out='Sws_daily',Sws_in='Sws')
     # re-apply the quality control checks (range, diurnal and rules)
     qcck.do_qcchecks(cf,ds3)
     # coordinate gaps in the three main fluxes

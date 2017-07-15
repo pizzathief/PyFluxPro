@@ -945,7 +945,7 @@ def CalculateComponentsFromWsWd(ds):
     qcutils.CreateSeries(ds,"U",u,Flag=Wd_flag,Attr=u_attr)
     qcutils.CreateSeries(ds,"V",v,Flag=Wd_flag,Attr=v_attr)
 
-def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='Cc'):
+def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
     """
     Calculate CO2 flux storage term in the air column beneath the CO2 instrument.  This
     routine assumes the air column between the sensor and the surface is well mixed.
@@ -1500,7 +1500,7 @@ def do_solo(cf,ds4,Fc_in='Fc',Fe_in='Fe',Fh_in='Fh',Fc_out='Fc',Fe_out='Fe',Fh_o
         attr = qcutils.MakeAttributeDictionary(long_name='ANN gapfilled Sensible Heat Flux',units='W/m2',standard_name='surface_upward_sensible_heat_flux')
         qcutils.CreateSeries(ds4,Fh_out,Fh,Flag=flag,Attr=attr)
 
-def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta',Ah_in='Ah',Cc_in='Cc',ps_in='ps'):
+def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta',Ah_in='Ah',Cc_in='CO2',ps_in='ps'):
     """
         Apply Webb, Pearman and Leuning correction to carbon flux.  This
         correction is necessary to account for flux effects on density
@@ -1641,11 +1641,11 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
         if 'RelaxFeWPL' not in ds.globalattributes['Functions']:
             ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', RelaxFeWPL'
 
-def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_CSAT',q_in='q',wA_in='wA',wT_in='wT'):
+def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='wA',wT_in='wT'):
     '''
     Convert the virtual heat flux to the sensible heat flux.
     USEAGE:
-     qcts.FhvtoFh_EP(cf,ds,Fhv_in='Fhv',RhoCp_in='RhoCp',Tv_in='Tv_CSAT',wA_in='wA',rhom_in='rhom',q_in='q',wT_in='wT')
+     qcts.FhvtoFh_EP(cf,ds,Fhv_in='Fhv',RhoCp_in='RhoCp',Tv_in='Tv_SONIC_Av',wA_in='wA',rhom_in='rhom',q_in='q',wT_in='wT')
     INPUT:
      All inputs are read from the data structure.
       Fhv_in   - label of the virtual heat flux series, default is 'Fhv'
@@ -2318,7 +2318,7 @@ def MergeSeries(cf,ds,series,okflags,convert_units=False):
                 mdata[index] = ndata[index]       # replace bad primary with good secondary
                 mflag[index] = nflag[index]
             else:
-                logger.warning('  MergeSeries: secondary input series'+secondary_series+'not found')
+                logger.warning("  MergeSeries: secondary input series "+secondary_series+" not found")
     ds.mergeserieslist.append(series)
     mattr["long_name"] = mattr["long_name"]+", merged from " + SeriesNameString
     qcutils.CreateSeries(ds,series,mdata,Flag=mflag,Attr=mattr)
@@ -2488,7 +2488,7 @@ def SquareRoot(Series):
     tmp[index] = Series[index] ** .5
     return tmp
 
-def TaFromTv(cf,ds,Ta_out='Ta_CSAT',Tv_in='Tv_CSAT',Ah_in='Ah',RH_in='RH',q_in='q',ps_in='ps'):
+def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH',q_in='q',ps_in='ps'):
     # Calculate the air temperature from the virtual temperature, the
     # absolute humidity and the pressure.
     # NOTE: the virtual temperature is used in place of the air temperature
@@ -2527,8 +2527,6 @@ def TaFromTv(cf,ds,Ta_out='Ta_CSAT',Tv_in='Tv_CSAT',Ah_in='Ah',RH_in='RH',q_in='
     Ta_flag[index] = 15
     attr = qcutils.MakeAttributeDictionary(long_name='Ta calculated from Tv using '+Tv_in,units='C',standard_name='air_temperature')
     qcutils.CreateSeries(ds,Ta_out,Ta_data,Flag=Ta_flag,Attr=attr)
-    if 'TaFromTv' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', TaFromTv'
 
 def TransformAlternate(TList,DateTime,Series,ts=30):
     # Apply polynomial transform to data series being used as replacement data for gap filling
