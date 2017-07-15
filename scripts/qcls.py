@@ -158,8 +158,8 @@ def l3qc(cf,ds2):
     # convert Fc and Fc_storage units if required
     qcutils.ConvertFcUnits(cf,ds3,Fc='Fc',Fc_storage='Fc_storage')
     # merge Fc and Fc_storage series if required
-    qcts.MergeSeries(cf, ds3, 'Fc')
-    qcts.MergeSeries(cf, ds3, 'Fc_storage')
+    qcts.MergeSeries(cf, ds3, 'Fc',save_originals=True)
+    qcts.MergeSeries(cf, ds3, 'Fc_storage',save_originals=True)
     # correct Fc for storage term - only recommended if storage calculated from profile available
     qcts.CorrectFcForStorage(cf, ds3)
     # merge the incoming shortwave radiation
