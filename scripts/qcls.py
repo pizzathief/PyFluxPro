@@ -125,12 +125,12 @@ def l3qc(cf,ds2):
     # get the air temperature from the CSAT virtual temperature
     qcts.TaFromTv(cf,ds3)
     # merge the HMP and corrected CSAT data
-    qcts.MergeSeries(cf,ds3,'Ta',[0,10],convert_units=True)
+    qcts.MergeSeries(cf,ds3,'Ta',convert_units=True)
     qcutils.CheckUnits(ds3,"Ta","C",convert_units=True)
     # calculate humidities (absolute, specific and relative) from whatever is available
     qcts.CalculateHumidities(ds3)
     # merge the 7500 CO2 concentration
-    qcts.MergeSeries(cf,ds3,'CO2',[0,10],convert_units=True)
+    qcts.MergeSeries(cf,ds3,'CO2',convert_units=True)
     # PRI - disable CO2 units conversion from whatever to mg/m3
     #     - this step is, as far as I can see, redundant, see qcts.Fc_WPL()
     #qcutils.CheckUnits(ds3,"Cc","mg/m3",convert_units=True)
@@ -158,19 +158,19 @@ def l3qc(cf,ds2):
     # convert Fc and Fc_storage units if required
     qcutils.ConvertFcUnits(cf,ds3,Fc='Fc',Fc_storage='Fc_storage')
     # merge Fc and Fc_storage series if required
-    qcts.MergeSeries(cf, ds3, 'Fc', [0,10])
-    qcts.MergeSeries(cf, ds3, 'Fc_storage', [0,10])
+    qcts.MergeSeries(cf, ds3, 'Fc')
+    qcts.MergeSeries(cf, ds3, 'Fc_storage')
     # correct Fc for storage term - only recommended if storage calculated from profile available
     qcts.CorrectFcForStorage(cf, ds3)
     # merge the incoming shortwave radiation
-    qcts.MergeSeries(cf, ds3, 'Fsd', [0,10])
+    qcts.MergeSeries(cf, ds3, 'Fsd')
     # calculate the net radiation from the Kipp and Zonen CNR1
     qcts.CalculateNetRadiation(cf,ds3,Fn_out='Fn_KZ',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
-    qcts.MergeSeries(cf,ds3,'Fn',[0,10])
-    # combine wind speed from the Wind Sentry and  the CSAT
-    qcts.MergeSeries(cf,ds3,'Ws',[0,10])
-    # combine wind direction from the Wind Sentry and  the CSAT
-    qcts.MergeSeries(cf,ds3,'Wd',[0,10])
+    qcts.MergeSeries(cf,ds3,'Fn')
+    # combine wind speed from the Wind Sentry and the SONIC
+    qcts.MergeSeries(cf,ds3,'Ws')
+    # combine wind direction from the Wind Sentry and the SONIC
+    qcts.MergeSeries(cf,ds3,'Wd')
     # correct soil heat flux for storage
     #    ... either average the raw ground heat flux, soil temperature and moisture
     #        and then do the correction (OzFlux "standard")

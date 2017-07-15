@@ -2243,22 +2243,23 @@ def MergeHumidities(cf,ds,convert_units=False):
         logger.error(" MergeHumidities: No humidities found in control file, returning ...")
         return
     if "Ah" in cf["Variables"]:
-        MergeSeries(cf,ds,"Ah",[0,10],convert_units=convert_units)
+        MergeSeries(cf,ds,"Ah",convert_units=convert_units)
         qcutils.CheckUnits(ds,"Ah","g/m3",convert_units=True)
     if "RH" in cf["Variables"]:
-        MergeSeries(cf,ds,'RH',[0,10],convert_units=convert_units)
+        MergeSeries(cf,ds,'RH',convert_units=convert_units)
         qcutils.CheckUnits(ds,"RH","%",convert_units=True)
     if "q" in cf["Variables"]:
-        MergeSeries(cf,ds,'q',[0,10],convert_units=convert_units)
+        MergeSeries(cf,ds,'q',convert_units=convert_units)
         qcutils.CheckUnits(ds,"q","kg/kg",convert_units=False)
 
-def MergeSeries(cf,ds,series,okflags,convert_units=False):
+def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False):
     """
         Merge two series of data to produce one series containing the best data from both.
-        Calling syntax is: MergeSeries(cf,ds,series,okflags)
+        Calling syntax is: MergeSeries(cf,ds,series,okflags=okflags.convert_units=False)
          where ds is the data structure containing all series
                series (str) is the label of the destination series
                okflags (list) is a list of QC flag values for which the data is considered acceptable
+               convert_units (boolean) if True, we will attempt to match units if they are not the same
         If the QC flag for Primary is in okflags, the value from Primary is placed in destination.
         If the QC flag for Primary is not in okflags but the QC flag for Secondary is, the value
         from Secondary is placed in Destination.
