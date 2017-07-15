@@ -2252,18 +2252,25 @@ def MergeHumidities(cf,ds,convert_units=False):
         MergeSeries(cf,ds,'q',convert_units=convert_units)
         qcutils.CheckUnits(ds,"q","kg/kg",convert_units=False)
 
-def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False):
+def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False,save_originals=False):
     """
-        Merge two series of data to produce one series containing the best data from both.
-        Calling syntax is: MergeSeries(cf,ds,series,okflags=okflags.convert_units=False)
+    Purpose:
+     Merge two series of data to produce one series containing the best data from both.
+     If the QC flag for Primary is in okflags, the value from Primary is placed in destination.
+     If the QC flag for Primary is not in okflags but the QC flag for Secondary is, the value
+     from Secondary is placed in Destination.
+    Usage:
+     qcts.MergeSeries(cf,ds,series,okflags=okflags.convert_units=False,save_originals=False)
          where ds is the data structure containing all series
                series (str) is the label of the destination series
                okflags (list) is a list of QC flag values for which the data is considered acceptable
                convert_units (boolean) if True, we will attempt to match units if they are not the same
-        If the QC flag for Primary is in okflags, the value from Primary is placed in destination.
-        If the QC flag for Primary is not in okflags but the QC flag for Secondary is, the value
-        from Secondary is placed in Destination.
-        """
+               save_originals (boolean) it True, original series will be saved before merge
+    Author: PRI
+    Date: Back in the day
+    History:
+     16/7/201 - made okflags optional, implemented save_originals
+    """
     # check to see if the series is specified in the control file
     section = qcutils.get_cfsection(cf,series=series)
     if len(section)==0: return
@@ -2279,11 +2286,17 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False):
         return
     if nSeries==1:
         logger.info(' Merging '+str(srclist)+'==>'+series)
-        if srclist[0] not in ds.series.keys():
-            logger.warning('  MergeSeries: primary input series '+srclist[0]+' not found for '+str(series))
+        primary_series = srclist[0]
+        if primary_series not in ds.series.keys():
+            msg = "  MergeSeries: primary input series "+primary_series
+            msg = msg+" not found for "+str(series)
+            logger.warning(msg)
             return
-        mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,srclist[0])
-        SeriesNameString = srclist[0]
+        mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,primary_series)
+        if (primary_series==series) and save_originals:
+            tmp_label = primary_series+"_b4merge"
+            qcutils.CreateSeries(ds,tmp_label,mdata,Flag=mflag,Attr=mattr)
+        SeriesNameString = primary_series
     else:
         logger.info(' Merging '+str(srclist)+'==>'+series)
         if srclist[0] not in ds.series.keys():
@@ -2291,11 +2304,17 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False):
             return
         primary_series = srclist[0]
         mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,primary_series)
+        if (primary_series==series) and save_originals:
+            tmp_label = primary_series+"_b4merge"
+            qcutils.CreateSeries(ds,tmp_label,mdata,Flag=mflag,Attr=mattr)
         SeriesNameString = primary_series
         srclist.remove(primary_series)
         for secondary_series in srclist:
             if secondary_series in ds.series.keys():
                 ndata,nflag,nattr = qcutils.GetSeriesasMA(ds,secondary_series)
+                if (secondary_series==series) and save_originals:
+                    tmp_label = secondary_series+"_b4merge"
+                    qcutils.CreateSeries(ds,tmp_label,ndata,Flag=nflag,Attr=nattr)
                 if nattr["units"]!=mattr["units"]:
                     msg = " "+secondary_series+" units don't match "+primary_series+" units"
                     logger.warning(msg)

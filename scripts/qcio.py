@@ -2069,7 +2069,7 @@ def xl_read_series(cf):
                         ds.series[label]["Data"] = numpy.ones(nrecs,dtype=numpy.float64)*float(c.missing_value)
                         ds.series[label]["Flag"] = numpy.ones(nrecs,dtype=numpy.int32)
                         for i in range(nrecs):
-                            if (types[i]==3) or (types[i]==2):
+                            if (types[i]==3) or (types[i]==2) and (values[i]!=c.missing_value):
                                 ds.series[label]["Data"][i] = numpy.float64(values[i])
                                 ds.series[label]["Flag"][i] = numpy.int32(0)
                     else:
