@@ -364,7 +364,49 @@ def do_SONICcheck(cf, ds, code=3):
             logger.error("  SONICcheck: series "+str(label)+" not found in data")
     return
 
-def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
+#def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
+    #if len(section)==0 and len(series)==0: return
+    #if len(section)==0: section = qcutils.get_cfsection(cf,series=series,mode='quiet')
+    #if "DependencyCheck" not in cf[section][series].keys(): return
+    #if "Source" not in cf[section][series]["DependencyCheck"]:
+        #msg = " DependencyCheck: keyword Source not found for series "+series+", skipping ..."
+        #logger.error(msg)
+        #return
+    #if mode=="verbose":
+        #msg = " Doing DependencyCheck for "+series
+        #logger.info(msg)
+    ## get the precursor source list from the control file
+    #source_list = ast.literal_eval(cf[section][series]["DependencyCheck"]["Source"])
+    ## get the data
+    #dependent_data,dependent_flag,dependent_attr = qcutils.GetSeriesasMA(ds,series)
+    ## loop over the precursor source list
+    #for item in source_list:
+        ## check the precursor is in the data structure
+        #if item not in ds.series.keys():
+            #msg = " DependencyCheck: "+series+" precursor series "+item+" not found, skipping ..."
+            #logger.warning(msg)
+            #continue
+        ## get the precursor data
+        #precursor_data,precursor_flag,precursor_attr = qcutils.GetSeriesasMA(ds,item)
+        ## mask the dependent data where the precurso is masked
+        #dependent_data = numpy.ma.masked_where(numpy.ma.getmaskarray(precursor_data)==True,dependent_data)
+        ## get an index of masked precursor data
+        #index = numpy.ma.where(numpy.ma.getmaskarray(precursor_data)==True)[0]
+        ## set the dependent QC flag
+        #dependent_flag[index] = numpy.int32(code)
+    ## put the data back into the data structure
+    #dependent_attr["DependencyCheck_source"] = str(source_list)
+    #qcutils.CreateSeries(ds,series,dependent_data,Flag=dependent_flag,Attr=dependent_attr)
+    #if 'do_dependencychecks' not in ds.globalattributes['Functions']:
+        #ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_dependencychecks'
+
+def do_dependencycheck(cf, ds, section='', series='', code=23, mode="quiet"):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: Back in the day
+    """
     if len(section)==0 and len(series)==0: return
     if len(section)==0: section = qcutils.get_cfsection(cf,series=series,mode='quiet')
     if "DependencyCheck" not in cf[section][series].keys(): return
@@ -378,7 +420,7 @@ def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
     # get the precursor source list from the control file
     source_list = ast.literal_eval(cf[section][series]["DependencyCheck"]["Source"])
     # get the data
-    dependent_data,dependent_flag,dependent_attr = qcutils.GetSeriesasMA(ds,series)
+    dependent_data,dependent_flag,dependent_attr = qcutils.GetSeries(ds, series)
     # loop over the precursor source list
     for item in source_list:
         # check the precursor is in the data structure
@@ -387,18 +429,18 @@ def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
             logger.warning(msg)
             continue
         # get the precursor data
-        precursor_data,precursor_flag,precursor_attr = qcutils.GetSeriesasMA(ds,item)
-        # mask the dependent data where the precurso is masked
-        dependent_data = numpy.ma.masked_where(numpy.ma.getmaskarray(precursor_data)==True,dependent_data)
-        # get an index of masked precursor data
-        index = numpy.ma.where(numpy.ma.getmaskarray(precursor_data)==True)[0]
+        precursor_data,precursor_flag,precursor_attr = qcutils.GetSeries(ds,item)
+        # mask the dependent data where the precursor flag shows data not OK
+        dependent_data = numpy.ma.masked_where(numpy.mod(precursor_flag, 10)!=0, dependent_data)
+        # get an index where the precursor flag shows data not OK
+        idx = numpy.ma.where(numpy.mod(precursor_flag, 10)!=0)[0]
         # set the dependent QC flag
-        dependent_flag[index] = numpy.int32(code)
+        dependent_flag[idx] = numpy.int32(code)
     # put the data back into the data structure
     dependent_attr["DependencyCheck_source"] = str(source_list)
     qcutils.CreateSeries(ds,series,dependent_data,Flag=dependent_flag,Attr=dependent_attr)
-    if 'do_dependencychecks' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_dependencychecks'
+    # our work here is done
+    return
 
 def do_diurnalcheck(cf,ds,section='',series='',code=5):
     if 'DiurnalCheck' not in cf[section][series].keys(): return
@@ -673,32 +715,89 @@ def do_linear(cf,ds):
     if 'do_linear' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_linear'
 
-def do_rangecheck(cf,ds,section='',series='',code=2):
-    '''Applies a range check to data series listed in the control file.  Data values that
-       are less than the lower limit or greater than the upper limit are replaced with
-       c.missing_value and the corresponding QC flag element is set to 2.'''
-    if 'RangeCheck' not in cf[section][series].keys(): return
-    if 'Lower' in cf[section][series]['RangeCheck'].keys():
-        lwr = numpy.array(eval(cf[section][series]['RangeCheck']['Lower']))
-        valid_lower = numpy.min(lwr)
-        lwr = lwr[ds.series['Month']['Data']-1]
-        index = numpy.where((abs(ds.series[series]['Data']-numpy.float64(c.missing_value))>c.eps)&
-                                (ds.series[series]['Data']<lwr))
-        ds.series[series]['Data'][index] = numpy.float64(c.missing_value)
-        ds.series[series]['Flag'][index] = numpy.int32(code)
-        ds.series[series]['Attr']['rangecheck_lower'] = cf[section][series]['RangeCheck']['Lower']
-    if 'Upper' in cf[section][series]['RangeCheck'].keys():
-        upr = numpy.array(eval(cf[section][series]['RangeCheck']['Upper']))
-        valid_upper = numpy.min(upr)
-        upr = upr[ds.series['Month']['Data']-1]
-        index = numpy.where((abs(ds.series[series]['Data']-numpy.float64(c.missing_value))>c.eps)&
-                                (ds.series[series]['Data']>upr))
-        ds.series[series]['Data'][index] = numpy.float64(c.missing_value)
-        ds.series[series]['Flag'][index] = numpy.int32(code)
-        ds.series[series]['Attr']['rangecheck_upper'] = cf[section][series]['RangeCheck']['Upper']
-        ds.series[series]['Attr']['valid_range'] = str(valid_lower)+','+str(valid_upper)
-    if 'RangeCheck' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',RangeCheck'
+#def do_rangecheck(cf,ds,section='',series='',code=2):
+    #'''Applies a range check to data series listed in the control file.  Data values that
+       #are less than the lower limit or greater than the upper limit are replaced with
+       #c.missing_value and the corresponding QC flag element is set to 2.'''
+    #if 'RangeCheck' not in cf[section][series].keys(): return
+    #if 'Lower' in cf[section][series]['RangeCheck'].keys():
+        #lwr = numpy.array(eval(cf[section][series]['RangeCheck']['Lower']))
+        #valid_lower = numpy.min(lwr)
+        #lwr = lwr[ds.series['Month']['Data']-1]
+        #index = numpy.where((abs(ds.series[series]['Data']-numpy.float64(c.missing_value))>c.eps)&
+                                #(ds.series[series]['Data']<lwr))
+        #ds.series[series]['Data'][index] = numpy.float64(c.missing_value)
+        #ds.series[series]['Flag'][index] = numpy.int32(code)
+        #ds.series[series]['Attr']['rangecheck_lower'] = cf[section][series]['RangeCheck']['Lower']
+    #if 'Upper' in cf[section][series]['RangeCheck'].keys():
+        #upr = numpy.array(eval(cf[section][series]['RangeCheck']['Upper']))
+        #valid_upper = numpy.min(upr)
+        #upr = upr[ds.series['Month']['Data']-1]
+        #index = numpy.where((abs(ds.series[series]['Data']-numpy.float64(c.missing_value))>c.eps)&
+                                #(ds.series[series]['Data']>upr))
+        #ds.series[series]['Data'][index] = numpy.float64(c.missing_value)
+        #ds.series[series]['Flag'][index] = numpy.int32(code)
+        #ds.series[series]['Attr']['rangecheck_upper'] = cf[section][series]['RangeCheck']['Upper']
+        #ds.series[series]['Attr']['valid_range'] = str(valid_lower)+','+str(valid_upper)
+    #if 'RangeCheck' not in ds.globalattributes['Functions']:
+        #ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',RangeCheck'
+
+def do_rangecheck(cf, ds, section='', series='', code=2):
+    """
+    Purpose:
+     Applies a range check to data series listed in the control file.  Data values that
+     are less than the lower limit or greater than the upper limit are replaced with
+     c.missing_value and the corresponding QC flag element is set to 2.
+    Usage:
+    Author: PRI
+    Date: Back in the day
+    """
+    # check that RangeCheck has been requested for this series
+    if 'RangeCheck' not in cf[section][series].keys():
+        return
+    # check that the upper and lower limits have been given
+    if ("Lower" not in cf[section][series]["RangeCheck"].keys() or
+        "Upper" not in cf[section][series]["RangeCheck"].keys()):
+        msg = "RangeCheck: key not found in control file for "+series+", skipping ..."
+        logger.warning(msg)
+        return
+    # check the QC flag reset switch
+    opt = qcutils.get_keyvaluefromcf(cf, [section, series, "RangeCheck"], "reset_qcflag", default="no")
+    reset_qcflag = False
+    if opt.lower() in ["yes", "y", "true"]:
+        reset_qcflag = True
+    # get the upper and lower limits
+    upr = numpy.array(eval(cf[section][series]['RangeCheck']['Upper']))
+    valid_upper = numpy.min(upr)
+    upr = upr[ds.series['Month']['Data']-1]
+    lwr = numpy.array(eval(cf[section][series]['RangeCheck']['Lower']))
+    valid_lower = numpy.min(lwr)
+    lwr = lwr[ds.series['Month']['Data']-1]
+    # get the data, flag and attributes
+    data, flag, attr = qcutils.GetSeriesasMA(ds, series)
+    # convert the data from a masked array to an ndarray so the range check works
+    data = numpy.ma.filled(data, fill_value=c.missing_value)
+    # do we need to reset the QC flag for elements inside the range?
+    # this allows us to include the missing data value (c.missing_value) in the
+    # range of acceptable data values and have the missing data QC flag code (1)
+    # reset to OK data (0) for these elements
+    if reset_qcflag:
+        # get the indices of values within the acceptable range
+        idx = numpy.where((data>=lwr)&(data<=upr))[0]
+        flag[idx] = numpy.int32(0)
+    # get the indices of elements outside this range
+    idx = numpy.where((data<lwr)|(data>upr))[0]
+    # set elements outside range to missing and set the QC flag
+    data[idx] = numpy.float64(c.missing_value)
+    flag[idx] = numpy.int32(code)
+    # update the variable attributes
+    attr["rangecheck_lower"] = cf[section][series]["RangeCheck"]["Lower"]
+    attr["rangecheck_upper"] = cf[section][series]["RangeCheck"]["Upper"]
+    attr["valid_range"] = str(valid_lower)+","+str(valid_upper)
+    # and now put the data back into the data structure
+    qcutils.CreateSeries(ds, series, data, Flag=flag, Attr=attr)
+    # now we can return
+    return
 
 def do_qcchecks(cf,ds,mode="verbose"):
     if "nc_level" in ds.globalattributes:

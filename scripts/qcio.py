@@ -1596,7 +1596,9 @@ def nc_read_series(ncFullName,checktimestep=True,fixtimestepmethod=""):
         ds.series[ThisOne]["Attr"] = attr
     ncFile.close()
     # make sure all values of -9999 have non-zero QC flag
-    qcutils.CheckQCFlags(ds)
+    # NOTE: the following was a quick and dirty fix for something a long time ago
+    #       and needs to be retired
+    #qcutils.CheckQCFlags(ds)
     # get a series of Python datetime objects
     if "time" in ds.series.keys():
         time,f,a = qcutils.GetSeries(ds,"time")
@@ -2357,11 +2359,11 @@ def xl_write_series(ds, xlfullname, outputlist=None):
             xlDataSheet.write(j+3,xlcol,float(ds.series[ThisOne]['Data'][j]))
         # check to see if this variable has a quality control flag
         if 'Flag' in ds.series[ThisOne].keys():
-            # write the QC flag name to the xk file
+            # write the QC flag name to the xls file
             xlFlagSheet.write(2,xlcol,ThisOne)
             # specify the format of the QC flag (integer)
             d_xf = xlwt.easyxf(num_format_str='0')
-            # loop over QV flag values and write to xl file
+            # loop over QC flag values and write to xls file
             for j in range(nRecs):
                 xlFlagSheet.write(j+3,xlcol,int(ds.series[ThisOne]['Flag'][j]),d_xf)
         # increment the column pointer
