@@ -7,7 +7,8 @@ import logging
 import time
 # 3rd party
 import numpy
-# pf modules
+import dateutil.parser
+# pfp modules
 import qcrp
 import qcts
 import qcutils
@@ -20,7 +21,7 @@ def ApplyQCChecks(variable):
      Apply the QC checks speified in the control file object to a single variable
     Usage:
      qcck.ApplyQCChecks(variable)
-     where variable is a variable dictionary as returned by qcutils.GetVariableAsDict()
+     where variable is a variable dictionary as returned by qcutils.GetVariable()
     Author: PRI
     Date: September 2016
     """
@@ -364,7 +365,7 @@ def do_SONICcheck(cf, ds, code=3):
             logger.error("  SONICcheck: series "+str(label)+" not found in data")
     return
 
-def do_dependencycheck(cf, ds, section='', series='', code=23, mode="quiet"):
+def do_dependencycheck(cf, ds, section, series, code=23, mode="quiet"):
     """
     Purpose:
     Usage:
@@ -406,7 +407,7 @@ def do_dependencycheck(cf, ds, section='', series='', code=23, mode="quiet"):
     # our work here is done
     return
 
-def do_diurnalcheck(cf,ds,section='',series='',code=5):
+def do_diurnalcheck(cf,ds,section,series,code=5):
     if 'DiurnalCheck' not in cf[section][series].keys(): return
     if 'NumSd' not in cf[section][series]['DiurnalCheck'].keys(): return
     dt = float(ds.globalattributes['time_step'])
@@ -476,7 +477,7 @@ def do_EC155check(cf,ds):
     if 'EC155Check' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',EC155Check'
 
-def do_excludedates(cf,ds,section='',series='',code=6):
+def do_excludedates(cf,ds,section,series,code=6):
     if 'ExcludeDates' not in cf[section][series].keys(): return
     ldt = ds.series['DateTime']['Data']
     ExcludeList = cf[section][series]['ExcludeDates'].keys()
@@ -497,7 +498,7 @@ def do_excludedates(cf,ds,section='',series='',code=6):
     if 'ExcludeDates' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',ExcludeDates'
 
-def do_excludehours(cf,ds,section='',series='',code=7):
+def do_excludehours(cf,ds,section,series,code=7):
     if 'ExcludeHours' not in cf[section][series].keys(): return
     ldt = ds.series['DateTime']['Data']
     ExcludeList = cf[section][series]['ExcludeHours'].keys()
@@ -621,7 +622,10 @@ def do_li7500check(cf, ds, code=4):
         logger.info("  IRGACheck: "+label+" rejected "+str(numpy.size(index))+" points")
         ds.series["Diag_IRGA"]["Flag"] = ds.series["Diag_IRGA"]["Flag"] + ds.series[label]["Flag"]
     index = numpy.where((ds.series["Diag_IRGA"]["Flag"] != 0))
-    logger.info("  IRGACheck: Total rejected is " + str(numpy.size(index)))
+    msg = "  IRGACheck: Total rejected is " + str(numpy.size(index))
+    percent = float(100)*numpy.size(index)/numpy.size(ds.series["Diag_IRGA"]["Flag"])
+    msg = msg + " (" + str(int(percent+0.5)) + "%)"
+    logger.info(msg)
     for label in irga_dependents:
         ds.series[label]['Data'][index] = numpy.float64(c.missing_value)
         ds.series[label]['Flag'][index] = numpy.int32(code)
@@ -679,7 +683,7 @@ def do_linear(cf,ds):
     if 'do_linear' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_linear'
 
-def do_rangecheck(cf, ds, section='', series='', code=2):
+def do_rangecheck(cf, ds, section, series, code=2):
     """
     Purpose:
      Applies a range check to data series listed in the control file.  Data values that
@@ -762,7 +766,7 @@ def do_qcchecks(cf,ds,mode="verbose"):
                 logger.warning(msg)
             continue
         # if so, do the QC checks
-        do_qcchecks_oneseries(cf,ds,section=section,series=series)
+        do_qcchecks_oneseries(cf,ds,section,series)
     # loop over the series in the control file
     # second time for dependencies
     for series in series_list:
@@ -773,26 +777,30 @@ def do_qcchecks(cf,ds,mode="verbose"):
                 logger.warning(msg)
             continue
         # if so, do dependency check
-        do_dependencycheck(cf,ds,section=section,series=series,code=23,mode="quiet")
+        do_dependencycheck(cf,ds,section,series,code=23,mode="quiet")
 
-def do_qcchecks_oneseries(cf,ds,section='',series=''):
+def do_qcchecks_oneseries(cf,ds,section,series):
     if len(section)==0:
         section = qcutils.get_cfsection(cf,series=series,mode='quiet')
         if len(section)==0: return
     # do the range check
-    do_rangecheck(cf,ds,section=section,series=series,code=2)
+    do_rangecheck(cf,ds,section,series,code=2)
+    # do the lower range check
+    do_lowercheck(cf,ds,section,series,code=2)
+    # do the upper range check
+    do_uppercheck(cf,ds,section,series,code=2)
     # do the diurnal check
-    do_diurnalcheck(cf,ds,section=section,series=series,code=5)
+    do_diurnalcheck(cf,ds,section,series,code=5)
     # do exclude dates
-    do_excludedates(cf,ds,section=section,series=series,code=6)
+    do_excludedates(cf,ds,section,series,code=6)
     # do exclude hours
-    do_excludehours(cf,ds,section=section,series=series,code=7)
+    do_excludehours(cf,ds,section,series,code=7)
     # do wind direction corrections
-    do_winddirectioncorrection(cf,ds,section=section,series=series)
+    do_winddirectioncorrection(cf,ds,section,series)
     if 'do_qcchecks' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_qcchecks'
 
-def do_winddirectioncorrection(cf,ds,section='',series=''):
+def do_winddirectioncorrection(cf,ds,section,series):
     if 'CorrectWindDirection' not in cf[section][series].keys(): return
     qcts.CorrectWindDirection(cf,ds,series)
 
@@ -817,6 +825,97 @@ def rangecheckseriesupper(data,upper):
         index = numpy.where((abs(data-numpy.float64(c.missing_value))>c.eps)&(data>upper))[0]
         data[index] = numpy.float64(c.missing_value)
     return data
+
+def do_lowercheck(cf,ds,section,series,code=2):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: February 2017
+    """
+    # check to see if LowerCheck requested for this variable
+    if "LowerCheck" not in cf[section][series]:
+        return
+    # Check to see if limits have been specified
+    if len(cf[section][series]["LowerCheck"].keys()) == 0:
+        msg = "do_lowercheck: no date ranges specified"
+        logger.info(msg)
+        return
+
+    ldt = ds.series["DateTime"]["Data"]
+    ts = ds.globalattributes["time_step"]
+    data, flag, attr = qcutils.GetSeriesasMA(ds, series)
+    
+    lc_list = list(cf[section][series]["LowerCheck"].keys())
+    for n,item in enumerate(lc_list):
+        # this should be a list and we should probably check for compliance
+        lwr_info = cf[section][series]["LowerCheck"][item]
+        attr["lowercheck_"+str(n)] = str(lwr_info)
+        start_date = dateutil.parser.parse(lwr_info[0])
+        su = float(lwr_info[1])
+        end_date = dateutil.parser.parse(lwr_info[2])
+        eu = float(lwr_info[3])
+        # get the start and end indices
+        si = qcutils.GetDateIndex(ldt, start_date, ts=ts, default=0, match="exact")
+        ei = qcutils.GetDateIndex(ldt, end_date, ts=ts, default=len(ldt)-1, match="exact")
+        # get the segment of data between this start and end date
+        seg_data = data[si:ei+1]
+        seg_flag = flag[si:ei+1]
+        x = numpy.arange(si, ei+1, 1)
+        lower = numpy.interp(x, [si,ei], [su,eu])
+        index = numpy.ma.where((seg_data<lower))[0]
+        seg_data[index] = numpy.ma.masked
+        seg_flag[index] = numpy.int32(code)
+        data[si:ei+1] = seg_data
+        flag[si:ei+1] = seg_flag
+    # now put the data back into the data structure
+    qcutils.CreateSeries(ds, series, data, Flag=flag, Attr=attr)
+    return
+
+def do_uppercheck(cf,ds,section,series,code=2):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: February 2017
+    """
+    # check to see if UpperCheck requested for this variable
+    if "UpperCheck" not in cf[section][series]:
+        return
+    # Check to see if limits have been specified
+    if len(cf[section][series]["UpperCheck"].keys()) == 0:
+        msg = "do_uppercheck: no date ranges specified"
+        logger.info(msg)
+        return
+
+    ldt = ds.series["DateTime"]["Data"]
+    ts = ds.globalattributes["time_step"]
+    data, flag, attr = qcutils.GetSeriesasMA(ds, series)
+    
+    lc_list = list(cf[section][series]["UpperCheck"].keys())
+    for n,item in enumerate(lc_list):
+        # this should be a list and we should probably check for compliance
+        upr_info = cf[section][series]["UpperCheck"][item]
+        attr["uppercheck_"+str(n)] = str(upr_info)
+        start_date = dateutil.parser.parse(upr_info[0])
+        su = float(upr_info[1])
+        end_date = dateutil.parser.parse(upr_info[2])
+        eu = float(upr_info[3])
+        # get the start and end indices
+        si = qcutils.GetDateIndex(ldt, start_date, ts=ts, default=0, match="exact")
+        ei = qcutils.GetDateIndex(ldt, end_date, ts=ts, default=len(ldt)-1, match="exact")
+        seg_data = data[si:ei+1]
+        seg_flag = flag[si:ei+1]
+        x = numpy.arange(si, ei+1, 1)
+        upper = numpy.interp(x, [si,ei], [su,eu])
+        index = numpy.ma.where((seg_data>upper))[0]
+        seg_data[index] = numpy.ma.masked
+        seg_flag[index] = numpy.int32(code)
+        data[si:ei+1] = seg_data
+        flag[si:ei+1] = seg_flag
+    # now put the data back into the data structure
+    qcutils.CreateSeries(ds, series, data, Flag=flag, Attr=attr)
+    return
 
 def UpdateVariableAttributes_QC(cf, variable):
     """

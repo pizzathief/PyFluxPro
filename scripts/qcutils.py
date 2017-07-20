@@ -81,18 +81,25 @@ def CheckQCFlags(ds):
     Author: PRI
     Date: August 2014
     """
+    msg = " Checking missing data and QC flags are consistent"
+    logger.info(msg)
     # force any values of -9999 with QC flags of 0 to have a QC flag of 8
     for ThisOne in ds.series.keys():
         data = numpy.ma.masked_values(ds.series[ThisOne]["Data"],-9999)
         flag = numpy.ma.masked_equal(numpy.mod(ds.series[ThisOne]["Flag"],10),0)
         mask = data.mask&flag.mask
         index = numpy.ma.where(mask==True)[0]
-        ds.series[ThisOne]["Flag"][index] = numpy.int32(8)
-    # force all values != -9999 to have QC flag = 0, 10, 20 etc
-    for ThisOne in ds.series.keys():
-        index = numpy.where((abs(ds.series[ThisOne]['Data']-numpy.float64(c.missing_value))>c.eps)&
-                            (numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))
-        ds.series[ThisOne]["Flag"][index] = numpy.int32(0)
+        if len(index)!=0:
+            msg = " "+ThisOne+" has "+str(len(index))+" missing values flagged OK"
+            logger.warning(msg)
+            pass
+        #ds.series[ThisOne]["Flag"][index] = numpy.int32(8)
+    ## force all values != -9999 to have QC flag = 0, 10, 20 etc
+    #for ThisOne in ds.series.keys():
+        #index = numpy.where((abs(ds.series[ThisOne]['Data']-numpy.float64(c.missing_value))>c.eps)&
+                            #(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))
+        #ds.series[ThisOne]["Flag"][index] = numpy.int32(0)
+    return
 
 def CheckTimeStep(ds):
     """
@@ -901,14 +908,14 @@ def GetRangesFromCF(cf,ThisOne,mode="verbose"):
         lower, upper = None
     return lower, upper
 
-def GetDateIndex(dts,date,ts=30,default=0,match='exact'):
+def GetDateIndex(ldt,date,ts=30,default=0,match='exact'):
     """
     Purpose:
      Return the index of a date/datetime string in an array of datetime objects
     Usage:
-     si = qcutils.GetDateIndex(datetimeseries,date_str,ts=30,default=0,match='exact')
+     si = qcutils.GetDateIndex(ldt,date_str,ts=30,default=0,match='exact')
     where
-     dts      - array of datetime objects
+     ldt      - array of datetime objects
      date_str - a date or date/time string in a format dateutils can parse
      ts       - time step for the data, optional (integer)
      default  - default value, optional (integer)
@@ -932,53 +939,53 @@ def GetDateIndex(dts,date,ts=30,default=0,match='exact'):
     Author: PRI
     Date: Back in the day
     """
-    try:
-        if len(date)!=0:
-            i = dts.index(dateutil.parser.parse(date))
-        else:
-            if default==-1:
-                i = len(dts)-1
-            else:
-                i = default
-    except ValueError:
-        if default==-1:
-            i = len(dts)-1
+    if default == -1:
+        default = len(ldt)-1
+    if isinstance(date, str):
+        date = dateutil.parser.parse(date)
+    if isinstance(date, datetime.datetime):
+        if (date>=ldt[0]) and (date<=ldt[-1]):
+            i = numpy.where(numpy.array(ldt) == date)[0][0]
         else:
             i = default
+    else:
+        msg = " Unrecognised object passed in as date, returning default index"
+        logger.warning(msg)
+        i = default
     if match=="exact":
         # if an exact match is required, do nothing
         pass
     elif match=="startnextmonth":
         # get to the start of the next day
-        while abs(dts[i].hour+float(dts[i].minute)/60-float(ts)/60)>c.eps:
+        while abs(ldt[i].hour+float(ldt[i].minute)/60-float(ts)/60)>c.eps:
             i = i + 1
-        while dts[i].day!=1:
+        while ldt[i].day!=1:
             i = i + int(float(24)/(float(ts)/60))
     elif match=='startnextday':
-        while abs(dts[i].hour+float(dts[i].minute)/60-float(ts)/60)>c.eps:
+        while abs(ldt[i].hour+float(ldt[i].minute)/60-float(ts)/60)>c.eps:
             i = i + 1
     elif match=="startnexthour":
         # check the time step value
         if int(ts)!=60:
             # if the time step is 60 then it is always the start of the next hour
             # we assume here that the time period ends on the datetime stamp
-            while dts[i].minute!=ts:
+            while ldt[i].minute!=ts:
                 # iterate until the minutes equal the time step
                 i = i + 1
     elif match=='endpreviousmonth':
-        while abs(dts[i].hour+float(dts[i].minute)/60)>c.eps:
+        while abs(ldt[i].hour+float(ldt[i].minute)/60)>c.eps:
             i = i - 1
-        while dts[i].day!=1:
+        while ldt[i].day!=1:
             i = i - int(float(24)/(float(ts)/60))
     elif match=='endpreviousday':
-        while abs(dts[i].hour+float(dts[i].minute)/60)>c.eps:
+        while abs(ldt[i].hour+float(ldt[i].minute)/60)>c.eps:
             i = i - 1
     elif match=="endprevioushour":
         # check the time step value
         if int(ts)!=60:
             # if the time step is 60 then it is always the end of the previous hour
             # we assume here that the time period ends on the datetime stamp
-            while dts[i].minute!=0:
+            while ldt[i].minute!=0:
                 # iterate until the minutes equal 0
                 i = i - 1
     else:
@@ -1163,7 +1170,7 @@ def GetSeriesasMA(ds,ThisOne,si=0,ei=-1,mode="truncate"):
     Series,WasND = SeriestoMA(Series)
     return Series,Flag,Attr
 
-def GetVariableAsDictionary(ds,label,si=0,ei=-1,mode="truncate"):
+def GetVariable(ds,label,si=0,ei=-1,mode="truncate",out_type="ma"):
     """
     Purpose:
      Returns a data variable from the data structure as a dictionary.
@@ -1187,10 +1194,12 @@ def GetVariableAsDictionary(ds,label,si=0,ei=-1,mode="truncate"):
       Fsd = qcutils.GetSeriesAsDict(ds,"Fsd")
     Author: PRI
     """
+    ts = int(ds.globalattributes["time_step"])
     ldt,flag,attr = GetSeries(ds,"DateTime",si=si,ei=ei,mode=mode)
     data,flag,attr = GetSeries(ds,label,si=si,ei=ei,mode=mode)
-    data,WasND = SeriestoMA(data)
-    variable = {"Label":label,"Data":data,"Flag":flag,"Attr":attr,"DateTime":numpy.array(ldt)}
+    if out_type == "ma":
+        data,WasND = SeriestoMA(data)
+    variable = {"Label":label,"Data":data,"Flag":flag,"Attr":attr,"DateTime":numpy.array(ldt),"time_step":ts}
     return variable
 
 def GetUnitsFromds(ds, ThisOne):

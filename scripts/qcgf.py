@@ -23,8 +23,13 @@ import shutil
 import statsmodels.api as sm
 import subprocess
 import sys
+import time
 import Tkinter
+import warnings
 import xlrd
+
+# suppress deprecation warning from matplotlib on use of matplotlib.pyplot.pause()
+warnings.filterwarnings("ignore",".*GUI is implemented.*")
 
 logger = logging.getLogger("pfp_log")
 
@@ -2557,7 +2562,7 @@ def gfSOLO_main(dsa,dsb,solo_info,output_list=[]):
         # get the target series label
         series = dsb.solo[output]["label_tower"]
         # clean up the target series if required
-        variable = qcutils.GetVariableAsDictionary(dsb, series)
+        variable = qcutils.GetVariable(dsb, series)
         qcck.UpdateVariableAttributes_QC(cf, variable)
         qcck.ApplyQCChecks(variable)
         qcutils.CreateVariableFromDictionary(dsb, variable)
@@ -2758,6 +2763,7 @@ def gfSOLO_plot(pd,dsa,dsb,driverlist,targetlabel,outputlabel,solo_info,si=0,ei=
     fig.savefig(figname,format='png')
     if solo_info["show_plots"]:
         plt.draw()
+        plt.pause(0.1)
         plt.ioff()
     else:
         plt.ion()

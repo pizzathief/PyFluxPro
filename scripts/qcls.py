@@ -64,6 +64,8 @@ def l1qc(cf):
     qcts.DoFunctions(cf,ds1)
     # create a series of synthetic downwelling shortwave radiation
     qcts.get_synthetic_fsd(ds1)
+    # check missing data and QC flags are consistent
+    qcutils.CheckQCFlags(ds1)
 
     return ds1
 
@@ -100,6 +102,8 @@ def l2qc(cf,ds1):
     #log.info(' Finished the albedo constraints')    # apply linear corrections to the data
     #log.info(' Applying linear corrections ...')
     qcck.do_linear(cf,ds2)
+    # check missing data and QC flags are consistent
+    qcutils.CheckQCFlags(ds2)
     # write series statistics to file
     qcio.get_seriesstats(cf,ds2)
     # write the percentage of good data as a variable attribute
@@ -178,8 +182,8 @@ def l3qc(cf,ds2):
     qcts.AverageSeriesByElements(cf,ds3,'Sws')
     if qcutils.cfoptionskeylogical(cf,Key='CorrectIndividualFg'):
         #    ... or correct the individual ground heat flux measurements (James' method)
-            qcts.CorrectIndividualFgForStorage(cf,ds3)
-            qcts.AverageSeriesByElements(cf,ds3,'Fg')
+        qcts.CorrectIndividualFgForStorage(cf,ds3)
+        qcts.AverageSeriesByElements(cf,ds3,'Fg')
     else:
         qcts.AverageSeriesByElements(cf,ds3,'Fg')
         qcts.CorrectFgForStorage(cf,ds3,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws')
@@ -193,6 +197,8 @@ def l3qc(cf,ds2):
     qcck.CoordinateFluxGaps(cf,ds3)
     # coordinate gaps in Ah_7500_Av with Fc
     qcck.CoordinateAh7500AndFcGaps(cf,ds3)
+    # check missing data and QC flags are consistent
+    qcutils.CheckQCFlags(ds3)
     # get the statistics for the QC flags and write these to an Excel spreadsheet
     qcio.get_seriesstats(cf,ds3)
     # write the percentage of good data as a variable attribute
@@ -224,9 +230,9 @@ def l4qc(cf,ds3):
     # set some attributes for this level    
     qcutils.UpdateGlobalAttributes(cf,ds4,"L4")
     ds4.cf = cf
-    # calculate the available energy
-    if "Fa" not in ds4.series.keys():
-        qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
+    ## calculate the available energy
+    #if "Fa" not in ds4.series.keys():
+        #qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
     # create a dictionary to hold the gap filling data
     ds_alt = {}
     # check to see if we have any imports
@@ -251,14 +257,14 @@ def l4qc(cf,ds3):
     if ds4.returncodes["solo"]=="quit": return ds4
     # merge the first group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="prerequisite")
-    # re-calculate the ground heat flux but only if requested in control file
-    opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
-    if opt.lower()!="no":
-        qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
-    # re-calculate the net radiation
-    qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
-    # re-calculate the available energy
-    qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
+    ## re-calculate the ground heat flux but only if requested in control file
+    #opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
+    #if opt.lower()!="no":
+        #qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
+    ## re-calculate the net radiation
+    #qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
+    ## re-calculate the available energy
+    #qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
     # merge the second group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="standard")
     # re-calculate the water vapour concentrations

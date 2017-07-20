@@ -1375,6 +1375,8 @@ def nc_concatenate(cf):
     else:
         level = "unknown"
     qcutils.UpdateGlobalAttributes(cf,ds,level)
+    # check missing data and QC flags are consistent
+    qcutils.CheckQCFlags(ds)
     # update the coverage statistics
     qcutils.get_coverage_individual(ds)
     qcutils.get_coverage_groups(ds)
@@ -1759,7 +1761,7 @@ def nc_open_write(ncFullName,nctype='NETCDF4'):
     Date: Back in the day
     """
     file_name = os.path.split(ncFullName)
-    logger.info(' Opening netCDF file '+file_name[1])
+    logger.info("Opening netCDF file "+file_name[1])
     try:
         ncFile = netCDF4.Dataset(ncFullName,'w',format=nctype)
     except:
@@ -1938,7 +1940,8 @@ def nc_write_var(ncFile, ds, ThisOne, dim):
     ncVar.setncattr("units", "none")
 
 def xl_open_write(xl_name):
-    logger.info(' Opening Excel file '+xl_name+' for writing')
+    xl_filename = os.path.basename(xl_name)
+    logger.info(' Opening '+xl_filename+' for writing')
     try:
         xl_file = xlwt.Workbook()
     except:

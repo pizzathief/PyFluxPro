@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 import numpy
 import qcutils
 from scipy.optimize import curve_fit
+import warnings
+
+# suppress warning from curve_fit that covariance could not be calculated
+warnings.filterwarnings("ignore",".*Covariance of the parameters could not be estimated*")
 
 logger = logging.getLogger("pfp_log")
 
