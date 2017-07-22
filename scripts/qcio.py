@@ -262,7 +262,9 @@ def csv_read_series(cf):
     for var in var_list:
         ds.series[var] = {}
         ds.series[var]["Data"] = data[csv_varnames[var]]
-        ds.series[var]["Flag"] = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        zeros = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        ones = numpy.ones(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        ds.series[var]["Flag"] = numpy.where(ds.series[var]["Data"]==c.missing_value,ones,zeros)
     # call the function given in the control file
     # NOTE: the function being called needs to deal with missing date values
     # and empty lines

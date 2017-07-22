@@ -63,6 +63,54 @@
 #                     in the merging of EddyPro and PFP fluxes and the QC of the result
 #                     based on the EddyPro QC flag.
 #
+# [[UpperCheck]]
+#     Purpose:
+#         Reject data greater than an upper limit
+#     Example:
+#        [[[UpperCheck]]]
+#            0 = <start_date>,<start_value>,<end_date>,<end_value>
+#        where;
+#         <start_date> - datetime string of format YYYY-MM-DD HH:mm
+#         <start_value> - upper limit value at the start datetime
+#         <end_date> - datetime string of format YYYY-MM-DD HH:mm
+#         <end_value> - upper limit value at the end datetime
+#     Syntax rules for UpperCheck:
+#         1) There can be an arbitrary number of entries under [[UpperCheck]]
+#            but each entry must have a unique number.
+#         2) Each entry must be a string of comma separated values as
+#            described above.
+#         3) The date range defined by each start_date and end_date pair
+#            must be in chronological order.
+#     Operation:
+#         The upper limit applied to the data is calculated by interpolating
+#         from the start value to the end value over the date range from
+#         start_date to end_date.
+#     Switches:
+#
+# [[LowerCheck]]
+#     Purpose:
+#         Reject data less than a lower limit
+#     Example:
+#        [[[LowerCheck]]]
+#            0 = <start_date>,<start_value>,<end_date>,<end_value>
+#        where;
+#         <start_date> - datetime string of format YYYY-MM-DD HH:mm
+#         <start_value> - lower limit value at the start datetime
+#         <end_date> - datetime string of format YYYY-MM-DD HH:mm
+#         <end_value> - lower limit value at the end datetime
+#     Syntax rules for LowerCheck:
+#         1) There can be an arbitrary number of entries under [[LowerCheck]]
+#            but each entry must have a unique number.
+#         2) Each entry must be a string of comma separated values as
+#            described above.
+#         3) The date range defined by each start_date and end_date pair
+#            must be in chronological order.
+#     Operation:
+#         The lower limit applied to the data is calculated by interpolating
+#         from the start value to the end value over the date range from
+#         start_date to end_date.
+#     Switches:
+#
 # [[DependencyCheck]]
 #     Purpose:
 #         Reject data in the target series based on rejected data in precursor series.
