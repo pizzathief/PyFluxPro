@@ -257,6 +257,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
     msmt_int = configs_dict['measurement_interval']
     
     # Get Eo for each year and compile dictionary
+    status = {"code":0,"message":"OK"}
     yearsEo_dict = {}
     yearsEo_raw_dict = {}
     yearsQC_dict = {}
@@ -308,8 +309,10 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
     # Do QC on Eo
     if len(Eo_pass_keys) != len(yearsEo_dict):
         if len(Eo_nan_fail_keys) == len(yearsEo_dict):
-            logger.error(" Could not find any values of Eo for any years! Exiting...")
-            raise RuntimeError
+            msg = "  Could not find any values of Eo for any years! Exiting..."
+            status["code"] = 1
+            status["message"] = msg
+            return yearsEo_dict, yearsQC_dict, yearsEo_raw_dict, yearsQC_raw_dict, status
         elif len(Eo_pass_keys) != 0:
             Eo_mean = numpy.array([yearsEo_dict[i] for i in Eo_pass_keys]).mean()
             all_fail_keys = Eo_range_fail_keys + Eo_nan_fail_keys
@@ -341,8 +344,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
             logger.warning(" Parameter estimates are unlikely to be robust!")
     else:
         logger.info(" Eo estimates passed QC for all years")
-        
-    return yearsEo_dict, yearsQC_dict, yearsEo_raw_dict, yearsQC_raw_dict
+    return yearsEo_dict, yearsQC_dict, yearsEo_raw_dict, yearsQC_raw_dict, status
 
 def rpLT_createdict(cf,ds,series):
     """

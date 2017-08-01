@@ -574,7 +574,7 @@ class qcgui(tk.Tk):
         cf["Options"]["call_mode"] = "interactive"
         ds6 = qcls.l6qc(cf,ds5)
         self.do_progress(text='Finished L6: '+sitename)
-        logger.info(' Finished L6: '+sitename)
+        logger.info("Finished L6: "+sitename)
         self.do_progress(text='Saving L6 partitioned data ...')           # put up the progress message
         outfilename = qcio.get_outfilenamefromcf(cf)
         if len(outfilename)==0: self.do_progress(text='An error occurred, check the console ...'); return
@@ -582,7 +582,7 @@ class qcgui(tk.Tk):
         outputlist = qcio.get_outputlistfromcf(cf,'nc')
         qcio.nc_write_series(ncFile,ds6,outputlist=outputlist)             # save the L6 data
         self.do_progress(text='Finished saving L6 partitioned data')      # tell the user we are done
-        logger.info(' Finished saving L6 partitioned data')
+        logger.info("Finished saving L6 partitioned data")
         logger.info("")
 
     def do_nc2ep_biomet(self):

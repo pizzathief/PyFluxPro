@@ -7,7 +7,8 @@ import logging
 import time
 # 3rd party
 import numpy
-# pf modules
+import dateutil.parser
+# pfp modules
 import qcrp
 import qcts
 import qcutils
@@ -20,7 +21,7 @@ def ApplyQCChecks(variable):
      Apply the QC checks speified in the control file object to a single variable
     Usage:
      qcck.ApplyQCChecks(variable)
-     where variable is a variable dictionary as returned by qcutils.GetVariableAsDict()
+     where variable is a variable dictionary as returned by qcutils.GetVariable()
     Author: PRI
     Date: September 2016
     """
@@ -316,39 +317,61 @@ def CreateNewSeries(cf,ds):
     logger.info(' Checking for new series to create')
     for ThisOne in cf['Variables'].keys():
         if 'MergeSeries' in cf['Variables'][ThisOne].keys():
-            qcts.MergeSeries(cf,ds,ThisOne,[0,10,20,30,40,50])
+            qcts.MergeSeries(cf,ds,ThisOne)
         if 'AverageSeries' in cf['Variables'][ThisOne].keys():
             qcts.AverageSeriesByElements(cf,ds,ThisOne)
 
-def do_CSATcheck(cf,ds):
-    '''Rejects data values for series specified in CSATList for times when the Diag_CSAT
-       flag is non-zero.  If the Diag_CSAT flag is not present in the data structure passed
-       to this routine, it is constructed from the QC flags of the series specified in
-       CSATList.'''
-    if "Diag_CSAT" not in ds.series.keys():
-        msg = " Diag_CSAT not found in data, skipping CSAT checks ..."
+def do_SONICcheck(cf, ds, code=3):
+    """
+    Purpose:
+     Does an implicit dependency check using the sonic diagnostic.
+    Usage:
+    Side effects:
+    Assumptions:
+    History:
+     Started life in OzFluxQC as do_CSATcheck()
+    Author: PRI
+    Date: Back in the day
+    """
+    series_list = list(ds.series.keys())
+    if "Diag_SONIC" in series_list:
+        pass
+    elif "Diag_CSAT" in series_list:
+        ds.series["Diag_SONIC"] = copy.deepcopy(ds.series["Diag_CSAT"])
+    else:
+        msg = " Sonic diagnostics not found in data, skipping sonic checks ..."
         logger.warning(msg)
         return
-    logger.info(' Doing the CSAT check')
-    CSAT_all = ['Ux','Uy','Uz',
-                'Ws_CSAT','Wd_CSAT','Wd_CSAT_Compass','Tv_CSAT',
-                'UzT','UxT','UyT','UzA','UxA','UyA','UzC','UxC','UyC',
-                'UxUz','UyUz','UxUy','UxUx','UyUy','UzUz']
-    CSAT_list = []
-    for item in CSAT_all:
-        if item in ds.series.keys(): CSAT_list.append(item)
-    index = numpy.where(ds.series['Diag_CSAT']['Flag']!=0)
-    logger.info('  CSATCheck: Diag_CSAT ' + str(numpy.size(index)))
-    for ThisOne in CSAT_list:
-        if ThisOne in ds.series.keys():
-            ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(3)
+    logger.info(" Doing the sonic check")
+    sonic_all = ["Ux", "Uy", "Uz",
+                "Ws_CSAT", "Wd_CSAT", "Wd_CSAT_Compass",
+                "Ws_SONIC", "Wd_SONIC", "Wd_SONIC_Compass",
+                "Tv_CSAT", "Tv_CSAT_Av", "Tv_CSAT_Vr",
+                "Tv_SONIC", "Tv_SONIC_Av", "Tv_SONIC_Vr",
+                "UzT", "UxT", "UyT", "UzA", "UxA", "UyA", "UzC", "UxC", "UyC",
+                "UxUz", "UyUz", "UxUy", "UxUx", "UyUy", "UzUz"]
+    sonic_list = []
+    for item in sonic_all:
+        if item in series_list:
+            sonic_list.append(item)
+    index = numpy.where(ds.series['Diag_SONIC']['Flag'] != 0)
+    msg = "  SONICCheck: Diag_SONIC rejected "+str(numpy.size(index))+" points"
+    logger.info(msg)
+    for label in sonic_list:
+        if label in ds.series.keys():
+            ds.series[label]["Data"][index] = numpy.float64(c.missing_value)
+            ds.series[label]["Flag"][index] = numpy.int32(code)
         else:
-            logger.error('  qcck.do_CSATcheck: series '+str(ThisOne)+' in CSATList not found in ds.series')
-    if 'CSATCheck' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',CSATCheck'
+            logger.error("  SONICcheck: series "+str(label)+" not found in data")
+    return
 
-def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
+def do_dependencycheck(cf, ds, section, series, code=23, mode="quiet"):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: Back in the day
+    """
     if len(section)==0 and len(series)==0: return
     if len(section)==0: section = qcutils.get_cfsection(cf,series=series,mode='quiet')
     if "DependencyCheck" not in cf[section][series].keys(): return
@@ -362,29 +385,29 @@ def do_dependencycheck(cf,ds,section='',series='',code=23,mode="quiet"):
     # get the precursor source list from the control file
     source_list = ast.literal_eval(cf[section][series]["DependencyCheck"]["Source"])
     # get the data
-    dependent_data,dependent_flag,dependent_attr = qcutils.GetSeriesasMA(ds,series)
+    dependent_data,dependent_flag,dependent_attr = qcutils.GetSeries(ds, series)
     # loop over the precursor source list
     for item in source_list:
         # check the precursor is in the data structure
         if item not in ds.series.keys():
             msg = " DependencyCheck: "+series+" precursor series "+item+" not found, skipping ..."
-            log.warning(msg)
+            logger.warning(msg)
             continue
         # get the precursor data
-        precursor_data,precursor_flag,precursor_attr = qcutils.GetSeriesasMA(ds,item)
-        # mask the dependent data where the precurso is masked
-        dependent_data = numpy.ma.masked_where(numpy.ma.getmaskarray(precursor_data)==True,dependent_data)
-        # get an index of masked precursor data
-        index = numpy.ma.where(numpy.ma.getmaskarray(precursor_data)==True)[0]
+        precursor_data,precursor_flag,precursor_attr = qcutils.GetSeries(ds,item)
+        # mask the dependent data where the precursor flag shows data not OK
+        dependent_data = numpy.ma.masked_where(numpy.mod(precursor_flag, 10)!=0, dependent_data)
+        # get an index where the precursor flag shows data not OK
+        idx = numpy.ma.where(numpy.mod(precursor_flag, 10)!=0)[0]
         # set the dependent QC flag
-        dependent_flag[index] = numpy.int32(code)
+        dependent_flag[idx] = numpy.int32(code)
     # put the data back into the data structure
     dependent_attr["DependencyCheck_source"] = str(source_list)
     qcutils.CreateSeries(ds,series,dependent_data,Flag=dependent_flag,Attr=dependent_attr)
-    if 'do_dependencychecks' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_dependencychecks'
+    # our work here is done
+    return
 
-def do_diurnalcheck(cf,ds,section='',series='',code=5):
+def do_diurnalcheck(cf,ds,section,series,code=5):
     if 'DiurnalCheck' not in cf[section][series].keys(): return
     if 'NumSd' not in cf[section][series]['DiurnalCheck'].keys(): return
     dt = float(ds.globalattributes['time_step'])
@@ -454,7 +477,7 @@ def do_EC155check(cf,ds):
     if 'EC155Check' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',EC155Check'
 
-def do_excludedates(cf,ds,section='',series='',code=6):
+def do_excludedates(cf,ds,section,series,code=6):
     if 'ExcludeDates' not in cf[section][series].keys(): return
     ldt = ds.series['DateTime']['Data']
     ExcludeList = cf[section][series]['ExcludeDates'].keys()
@@ -475,7 +498,7 @@ def do_excludedates(cf,ds,section='',series='',code=6):
     if 'ExcludeDates' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',ExcludeDates'
 
-def do_excludehours(cf,ds,section='',series='',code=7):
+def do_excludehours(cf,ds,section,series,code=7):
     if 'ExcludeHours' not in cf[section][series].keys(): return
     ldt = ds.series['DateTime']['Data']
     ExcludeList = cf[section][series]['ExcludeHours'].keys()
@@ -537,42 +560,75 @@ def do_IRGAcheck(cf,ds):
         logger.error(msg)
         return
 
-def do_li7500check(cf,ds):
+def do_li7500check(cf, ds, code=4):
     '''Rejects data values for series specified in LI75List for times when the Diag_7500
        flag is non-zero.  If the Diag_7500 flag is not present in the data structure passed
        to this routine, it is constructed from the QC flags of the series specified in
        LI75Lisat.  Additional checks are done for AGC_7500 (the LI-7500 AGC value),
        Ah_7500_Sd (standard deviation of absolute humidity) and Cc_7500_Sd (standard
        deviation of CO2 concentration).'''
-    if "Diag_7500" not in ds.series.keys():
-        msg = " Diag_7500 not found in data, skipping 7500 checks ..."
+    series_list = list(ds.series.keys())
+    # check we have an IRGA diagnostics series to use
+    if "Diag_IRGA" in series_list:
+        pass
+    elif "Diag_7500" in series_list:
+        # backward compatibility with early OFQC
+        ds.series["Diag_IRGA"] = copy.deepcopy(ds.series["Diag_7500"])
+    else:
+        msg = " IRGA diagnostics not found in data, skipping IRGA checks ..."
         logger.warning(msg)
         return
-    logger.info(' Doing the 7500 check')
-    LI75List = ['Ah_7500_Av','Cc_7500_Av','Ah_7500_Sd','Cc_7500_Sd',
-                'UzA','UxA','UyA','UzC','UxC','UyC']
-    index = numpy.where(ds.series['Diag_7500']['Flag']!=0)
-    logger.info('  7500Check: Diag_7500 ' + str(numpy.size(index)))
-    LI75_dependents = []
-    for item in ['AGC_7500','Ah_7500_Sd','Cc_7500_Sd','AhAh','CcCc']:
-        if item in ds.series.keys(): LI75_dependents.append(item)
-    if "Ah_7500_Sd" and "AhAh" in LI75_dependents: LI75_dependents.remove("AhAh")
-    if "Cc_7500_Sd" and "CcCc" in LI75_dependents: LI75_dependents.remove("CcCc")
-    for item in LI75_dependents:
-        if item in ds.series.keys():
-            index = numpy.where(ds.series[item]['Flag']!=0)
-            logger.info('  7500Check: '+item+' rejected '+str(numpy.size(index))+' points')
-            ds.series['Diag_7500']['Flag'] = ds.series['Diag_7500']['Flag'] + ds.series[item]['Flag']
-    index = numpy.where((ds.series['Diag_7500']['Flag']!=0))
-    logger.info('  7500Check: Total ' + str(numpy.size(index)))
-    for ThisOne in LI75List:
-        if ThisOne in ds.series.keys():
-            ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
-        else:
-            logger.error('  qcck.do_7500check: series '+str(ThisOne)+' in LI75List not found in ds.series')
-    if '7500Check' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',7500Check'
+    logger.info(" Doing the LI-7500 check")
+    # let's check the contents of ds and see what we have to work with
+    # first, list everything we may have once used for some kind of LI-7500 output
+    # we do this for backwards compatibility
+    irga_list_all = ["Ah_7500_Av", "Ah_7500_Sd", "Ah_IRGA_Av", "Ah_IRGA_Sd",
+                     "Cc_7500_Av", "Cc_7500_Sd", "Cc_7500_Av", "Cc_7500_Sd",
+                     "H2O_IRGA_Av", "H2O_IRGA_Vr","CO2_IRGA_Av", "CO2_IRGA_Vr",
+                     "UzA", "UxA", "UyA", "UzC", "UxC", "UyC"]
+    # now get a list of what is actually there
+    irga_list = []
+    for label in series_list:
+        if label in irga_list_all:
+            irga_list.append(label)
+    # now tell the user how many points the IRGA diagnostic will remove
+    index = numpy.where(ds.series["Diag_IRGA"]["Flag"] != 0)
+    msg = "  Diag_IRGA rejected "+str(numpy.size(index))+" points"
+    logger.info(msg)
+    # and then we start with the dependents
+    # and again we list everything we may have used in the past for backwards compatibility
+    irga_dependents_all = ["AGC_7500", "AGC_IRGA",
+                           "Ah_7500_Sd","Cc_7500_Sd",
+                           "Ah_IRGA_Sd", "Cc_IRGA_Sd",
+                           "H2O_IRGA_Sd", "CO2_IRGA_Sd",
+                           "AhAh","CcCc",
+                           "Ah_IRGA_Vr", "Cc_IRGA_Vr",
+                           "H2O_IRGA_Vr", "CO2_IRGA_Vr"]
+    # and then check to see what we actually have to work with
+    irga_dependents = []
+    for label in irga_dependents_all:
+        if label in series_list:
+            irga_dependents.append(label)
+    # and then remove variances where variances and standard deviations are duplicated
+    std_list = ["Ah_7500_Sd", "Cc_7500_Sd", "Ah_IRGA_Sd", "Cc_IRGA_Sd", "H2O_IRGA_Sd", "CO2_IRGA_Sd"]
+    var_list = ["AhAh",       "CcCc",       "AhAh",       "CcCc",       "H2O_IRGA_Vr", "CO2_IRGA_Vr"]
+    irga_dependents_nodups = copy.deepcopy(irga_dependents)
+    for std, var in zip(std_list, var_list):
+        if (std in irga_dependents) and (var in irga_dependents):
+            irga_dependents_nodups.remove(var)
+    # now we can do the business
+    for label in irga_dependents_nodups:
+        index = numpy.where(ds.series[label]["Flag"] != 0)
+        logger.info("  IRGACheck: "+label+" rejected "+str(numpy.size(index))+" points")
+        ds.series["Diag_IRGA"]["Flag"] = ds.series["Diag_IRGA"]["Flag"] + ds.series[label]["Flag"]
+    index = numpy.where((ds.series["Diag_IRGA"]["Flag"] != 0))
+    msg = "  IRGACheck: Total rejected is " + str(numpy.size(index))
+    percent = float(100)*numpy.size(index)/numpy.size(ds.series["Diag_IRGA"]["Flag"])
+    msg = msg + " (" + str(int(percent+0.5)) + "%)"
+    logger.info(msg)
+    for label in irga_dependents:
+        ds.series[label]['Data'][index] = numpy.float64(c.missing_value)
+        ds.series[label]['Flag'][index] = numpy.int32(code)
 
 def do_li7500acheck(cf,ds):
     #msg = " Li-7500A check not implemented yet, contact the developer ..."
@@ -627,32 +683,62 @@ def do_linear(cf,ds):
     if 'do_linear' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_linear'
 
-def do_rangecheck(cf,ds,section='',series='',code=2):
-    '''Applies a range check to data series listed in the control file.  Data values that
-       are less than the lower limit or greater than the upper limit are replaced with
-       c.missing_value and the corresponding QC flag element is set to 2.'''
-    if 'RangeCheck' not in cf[section][series].keys(): return
-    if 'Lower' in cf[section][series]['RangeCheck'].keys():
-        lwr = numpy.array(eval(cf[section][series]['RangeCheck']['Lower']))
-        valid_lower = numpy.min(lwr)
-        lwr = lwr[ds.series['Month']['Data']-1]
-        index = numpy.where((abs(ds.series[series]['Data']-numpy.float64(c.missing_value))>c.eps)&
-                                (ds.series[series]['Data']<lwr))
-        ds.series[series]['Data'][index] = numpy.float64(c.missing_value)
-        ds.series[series]['Flag'][index] = numpy.int32(code)
-        ds.series[series]['Attr']['rangecheck_lower'] = cf[section][series]['RangeCheck']['Lower']
-    if 'Upper' in cf[section][series]['RangeCheck'].keys():
-        upr = numpy.array(eval(cf[section][series]['RangeCheck']['Upper']))
-        valid_upper = numpy.min(upr)
-        upr = upr[ds.series['Month']['Data']-1]
-        index = numpy.where((abs(ds.series[series]['Data']-numpy.float64(c.missing_value))>c.eps)&
-                                (ds.series[series]['Data']>upr))
-        ds.series[series]['Data'][index] = numpy.float64(c.missing_value)
-        ds.series[series]['Flag'][index] = numpy.int32(code)
-        ds.series[series]['Attr']['rangecheck_upper'] = cf[section][series]['RangeCheck']['Upper']
-        ds.series[series]['Attr']['valid_range'] = str(valid_lower)+','+str(valid_upper)
-    if 'RangeCheck' not in ds.globalattributes['Functions']:
-        ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',RangeCheck'
+def do_rangecheck(cf, ds, section, series, code=2):
+    """
+    Purpose:
+     Applies a range check to data series listed in the control file.  Data values that
+     are less than the lower limit or greater than the upper limit are replaced with
+     c.missing_value and the corresponding QC flag element is set to 2.
+    Usage:
+    Author: PRI
+    Date: Back in the day
+    """
+    # check that RangeCheck has been requested for this series
+    if 'RangeCheck' not in cf[section][series].keys():
+        return
+    # check that the upper and lower limits have been given
+    if ("Lower" not in cf[section][series]["RangeCheck"].keys() or
+        "Upper" not in cf[section][series]["RangeCheck"].keys()):
+        msg = "RangeCheck: key not found in control file for "+series+", skipping ..."
+        logger.warning(msg)
+        return
+    # check the QC flag reset switch
+    opt = qcutils.get_keyvaluefromcf(cf, [section, series, "RangeCheck"], "reset_qcflag", default="no")
+    reset_qcflag = False
+    if opt.lower() in ["yes", "y", "true"]:
+        reset_qcflag = True
+    # get the upper and lower limits
+    upr = numpy.array(eval(cf[section][series]['RangeCheck']['Upper']))
+    valid_upper = numpy.min(upr)
+    upr = upr[ds.series['Month']['Data']-1]
+    lwr = numpy.array(eval(cf[section][series]['RangeCheck']['Lower']))
+    valid_lower = numpy.min(lwr)
+    lwr = lwr[ds.series['Month']['Data']-1]
+    # get the data, flag and attributes
+    data, flag, attr = qcutils.GetSeriesasMA(ds, series)
+    # convert the data from a masked array to an ndarray so the range check works
+    data = numpy.ma.filled(data, fill_value=c.missing_value)
+    # do we need to reset the QC flag for elements inside the range?
+    # this allows us to include the missing data value (c.missing_value) in the
+    # range of acceptable data values and have the missing data QC flag code (1)
+    # reset to OK data (0) for these elements
+    if reset_qcflag:
+        # get the indices of values within the acceptable range
+        idx = numpy.where((data>=lwr)&(data<=upr))[0]
+        flag[idx] = numpy.int32(0)
+    # get the indices of elements outside this range
+    idx = numpy.where((data<lwr)|(data>upr))[0]
+    # set elements outside range to missing and set the QC flag
+    data[idx] = numpy.float64(c.missing_value)
+    flag[idx] = numpy.int32(code)
+    # update the variable attributes
+    attr["rangecheck_lower"] = cf[section][series]["RangeCheck"]["Lower"]
+    attr["rangecheck_upper"] = cf[section][series]["RangeCheck"]["Upper"]
+    attr["valid_range"] = str(valid_lower)+","+str(valid_upper)
+    # and now put the data back into the data structure
+    qcutils.CreateSeries(ds, series, data, Flag=flag, Attr=attr)
+    # now we can return
+    return
 
 def do_qcchecks(cf,ds,mode="verbose"):
     if "nc_level" in ds.globalattributes:
@@ -680,7 +766,7 @@ def do_qcchecks(cf,ds,mode="verbose"):
                 logger.warning(msg)
             continue
         # if so, do the QC checks
-        do_qcchecks_oneseries(cf,ds,section=section,series=series)
+        do_qcchecks_oneseries(cf,ds,section,series)
     # loop over the series in the control file
     # second time for dependencies
     for series in series_list:
@@ -691,26 +777,30 @@ def do_qcchecks(cf,ds,mode="verbose"):
                 logger.warning(msg)
             continue
         # if so, do dependency check
-        do_dependencycheck(cf,ds,section=section,series=series,code=23,mode="quiet")
+        do_dependencycheck(cf,ds,section,series,code=23,mode="quiet")
 
-def do_qcchecks_oneseries(cf,ds,section='',series=''):
+def do_qcchecks_oneseries(cf,ds,section,series):
     if len(section)==0:
         section = qcutils.get_cfsection(cf,series=series,mode='quiet')
         if len(section)==0: return
     # do the range check
-    do_rangecheck(cf,ds,section=section,series=series,code=2)
+    do_rangecheck(cf,ds,section,series,code=2)
+    # do the lower range check
+    do_lowercheck(cf,ds,section,series,code=2)
+    # do the upper range check
+    do_uppercheck(cf,ds,section,series,code=2)
     # do the diurnal check
-    do_diurnalcheck(cf,ds,section=section,series=series,code=5)
+    do_diurnalcheck(cf,ds,section,series,code=5)
     # do exclude dates
-    do_excludedates(cf,ds,section=section,series=series,code=6)
+    do_excludedates(cf,ds,section,series,code=6)
     # do exclude hours
-    do_excludehours(cf,ds,section=section,series=series,code=7)
+    do_excludehours(cf,ds,section,series,code=7)
     # do wind direction corrections
-    do_winddirectioncorrection(cf,ds,section=section,series=series)
+    do_winddirectioncorrection(cf,ds,section,series)
     if 'do_qcchecks' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',do_qcchecks'
 
-def do_winddirectioncorrection(cf,ds,section='',series=''):
+def do_winddirectioncorrection(cf,ds,section,series):
     if 'CorrectWindDirection' not in cf[section][series].keys(): return
     qcts.CorrectWindDirection(cf,ds,series)
 
@@ -735,6 +825,97 @@ def rangecheckseriesupper(data,upper):
         index = numpy.where((abs(data-numpy.float64(c.missing_value))>c.eps)&(data>upper))[0]
         data[index] = numpy.float64(c.missing_value)
     return data
+
+def do_lowercheck(cf,ds,section,series,code=2):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: February 2017
+    """
+    # check to see if LowerCheck requested for this variable
+    if "LowerCheck" not in cf[section][series]:
+        return
+    # Check to see if limits have been specified
+    if len(cf[section][series]["LowerCheck"].keys()) == 0:
+        msg = "do_lowercheck: no date ranges specified"
+        logger.info(msg)
+        return
+
+    ldt = ds.series["DateTime"]["Data"]
+    ts = ds.globalattributes["time_step"]
+    data, flag, attr = qcutils.GetSeriesasMA(ds, series)
+    
+    lc_list = list(cf[section][series]["LowerCheck"].keys())
+    for n,item in enumerate(lc_list):
+        # this should be a list and we should probably check for compliance
+        lwr_info = cf[section][series]["LowerCheck"][item]
+        attr["lowercheck_"+str(n)] = str(lwr_info)
+        start_date = dateutil.parser.parse(lwr_info[0])
+        su = float(lwr_info[1])
+        end_date = dateutil.parser.parse(lwr_info[2])
+        eu = float(lwr_info[3])
+        # get the start and end indices
+        si = qcutils.GetDateIndex(ldt, start_date, ts=ts, default=0, match="exact")
+        ei = qcutils.GetDateIndex(ldt, end_date, ts=ts, default=len(ldt)-1, match="exact")
+        # get the segment of data between this start and end date
+        seg_data = data[si:ei+1]
+        seg_flag = flag[si:ei+1]
+        x = numpy.arange(si, ei+1, 1)
+        lower = numpy.interp(x, [si,ei], [su,eu])
+        index = numpy.ma.where((seg_data<lower))[0]
+        seg_data[index] = numpy.ma.masked
+        seg_flag[index] = numpy.int32(code)
+        data[si:ei+1] = seg_data
+        flag[si:ei+1] = seg_flag
+    # now put the data back into the data structure
+    qcutils.CreateSeries(ds, series, data, Flag=flag, Attr=attr)
+    return
+
+def do_uppercheck(cf,ds,section,series,code=2):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: February 2017
+    """
+    # check to see if UpperCheck requested for this variable
+    if "UpperCheck" not in cf[section][series]:
+        return
+    # Check to see if limits have been specified
+    if len(cf[section][series]["UpperCheck"].keys()) == 0:
+        msg = "do_uppercheck: no date ranges specified"
+        logger.info(msg)
+        return
+
+    ldt = ds.series["DateTime"]["Data"]
+    ts = ds.globalattributes["time_step"]
+    data, flag, attr = qcutils.GetSeriesasMA(ds, series)
+    
+    lc_list = list(cf[section][series]["UpperCheck"].keys())
+    for n,item in enumerate(lc_list):
+        # this should be a list and we should probably check for compliance
+        upr_info = cf[section][series]["UpperCheck"][item]
+        attr["uppercheck_"+str(n)] = str(upr_info)
+        start_date = dateutil.parser.parse(upr_info[0])
+        su = float(upr_info[1])
+        end_date = dateutil.parser.parse(upr_info[2])
+        eu = float(upr_info[3])
+        # get the start and end indices
+        si = qcutils.GetDateIndex(ldt, start_date, ts=ts, default=0, match="exact")
+        ei = qcutils.GetDateIndex(ldt, end_date, ts=ts, default=len(ldt)-1, match="exact")
+        seg_data = data[si:ei+1]
+        seg_flag = flag[si:ei+1]
+        x = numpy.arange(si, ei+1, 1)
+        upper = numpy.interp(x, [si,ei], [su,eu])
+        index = numpy.ma.where((seg_data>upper))[0]
+        seg_data[index] = numpy.ma.masked
+        seg_flag[index] = numpy.int32(code)
+        data[si:ei+1] = seg_data
+        flag[si:ei+1] = seg_flag
+    # now put the data back into the data structure
+    qcutils.CreateSeries(ds, series, data, Flag=flag, Attr=attr)
+    return
 
 def UpdateVariableAttributes_QC(cf, variable):
     """

@@ -262,7 +262,9 @@ def csv_read_series(cf):
     for var in var_list:
         ds.series[var] = {}
         ds.series[var]["Data"] = data[csv_varnames[var]]
-        ds.series[var]["Flag"] = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        zeros = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        ones = numpy.ones(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        ds.series[var]["Flag"] = numpy.where(ds.series[var]["Data"]==c.missing_value,ones,zeros)
     # call the function given in the control file
     # NOTE: the function being called needs to deal with missing date values
     # and empty lines
@@ -1375,6 +1377,8 @@ def nc_concatenate(cf):
     else:
         level = "unknown"
     qcutils.UpdateGlobalAttributes(cf,ds,level)
+    # check missing data and QC flags are consistent
+    qcutils.CheckQCFlags(ds)
     # update the coverage statistics
     qcutils.get_coverage_individual(ds)
     qcutils.get_coverage_groups(ds)
@@ -1596,7 +1600,9 @@ def nc_read_series(ncFullName,checktimestep=True,fixtimestepmethod=""):
         ds.series[ThisOne]["Attr"] = attr
     ncFile.close()
     # make sure all values of -9999 have non-zero QC flag
-    qcutils.CheckQCFlags(ds)
+    # NOTE: the following was a quick and dirty fix for something a long time ago
+    #       and needs to be retired
+    #qcutils.CheckQCFlags(ds)
     # get a series of Python datetime objects
     if "time" in ds.series.keys():
         time,f,a = qcutils.GetSeries(ds,"time")
@@ -1757,7 +1763,7 @@ def nc_open_write(ncFullName,nctype='NETCDF4'):
     Date: Back in the day
     """
     file_name = os.path.split(ncFullName)
-    logger.info(' Opening netCDF file '+file_name[1])
+    logger.info("Opening netCDF file "+file_name[1])
     try:
         ncFile = netCDF4.Dataset(ncFullName,'w',format=nctype)
     except:
@@ -1936,7 +1942,8 @@ def nc_write_var(ncFile, ds, ThisOne, dim):
     ncVar.setncattr("units", "none")
 
 def xl_open_write(xl_name):
-    logger.info(' Opening Excel file '+xl_name+' for writing')
+    xl_filename = os.path.basename(xl_name)
+    logger.info(' Opening '+xl_filename+' for writing')
     try:
         xl_file = xlwt.Workbook()
     except:
@@ -2069,7 +2076,7 @@ def xl_read_series(cf):
                         ds.series[label]["Data"] = numpy.ones(nrecs,dtype=numpy.float64)*float(c.missing_value)
                         ds.series[label]["Flag"] = numpy.ones(nrecs,dtype=numpy.int32)
                         for i in range(nrecs):
-                            if (types[i]==3) or (types[i]==2):
+                            if (types[i]==3) or (types[i]==2) and (values[i]!=c.missing_value):
                                 ds.series[label]["Data"][i] = numpy.float64(values[i])
                                 ds.series[label]["Flag"][i] = numpy.int32(0)
                     else:
@@ -2357,11 +2364,11 @@ def xl_write_series(ds, xlfullname, outputlist=None):
             xlDataSheet.write(j+3,xlcol,float(ds.series[ThisOne]['Data'][j]))
         # check to see if this variable has a quality control flag
         if 'Flag' in ds.series[ThisOne].keys():
-            # write the QC flag name to the xk file
+            # write the QC flag name to the xls file
             xlFlagSheet.write(2,xlcol,ThisOne)
             # specify the format of the QC flag (integer)
             d_xf = xlwt.easyxf(num_format_str='0')
-            # loop over QV flag values and write to xl file
+            # loop over QC flag values and write to xls file
             for j in range(nRecs):
                 xlFlagSheet.write(j+3,xlcol,int(ds.series[ThisOne]['Flag'][j]),d_xf)
         # increment the column pointer

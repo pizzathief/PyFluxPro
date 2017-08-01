@@ -13,6 +13,7 @@ import numpy as np
 import os
 import pandas as pd
 from scipy import stats
+import statsmodels.formula.api as sm
 import sys
 import Tkinter, tkFileDialog
 import xlrd
@@ -97,12 +98,14 @@ def fit(temp_df):
     temp_df['ustar_alt1']=temp_df['ustar']
     temp_df['ustar_alt1'].iloc[change_point_a+1:]=temp_df['ustar_alt1'].iloc[change_point_a]
     temp_df['ustar_alt2']=(temp_df['ustar']-temp_df['ustar'].iloc[change_point_a])*np.concatenate([np.zeros(change_point_a+1),np.ones(50-(change_point_a+1))])
-    reg_params=pd.ols(x=temp_df[['ustar_alt1','ustar_alt2']],y=temp_df['Fc'])
-    a0=reg_params.beta.intercept
-    a1=reg_params.beta.ustar_alt1
-    a2=reg_params.beta.ustar_alt2
-    a1p=reg_params.p_value['ustar_alt1']
-    a2p=reg_params.p_value['ustar_alt2']
+    #use statsmodels
+    resols=sm.ols(formula="Fc ~ ustar_alt1 + ustar_alt2", data=temp_df).fit()
+    a0=resols.params[0]
+    a1=resols.params[1]
+    a2=resols.params[2]
+    a1p=resols.pvalues["ustar_alt1"]
+    a2p=resols.pvalues["ustar_alt2"]
+    
     norm_a1=a1*(ustar_threshold_a/(a0+a1*ustar_threshold_a))
     norm_a2=a2*(ustar_threshold_a/(a0+a1*ustar_threshold_a))
     

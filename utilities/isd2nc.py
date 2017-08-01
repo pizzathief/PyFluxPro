@@ -44,7 +44,7 @@ def read_isd_file(isd_file_path):
     """
     isd_file_name = os.path.split(isd_file_path)[1]
     msg = "Reading ISD file "+isd_file_name
-    print msg
+    logging.info(msg)
     isd_site_id = isd_file_name.split("-")
     isd_site_id = isd_site_id[0]+"-"+isd_site_id[1]
     # read the file
@@ -56,8 +56,8 @@ def read_isd_file(isd_file_path):
             content = fp.readlines()
     # get a data structure
     ds = qcio.DataStructure()
-    # get the site latitude, longitude and elevation
-    ds.globalattributes["elevation"] = float(content[0][46:51])
+    # get the site latitude, longitude and altitude
+    ds.globalattributes["altitude"] = float(content[0][46:51])
     ds.globalattributes["latitude"] = float(content[0][28:34])/float(1000)
     ds.globalattributes["longitude"] = float(content[0][34:41])/float(1000)
     ds.globalattributes["isd_site_id"] = isd_site_id
@@ -124,7 +124,6 @@ def read_isd_file(isd_file_path):
 
     dt_delta = qcutils.get_timestep(ds)
     ts = scipy.stats.mode(dt_delta)[0]/60
-    #print "Time step is ",ts[0]
     ds.globalattributes["time_step"] = ts[0]
 
     ds.series["Wd"]["Data"] = numpy.ma.masked_equal(ds.series["Wd"]["Data"],999)
@@ -139,8 +138,8 @@ def read_isd_file(isd_file_path):
     ds.series["ps"]["Data"] = numpy.ma.masked_equal(ds.series["ps"]["Data"],9999.9)/float(10)
     ds.series["ps"]["Flag"] = numpy.where(numpy.ma.getmaskarray(ds.series["ps"]["Data"])==True,f1,f0)
     # convert sea level pressure to station pressure
-    site_elevation = float(ds.globalattributes["elevation"])
-    cfac = numpy.ma.exp((-1*site_elevation)/((ds.series["Ta"]["Data"]+273.15)*29.263))
+    site_altitude = float(ds.globalattributes["altitude"])
+    cfac = numpy.ma.exp((-1*site_altitude)/((ds.series["Ta"]["Data"]+273.15)*29.263))
     ds.series["ps"]["Data"] = ds.series["ps"]["Data"]*cfac
     # do precipitation and apply crude limits
     ds.series["Precip"]["Data"] = numpy.ma.masked_equal(ds.series["Precip"]["Data"],999.9)
@@ -237,8 +236,8 @@ def interpolate_1d(x1,y1,x2,k=3,ext=0):
             cidxi = spl(x2)
             y2 = numpy.ma.masked_where(cidxi!=0,y2)
         else:
-            msg = "interpolate_1d: not enough points (<2) to continue"
-            print msg
+            msg = "Not enough points (<2) to interpolate"
+            logging.warning(msg)
             #raise RuntimeError(msg)
             y2 = numpy.ma.ones(len(x2))*float(c.missing_value)
     else:
@@ -271,14 +270,16 @@ def convert_time_zone(ds, from_time_zone, to_time_zone):
     ds.series["DateTime"]["Attr"]["time_zone"] = local_time_zone
     return
 
-cf_file_path = "/home/peter/PyFluxPro/controlfiles/ISD/isd.txt"
+cf_file_path = "/home/peter/PyFluxPro/controlfiles/ISD/isd2.txt"
 logging.info("Reading config file")
 cf = ConfigObj(cf_file_path)
 
-site_list = list(cf.keys())
-for site in ["US-Wjs"]:
+isd_base_path = cf["Files"]["isd_base_path"]
+nc_base_path = cf["Files"]["out_base_path"]
+site_list = list(cf["Sites"].keys())
+for site in site_list:
     # construct the output file path
-    nc_out_path = os.path.join(cf[site]["out_base_path"],site,"Data","ISD",site+"_ISD.nc")
+    nc_out_path = os.path.join(cf["Files"]["out_base_path"],site,"Data","ISD",site+"_ISD.nc")
     # construct the config dictionary for the concatenate routine
     cf_concat = ConfigObj(indent_type="    ")    
     cf_concat["Options"] = {"NumberOfDimensions":1,
@@ -290,7 +291,7 @@ for site in ["US-Wjs"]:
     cf_concat["Files"] = {"Out":{"ncFileName":nc_out_path},
                           "In":{}}
     # get the list of ISD stations to be used for this site
-    isd_site_list = cf[site]["isd_sites"]
+    isd_site_list = cf["Sites"][site]["isd_sites"]
     # now get a dictionary that ties the ISD station ID to a number
     # that will be appended to the variable name
     site_index = {}
@@ -298,12 +299,10 @@ for site in ["US-Wjs"]:
         site_index[isd_site] = n
     if not isinstance(isd_site_list, list):
         isd_site_list = [isd_site_list]
-    time_zone = cf[site]["time_zone"]
-    time_step = int(cf[site]["time_step"])
-    isd_base_path = cf[site]["isd_base_path"]
-    nc_base_path = cf[site]["out_base_path"]
-    start_year = int(cf[site]["start_year"])
-    end_year = int(cf[site]["end_year"])
+    time_zone = cf["Sites"][site]["site_timezone"]
+    time_step = int(cf["Sites"][site]["site_timestep"])
+    start_year = int(cf["Sites"][site]["start_year"])
+    end_year = int(cf["Sites"][site]["end_year"])
     year_list = range(start_year,end_year+1)
     for n, year in enumerate(year_list):
         # we will collect the data for each site for this year into a single dictionary
@@ -313,7 +312,12 @@ for site in ["US-Wjs"]:
             isd_file_path = os.path.join(isd_year_path,str(isd_site)+"-"+str(year)+".gz")
             if not os.path.isfile(isd_file_path):
                 continue
-            ds_in = read_isd_file(isd_file_path)
+            try:
+                ds_in = read_isd_file(isd_file_path)
+            except:
+                msg = " Unable to read file, skipping ..."
+                logging.warning(msg)
+                continue
             # interpolate from the ISD site time step to the tower time step
             ds_out[site_index[isd_site]] = interpolate_ds(ds_in, time_step, k=1)
             # adjust time from UTC to local using the time zone
@@ -322,19 +326,19 @@ for site in ["US-Wjs"]:
             ds_out[site_index[isd_site]].globalattributes["isd_site_id"] = isd_site
             ds_out[site_index[isd_site]].globalattributes["time_zone"] = time_zone
             # write out a netCDF file for each ISD site and each year
-            nc_file_name = isd_site+"_"+str(year)+".nc"
-            nc_dir_path = os.path.join(nc_base_path,site,"Data","ISD")
-            if not os.path.exists(nc_dir_path):
-                os.makedirs(nc_dir_path)
-            nc_file_path = os.path.join(nc_dir_path,nc_file_name)
-            nc_file = qcio.nc_open_write(nc_file_path)
-            qcio.nc_write_series(nc_file, ds_out[site_index[isd_site]], ndims=1)
+            #nc_file_name = isd_site+"_"+str(year)+".nc"
+            #nc_dir_path = os.path.join(nc_base_path,site,"Data","ISD")
+            #if not os.path.exists(nc_dir_path):
+                #os.makedirs(nc_dir_path)
+            #nc_file_path = os.path.join(nc_dir_path,nc_file_name)
+            #nc_file = qcio.nc_open_write(nc_file_path)
+            #qcio.nc_write_series(nc_file, ds_out[site_index[isd_site]], ndims=1)
         # now we merge the data structures for each ISD station into a single data structure
         # first, instance a data structure
         ds_all = qcio.DataStructure()
-        ds_all.globalattributes["latitude"] = cf[site]["latitude"]
-        ds_all.globalattributes["longitude"] = cf[site]["longitude"]
-        ds_all.globalattributes["elevation"] = cf[site]["elevation"]
+        ds_all.globalattributes["latitude"] = cf["Sites"][site]["site_latitude"]
+        ds_all.globalattributes["longitude"] = cf["Sites"][site]["site_longitude"]
+        ds_all.globalattributes["altitude"] = cf["Sites"][site]["site_altitude"]
         # now loop over the data structures for each ISD station and get the earliest
         # start time and the latest end time
         start_datetime = []
@@ -361,7 +365,7 @@ for site in ["US-Wjs"]:
             # copy the global attributes
             gattr_list = list(ds_out[i].globalattributes.keys())
             # remove the site specific global attributes
-            for item in ["latitude", "longitude", "elevation", "isd_site_id"]:
+            for item in ["latitude", "longitude", "altitude", "isd_site_id"]:
                 gattr_list.remove(item)
             # copy everything else
             for gattr in gattr_list:
@@ -371,7 +375,7 @@ for site in ["US-Wjs"]:
             ds_all.globalattributes["time_zone_"+isd_site_id] = ds_out[i].globalattributes["time_zone"]
             ds_all.globalattributes["latitude_"+isd_site_id] = ds_out[i].globalattributes["latitude"]
             ds_all.globalattributes["longitude_"+isd_site_id] = ds_out[i].globalattributes["longitude"]
-            ds_all.globalattributes["elevation_"+isd_site_id] = ds_out[i].globalattributes["elevation"]
+            ds_all.globalattributes["altitude_"+isd_site_id] = ds_out[i].globalattributes["altitude"]
             # now copy the variables
             # first, we get the indices of matching datetimes
             ldt_one = ds_out[i].series["DateTime"]["Data"]
@@ -407,7 +411,7 @@ for site in ["US-Wjs"]:
         qcio.nc_write_series(nc_file, ds_all, ndims=1)
         cf_concat["Files"]["In"][str(n)] = nc_file_path
     # concatenate the yearly files for this site
-    cf_concat.filename = "/home/peter/PyFluxPro/controlfiles/ISD/test.txt"
+    cf_concat.filename = "../controlfiles/ISD/concat.txt"
     cf_concat.write()
     qcio.nc_concatenate(cf_concat)    
 

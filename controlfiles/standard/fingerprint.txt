@@ -40,7 +40,7 @@
         Lower = 0
         Upper = 40
     [[CO2]]
-        nc_varname = "Cc"
+        nc_varname = "CO2"
         Lower = 300
         Upper = 900
     [[Ws]]

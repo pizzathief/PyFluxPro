@@ -32,15 +32,16 @@ def CalculateET(ds):
     Date: June 2015
     """
     ts = int(ds.globalattributes["time_step"])
-    series_list = ds.series.keys()
-    Fe_list = [item for item in series_list if "Fe" in item]
-    for label in Fe_list:
-        suffix = label[len("Fe")+label.find("Fe"):]
-        Fe,flag,attr = qcutils.GetSeriesasMA(ds,label)
-        ET = Fe*ts*60/c.Lv
-        attr["long_name"] = "Evapo-transpiration calculated from latent heat flux"
-        attr["units"] = "mm"
-        qcutils.CreateSeries(ds,"ET"+suffix,ET,Flag=flag,Attr=attr)
+    #series_list = ds.series.keys()
+    #Fe_list = [item for item in series_list if "Fe" in item]
+    #for label in Fe_list:
+        #suffix = label[len("Fe")+label.find("Fe"):]
+        #print label, suffix
+    Fe,flag,attr = qcutils.GetSeriesasMA(ds,"Fe")
+    ET = Fe*ts*60/c.Lv
+    attr["long_name"] = "Evapo-transpiration calculated from latent heat flux"
+    attr["units"] = "mm"
+    qcutils.CreateSeries(ds,"ET",ET,Flag=flag,Attr=attr)
 
 def CalculateNEE(cf,ds):
     """
@@ -224,7 +225,7 @@ def ERUsingLasslop(cf,ds):
     ustar_night = numpy.ma.masked_where(indicator_night==0,ustar)
     ER = numpy.ma.masked_where(indicator_night==0,Fc)
     # loop over the windows and get E0
-    logger.info("Estimating the rb and E0 parameters")
+    logger.info(" Estimating the rb and E0 parameters")
     LT_results = qcrpLL.get_LT_params(ldt,ER,T_night,info)
     # interpolate parameters
     # this should have a check to make sure we are not interpolating with a small
@@ -235,19 +236,19 @@ def ERUsingLasslop(cf,ds):
     # *** PUT INTO SEPARATE FUNCTION
     ntsperday = float(24)*float(60)/float(ts)
     days_at_beginning = float(info["window_length"])/2 - float(info["window_offset"])/2
-    rb_beginning = numpy.ones(days_at_beginning*ntsperday)*LT_results["rb_int"][0]
+    rb_beginning = numpy.ones(int(days_at_beginning*ntsperday+0.5))*LT_results["rb_int"][0]
     rb_middle = numpy.repeat(LT_results["rb_int"],info["window_offset"]*ntsperday)
     nend = len(ldt) - (len(rb_beginning)+len(rb_middle))
     rb_end = numpy.ones(nend)*LT_results["rb_int"][-1]
     rb_tts = numpy.concatenate((rb_beginning,rb_middle,rb_end))
-    E0_beginning = numpy.ones(days_at_beginning*ntsperday)*LT_results["E0_int"][0]
+    E0_beginning = numpy.ones(int(days_at_beginning*ntsperday+0.5))*LT_results["E0_int"][0]
     E0_middle = numpy.repeat(LT_results["E0_int"],info["window_offset"]*ntsperday)
     nend = len(ldt) - (len(E0_beginning)+len(E0_middle))
     E0_end = numpy.ones(nend)*LT_results["E0_int"][-1]
     E0_tts = numpy.concatenate((E0_beginning,E0_middle,E0_end))
     # ***
     # and get the ecosystem respiration at the tower time step
-    logger.info("Calculating ER using Lloyd-Taylor")
+    logger.info(" Calculating ER using Lloyd-Taylor")
     ER_LT = qcrpLL.ER_LloydTaylor(T,rb_tts,E0_tts)
     # plot the L&T parameters and ER_LT
     #qcrpLL.plot_LTparams_ER(ldt,ER,ER_LT,LT_results)
@@ -262,7 +263,7 @@ def ERUsingLasslop(cf,ds):
     T_day = numpy.ma.masked_where(indicator_day==0,T)
     NEE_day = numpy.ma.masked_where(indicator_day==0,Fc)
     # get the Lasslop parameters
-    logger.info("Estimating the Lasslop parameters")
+    logger.info(" Estimating the Lasslop parameters")
     LL_results = qcrpLL.get_LL_params(ldt,Fsd_day,D_day,T_day,NEE_day,ER,LT_results,info)
     # interpolate parameters
     LL_results["alpha_int"] = qcrpLL.interp_params(LL_results["alpha"])
@@ -278,7 +279,7 @@ def ERUsingLasslop(cf,ds):
     int_list = ["alpha_int","beta_int","k_int","rb_int","E0_int"]
     tts_list = ["alpha_tts","beta_tts","k_tts","rb_tts","E0_tts"]
     for tts_item,int_item in zip(tts_list,int_list):
-        beginning = numpy.ones(days_at_beginning*ntsperday)*LL_results[int_item][0]
+        beginning = numpy.ones(int(days_at_beginning*ntsperday+0.5))*LL_results[int_item][0]
         middle = numpy.repeat(LL_results[int_item],info["window_offset"]*ntsperday)
         nend = len(ldt) - (len(beginning)+len(middle))
         end = numpy.ones(nend)*LL_results[int_item][-1]
@@ -297,7 +298,7 @@ def ERUsingLasslop(cf,ds):
     long_name = "Activation energy from Lloyd-Taylor method used in Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
     qcutils.CreateSeries(ds,"E0_LL",E0,Flag=flag,Attr=attr)
-    logger.info("Calculating ER using Lloyd-Taylor with Lasslop parameters")
+    logger.info(" Calculating ER using Lloyd-Taylor with Lasslop parameters")
     ER_LL = qcrpLL.ER_LloydTaylor(T,rb,E0)
     # write ecosystem respiration modelled by Lasslop et al (2010)
     units = Fc_attr["units"]
@@ -344,7 +345,7 @@ def ERUsingLloydTaylor(cf,ds):
     Date: October 2015
     """
     if "rpLT" not in dir(ds): return
-    logger.info(' Estimating ER using Lloyd-Taylor')
+    logger.info("Estimating ER using Lloyd-Taylor")
     long_name = "Ecosystem respiration modelled by Lloyd-Taylor"
     ER_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="umol/m2/s")
     ts = int(ds.globalattributes["time_step"])
@@ -427,7 +428,12 @@ def ERUsingLloydTaylor(cf,ds):
         # this section could be a separate routine
         # Get the annual estimates of Eo
         logger.info(" Optimising fit for Eo for each year")
-        Eo_dict, EoQC_dict, Eo_raw_dict, EoQC_raw_dict = qcrpLT.optimise_annual_Eo(data_dict,params_dict,configs_dict,year_index_dict)
+        Eo_dict, EoQC_dict, Eo_raw_dict, EoQC_raw_dict, status = qcrpLT.optimise_annual_Eo(data_dict,params_dict,configs_dict,year_index_dict)
+        if status["code"] != 0:
+            msg = " Estimation of ER using Lloyd-Taylor failed with message"
+            logger.error(msg)
+            logger.error(status["message"])
+            return
         #print 'Done!'
         # Write to result arrays
         year_array = numpy.array([i.year for i in date_array])
@@ -1251,7 +1257,7 @@ def L6_summary(cf,ds):
     Author: PRI
     Date: June 2015
     """
-    logger.info(" Doing the L6 summary")
+    logger.info("Doing the L6 summary")
     # set up a dictionary of lists
     series_dict = L6_summary_createseriesdict(cf,ds)
     # open the Excel workbook
@@ -1259,7 +1265,7 @@ def L6_summary(cf,ds):
     xl_name = nc_name.replace(".nc","_Summary.xls")
     xl_file = qcio.xl_open_write(xl_name)
     if xl_file=='':
-        logger.error("L6_summary: error opening Excel file "+xl_name)
+        logger.error(" L6_summary: error opening Excel file "+xl_name)
         return
     # daily averages and totals
     daily_dict = L6_summary_daily(ds,series_dict)
