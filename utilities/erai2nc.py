@@ -1,31 +1,96 @@
+# standard
+from collections import OrderedDict
 import datetime
 import glob
+import os
+import sys
+import time
+# 3rd party
+from configobj import ConfigObj
 import netCDF4
 import numpy
-import os
 import pytz
 from scipy.interpolate import InterpolatedUnivariateSpline
-#from scipy.interpolate import interp1d
-import sys
+import xlrd
 # check the scripts directory is present
 if not os.path.exists("../scripts/"):
     print "erai2nc: the scripts directory is missing"
     sys.exit()
 # since the scripts directory is there, try importing the modules
 sys.path.append('../scripts')
+# PFP
 import meteorologicalfunctions as mf
 import pysolar
 import qcio
+import qclog
 import qcutils
 
-cf = qcio.load_controlfile(path='../controlfiles/ERAI/',title='Choose a control file')
-cf_list = [cf["L1"][n] for n in cf["L1"].keys()]
-#cf_list = sorted(glob.glob("../controlfiles/ERAI/L1/USA/*"))
-for cf_name in cf_list:
-    print "Processing control file "+cf_name
-    cf = qcio.get_controlfilecontents(cf_name)
+t = time.localtime()
+rundatetime = datetime.datetime(t[0],t[1],t[2],t[3],t[4],t[5]).strftime("%Y%m%d%H%M")
+log_filename = 'erai2nc_'+rundatetime+'.log'
+logger = qclog.init_logger(logger_name="pfp_log", file_handler=log_filename)
 
-    erai_name = os.path.join(cf["Files"]["erai_path"],cf["Files"]["erai_file"])
+def read_site_master(xl_file_path, sheet_name):
+    """
+    """
+    xl_book = xlrd.open_workbook(xl_file_path)
+    xl_sheet = xl_book.sheet_by_name(sheet_name)
+    last_row = int(xl_sheet.nrows)
+    # find the header and first data rows
+    for i in range(last_row):
+        if xl_sheet.cell(i,0).value == "Site":
+            header_row = i
+            first_data_row = header_row + 1
+            break
+    # read the header row
+    header_row_values = xl_sheet.row_values(header_row)
+    # read the site data from the master Excel spreadsheet
+    site_info = OrderedDict()
+    for n in range(first_data_row,last_row):
+        site_name = xl_sheet.cell(n,0).value
+        site_name = site_name.replace(" ","")
+        site_info[site_name] = OrderedDict()
+        for item in header_row_values[1:]:
+            i = header_row_values.index(item)
+            site_info[site_name][item] = xl_sheet.cell(n,i).value
+
+    return site_info
+
+# read the control file file
+cf = qcio.load_controlfile(path='../controlfiles')
+xl_file_path = cf["Files"]["xl_file_path"]
+xl_sheet_name = cf["Files"]["xl_sheet_name"]
+erai_path = cf["Files"]["erai_path"]
+out_base_path = cf["Files"]["out_base_path"]
+site_sa_limit = cf["Files"]["site_sa_limit"]
+# get the site information from the site master spreadsheet
+site_info = read_site_master(xl_file_path, xl_sheet_name)
+# get a list of sites
+site_list = site_info.keys()
+# and a list of the ERAI files to be processed
+erai_list = sorted(glob.glob(erai_path))
+#erai_list = ["/home/peter/OzFlux/ERAI/ERAI_2014.nc",
+             #"/home/peter/OzFlux/ERAI/ERAI_2015.nc",
+             #"/home/peter/OzFlux/ERAI/ERAI_2016.nc"]
+# construct a dictionary of concatenation control files, this will be
+# used to concatenate the yearly ERAI files for each site
+cf_dict = OrderedDict()
+for site_name in site_list:
+    # construct the output file path
+    out_file_path = os.path.join(out_base_path,site_name,"Data","ERAI",site_name+"_ERAI.nc")
+    # initialise the concatenation control file
+    cf_dict[site_name] = ConfigObj(indent_type="    ")
+    cf_dict[site_name]["Options"] = {"NumberOfDimensions":1,
+                                     "MaxGapInterpolate":0,
+                                     "FixTimeStepMethod":"round",
+                                     "Truncate":"No",
+                                     "TruncateThreshold":50,
+                                     "SeriesToCheck":[]}
+    cf_dict[site_name]["Files"] = {"Out":{"ncFileName":out_file_path},
+                                   "In":{}}
+
+for n, erai_name in enumerate(erai_list):
+    logger.info("Processing ERAI file "+erai_name)
     erai_timestep = 180
     erai_file = netCDF4.Dataset(erai_name)
     latitude = erai_file.variables["latitude"][:]
@@ -36,6 +101,8 @@ for cf_name in cf_list:
     erai_time = erai_file.variables["time"][:]
     time_units = getattr(erai_file.variables["time"],"units")
     dt_erai = netCDF4.num2date(erai_time,time_units)
+    start_date_erai = dt_erai[0]
+    end_date_erai = dt_erai[-1]
     hour_utc = numpy.array([dt.hour for dt in dt_erai])
     # get the datetime in the middle of the accumulation period
     erai_offset = datetime.timedelta(minutes=float(erai_timestep)/2)
@@ -45,25 +112,23 @@ for cf_name in cf_list:
     erai_time_3hr = netCDF4.date2num(dt_erai_cor,time_units)
     # make utc_dt timezone aware so we can generate local times later
     dt_erai_utc_cor = [x.replace(tzinfo=pytz.utc) for x in dt_erai_cor]
-    
-    # get a list of sites
-    site_list = cf["Sites"].keys()
     #site_list = ["Calperum"]
     # now loop over the sies
-    for site in site_list:
+    for site_name in site_list:
         # get the output file name
-        if not os.path.exists(cf["Sites"][site]["out_filepath"]):
-            os.makedirs(cf["Sites"][site]["out_filepath"])
-        out_filename = os.path.join(cf["Sites"][site]["out_filepath"],
-                                   cf["Sites"][site]["out_filename"])
+        out_site_path = os.path.join(out_base_path, site_name, "Data", "ERAI")
+        if not os.path.exists(out_site_path):
+            os.makedirs(out_site_path)
+        out_file_name = site_name+"_ERAI_"+start_date_erai.strftime("%Y%m%d")
+        out_file_name = out_file_name+"_"+end_date_erai.strftime("%Y%m%d")+".nc"
+        out_file_path = os.path.join(out_site_path, out_file_name)
         # get the metadata from the control file
-        site_name = cf["Sites"][site]["site_name"]
-        print " Processing "+site_name
-        site_timezone = cf["Sites"][site]["site_timezone"]
-        site_latitude = float(cf["Sites"][site]["site_latitude"])
-        site_longitude = float(cf["Sites"][site]["site_longitude"])
-        site_timestep = int(cf["Sites"][site]["site_timestep"])
-        site_sa_limit = qcutils.get_keyvaluefromcf(cf,["Sites",site],"site_sa_limit",default=5)
+        logger.info("Processing "+site_name)
+        # get the metadata from the site master file information
+        site_latitude = site_info[site_name]["Latitude"]
+        site_longitude = site_info[site_name]["Longitude"]
+        site_timezone = site_info[site_name]["Time zone"]
+        site_timestep = site_info[site_name]["Time step"]
         # index of the site in latitude dimension
         site_lat_index = int(((latitude[0]-site_latitude)/lat_resolution)+0.5)
         erai_latitude = latitude[site_lat_index]
@@ -71,8 +136,8 @@ for cf_name in cf_list:
         if site_longitude<0: site_longitude = float(360) + site_longitude
         site_lon_index = int(((site_longitude-longitude[0])/lon_resolution)+0.5)
         erai_longitude = longitude[site_lon_index]
-        print "  Site coordinates: ",site_latitude,site_longitude
-        print "  ERAI grid: ",latitude[site_lat_index],longitude[site_lon_index]
+        logger.info("Site coordinates: "+str(site_latitude)+" "+str(site_longitude))
+        logger.info("ERAI grid: "+str(latitude[site_lat_index])+" "+str(longitude[site_lon_index]))
         # get an instance of the Datastructure
         ds_erai = qcio.DataStructure()
         ds_erai.series["DateTime"] = {}
@@ -94,7 +159,9 @@ for cf_name in cf_list:
         if start_date<dt_erai_utc_cor[0]: start_date = start_date+tdts
         end_date = qcutils.rounddttots(dt_erai_utc_cor[-1],ts=site_timestep)
         if end_date>dt_erai_utc_cor[-1]: end_date = end_date-tdts
-        print "  Got data from ",start_date," UTC to ",end_date," UTC"
+        msg = "Data: "+start_date.strftime("%Y-%m-%d %H:%M")+" UTC to "
+        msg = msg+end_date.strftime("%Y-%m-%d %H:%M")+" UTC"
+        logger.info(msg)
         #print site_name,end_date,dt_erai_utc_cor[-1]
         # UTC datetime series at the tower time step
         dt_erai_utc_tts = [x for x in qcutils.perdelta(start_date,end_date,tdts)]
@@ -418,6 +485,19 @@ for cf_name in cf_list:
         flag = numpy.zeros(len(Wd_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Wind direction",units="deg")
         qcutils.CreateSeries(ds_erai,"Wd",Wd_erai_tts,Flag=flag,Attr=attr)
-    
-        ncfile = qcio.nc_open_write(out_filename)
+        # write the yearly file for this site
+        ncfile = qcio.nc_open_write(out_file_path)
         qcio.nc_write_series(ncfile,ds_erai,ndims=1)
+        # add this yearly file to the control file dictionary for this site
+        cf_dict[site_name]["Files"]["In"][str(n)] = out_file_path
+        # tell the user we have finished this site
+        logger.info("Finished "+site_name)
+        logger.info("")
+# now we need to loop over the contents of the concatenate control file dictionary
+for site_name in site_list:
+    cf_concat = cf_dict[site_name]
+    #cf_concat.filename = os.path.join("../controlfiles/OzFlux/ERAI/",site_name+"_concatenate.txt")
+    #cf_concat.write()
+    msg = "Concatenating yearly files for "+site_name
+    logger.info(msg)
+    qcio.nc_concatenate(cf_concat)

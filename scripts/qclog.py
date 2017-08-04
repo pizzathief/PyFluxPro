@@ -1,7 +1,7 @@
 import logging
 import os
 
-def init_logger(logger_name="pfp_log"):
+def init_logger(logger_name="pfp_log", file_handler="pfp.log"):
     """
     Purpose:
      Returns a logger object.
@@ -15,7 +15,10 @@ def init_logger(logger_name="pfp_log"):
     # create file handler
     #max_bytes = 1024 * 1024 * 2
     #fh = logging.handlers.RotatingFileHandler(os.path.join("logfiles", 'pfp.log'), mode="a", maxBytes=max_bytes, backupCount=1)
-    fh = logging.FileHandler(os.path.join("logfiles", 'pfp.log'))
+    if not os.path.exists("logfiles"):
+        os.makedirs("logfiles")
+    log_file_path = os.path.join("logfiles", file_handler)
+    fh = logging.FileHandler(log_file_path)
     fh.setLevel(logging.DEBUG)
     # create console handler
     ch = logging.StreamHandler()

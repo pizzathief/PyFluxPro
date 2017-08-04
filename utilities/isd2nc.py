@@ -1,6 +1,7 @@
 #%run basics
 # Python modules
 import calendar
+from collections import OrderedDict
 import copy
 import csv
 import datetime
@@ -9,12 +10,14 @@ import logging
 import os
 import pytz
 import sys
+import time
 # 3rd party modules
 from configobj import ConfigObj
 import matplotlib.pyplot as plt
 import numpy
 import scipy
 from scipy.interpolate import InterpolatedUnivariateSpline
+import xlrd
 # pfp modules
 if not os.path.exists("../scripts/"):
     print "PyFluxPro: the scripts directory is missing"
@@ -24,14 +27,13 @@ sys.path.append('../scripts')
 import constants as c
 import meteorologicalfunctions as mf
 import qcio
+import qclog
 import qcutils
 
-logging.basicConfig(filename='../logfiles/isd2nc.log',level=logging.DEBUG)
-console = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s', '%H:%M:%S')
-console.setFormatter(formatter)
-console.setLevel(logging.INFO)
-logging.getLogger('').addHandler(console)
+t = time.localtime()
+rundatetime = datetime.datetime(t[0],t[1],t[2],t[3],t[4],t[5]).strftime("%Y%m%d%H%M")
+log_filename = 'isd2nc_'+rundatetime+'.log'
+logger = qclog.init_logger(logger_name="pfp_log", file_handler=log_filename)
 
 def read_isd_file(isd_file_path):
     """
@@ -44,7 +46,7 @@ def read_isd_file(isd_file_path):
     """
     isd_file_name = os.path.split(isd_file_path)[1]
     msg = "Reading ISD file "+isd_file_name
-    logging.info(msg)
+    logger.info(msg)
     isd_site_id = isd_file_name.split("-")
     isd_site_id = isd_site_id[0]+"-"+isd_site_id[1]
     # read the file
@@ -237,7 +239,7 @@ def interpolate_1d(x1,y1,x2,k=3,ext=0):
             y2 = numpy.ma.masked_where(cidxi!=0,y2)
         else:
             msg = "Not enough points (<2) to interpolate"
-            logging.warning(msg)
+            logger.warning(msg)
             #raise RuntimeError(msg)
             y2 = numpy.ma.ones(len(x2))*float(c.missing_value)
     else:
@@ -270,16 +272,47 @@ def convert_time_zone(ds, from_time_zone, to_time_zone):
     ds.series["DateTime"]["Attr"]["time_zone"] = local_time_zone
     return
 
-cf_file_path = "/home/peter/PyFluxPro/controlfiles/ISD/isd2.txt"
-logging.info("Reading config file")
-cf = ConfigObj(cf_file_path)
+def read_site_master(xl_file_path, sheet_name):
+    """
+    """
+    xl_book = xlrd.open_workbook(xl_file_path)
+    xl_sheet = xl_book.sheet_by_name(sheet_name)
+    last_row = int(xl_sheet.nrows)
+    # find the header and first data rows
+    for i in range(last_row):
+        if xl_sheet.cell(i,0).value == "Site":
+            header_row = i
+            first_data_row = header_row + 1
+            break
+    # read the header row
+    header_row_values = xl_sheet.row_values(header_row)
+    # read the site data from the master Excel spreadsheet
+    site_info = OrderedDict()
+    for n in range(first_data_row,last_row):
+        site_name = xl_sheet.cell(n,0).value
+        site_name = site_name.replace(" ","")
+        site_info[site_name] = OrderedDict()
+        for item in header_row_values[1:]:
+            i = header_row_values.index(item)
+            site_info[site_name][item] = xl_sheet.cell(n,i).value
 
+    return site_info
+
+# read the control file file
+cf = qcio.load_controlfile(path='../controlfiles')
+xl_file_path = cf["Files"]["xl_file_path"]
+xl_sheet_name = cf["Files"]["xl_sheet_name"]
 isd_base_path = cf["Files"]["isd_base_path"]
-nc_base_path = cf["Files"]["out_base_path"]
-site_list = list(cf["Sites"].keys())
+out_base_path = cf["Files"]["out_base_path"]
+# read the site master spreadsheet
+site_info = read_site_master(xl_file_path, xl_sheet_name)
+# get a list of sites
+site_list = site_info.keys()
+
 for site in site_list:
     # construct the output file path
-    nc_out_path = os.path.join(cf["Files"]["out_base_path"],site,"Data","ISD",site+"_ISD.nc")
+    fluxnet_id = site_info[site]["FluxNet ID"]
+    nc_out_path = os.path.join(out_base_path,fluxnet_id,"Data","ISD",fluxnet_id+"_ISD.nc")
     # construct the config dictionary for the concatenate routine
     cf_concat = ConfigObj(indent_type="    ")    
     cf_concat["Options"] = {"NumberOfDimensions":1,
@@ -291,7 +324,12 @@ for site in site_list:
     cf_concat["Files"] = {"Out":{"ncFileName":nc_out_path},
                           "In":{}}
     # get the list of ISD stations to be used for this site
-    isd_site_list = cf["Sites"][site]["isd_sites"]
+    #isd_site_list = cf["Sites"][site]["isd_sites"]
+    isd_site_list = []
+    for item in ["ISD_ID_1","ISD_ID_2","ISD_ID_3","ISD_ID_4"]:
+        if len(site_info[site][item]) != 0:
+            isd_site_list.append(site_info[site][item])
+
     # now get a dictionary that ties the ISD station ID to a number
     # that will be appended to the variable name
     site_index = {}
@@ -299,10 +337,11 @@ for site in site_list:
         site_index[isd_site] = n
     if not isinstance(isd_site_list, list):
         isd_site_list = [isd_site_list]
-    time_zone = cf["Sites"][site]["site_timezone"]
-    time_step = int(cf["Sites"][site]["site_timestep"])
-    start_year = int(cf["Sites"][site]["start_year"])
-    end_year = int(cf["Sites"][site]["end_year"])
+    time_zone = site_info[site]["Time zone"]
+    time_step = int(site_info[site]["Time step"])
+    start_year = int(site_info[site]["Start year"])
+    end_year = int(site_info[site]["End year"])
+    # get the list of years to process
     year_list = range(start_year,end_year+1)
     for n, year in enumerate(year_list):
         # we will collect the data for each site for this year into a single dictionary
@@ -316,7 +355,7 @@ for site in site_list:
                 ds_in = read_isd_file(isd_file_path)
             except:
                 msg = " Unable to read file, skipping ..."
-                logging.warning(msg)
+                logger.warning(msg)
                 continue
             # interpolate from the ISD site time step to the tower time step
             ds_out[site_index[isd_site]] = interpolate_ds(ds_in, time_step, k=1)
@@ -327,7 +366,7 @@ for site in site_list:
             ds_out[site_index[isd_site]].globalattributes["time_zone"] = time_zone
             # write out a netCDF file for each ISD site and each year
             #nc_file_name = isd_site+"_"+str(year)+".nc"
-            #nc_dir_path = os.path.join(nc_base_path,site,"Data","ISD")
+            #nc_dir_path = os.path.join(out_base_path,site,"Data","ISD")
             #if not os.path.exists(nc_dir_path):
                 #os.makedirs(nc_dir_path)
             #nc_file_path = os.path.join(nc_dir_path,nc_file_name)
@@ -336,9 +375,9 @@ for site in site_list:
         # now we merge the data structures for each ISD station into a single data structure
         # first, instance a data structure
         ds_all = qcio.DataStructure()
-        ds_all.globalattributes["latitude"] = cf["Sites"][site]["site_latitude"]
-        ds_all.globalattributes["longitude"] = cf["Sites"][site]["site_longitude"]
-        ds_all.globalattributes["altitude"] = cf["Sites"][site]["site_altitude"]
+        ds_all.globalattributes["latitude"] = site_info[site]["Latitude"]
+        ds_all.globalattributes["longitude"] = site_info[site]["Longitude"]
+        ds_all.globalattributes["altitude"] = site_info[site]["Altitude"]
         # now loop over the data structures for each ISD station and get the earliest
         # start time and the latest end time
         start_datetime = []
@@ -346,6 +385,7 @@ for site in site_list:
         for i in list(ds_out.keys()):
             start_datetime.append(ds_out[i].series["DateTime"]["Data"][0])
             end_datetime.append(ds_out[i].series["DateTime"]["Data"][-1])
+        print site, year
         start = min(start_datetime)
         end = max(end_datetime)
         # now make a datetime series at the required time step from the earliest start
@@ -402,8 +442,8 @@ for site in site_list:
                 ds_all.series[all_label]["Flag"][idx] = flag
                 ds_all.series[all_label]["Attr"] = copy.deepcopy(attr)
         # write the netCDF file with the combined data for this year
-        nc_file_name = site+"_ISD_"+str(year)+".nc"
-        nc_dir_path = os.path.join(nc_base_path,site,"Data","ISD")
+        nc_file_name = fluxnet_id+"_ISD_"+str(year)+".nc"
+        nc_dir_path = os.path.join(out_base_path,fluxnet_id,"Data","ISD")
         if not os.path.exists(nc_dir_path):
             os.makedirs(nc_dir_path)
         nc_file_path = os.path.join(nc_dir_path,nc_file_name)
@@ -411,8 +451,8 @@ for site in site_list:
         qcio.nc_write_series(nc_file, ds_all, ndims=1)
         cf_concat["Files"]["In"][str(n)] = nc_file_path
     # concatenate the yearly files for this site
-    cf_concat.filename = "../controlfiles/ISD/concat.txt"
-    cf_concat.write()
+    #cf_concat.filename = "../controlfiles/ISD/concat.txt"
+    #cf_concat.write()
     qcio.nc_concatenate(cf_concat)    
 
-logging.info("All done")
+logger.info("All done")

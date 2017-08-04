@@ -16,9 +16,9 @@ import qcutils
 
 t = time.localtime()
 rundatetime = datetime.datetime(t[0],t[1],t[2],t[3],t[4],t[5]).strftime("%Y%m%d%H%M")
-log_filename = 'logfiles/batchprocess_'+rundatetime+'.log'
+log_filename = 'batchprocess_'+rundatetime+'.log'
 
-logger = qclog.init_logger(logger_name=log_filename)
+logger = qclog.init_logger(logger_name="pfp_log", file_handler=log_filename)
 
 # get the batch processing control file
 if len(sys.argv)==1:
@@ -90,6 +90,10 @@ for level in level_list:
         # concatenate netCDF files
         for i in cf_batch["Levels"][level].keys():
             cfname = cf_batch["Levels"][level][i]
+            if not os.path.isfile(cfname):
+                msg = " Control file "+cfname+" not found"
+                logger.error(msg)
+                continue
             logger.info('Starting concatenation with '+cfname)
             cf_cc = qcio.get_controlfilecontents(cfname)
             qcio.nc_concatenate(cf_cc)
@@ -115,6 +119,10 @@ for level in level_list:
         # climatology
         for i in cf_batch["Levels"][level].keys():
             cfname = cf_batch["Levels"][level][i]
+            if not os.path.isfile(cfname):
+                msg = " Control file "+cfname+" not found"
+                logger.error(msg)
+                continue
             logger.info('Starting climatology with '+cfname)
             cf = qcio.get_controlfilecontents(cfname)
             qcclim.climatology(cf)
@@ -124,6 +132,10 @@ for level in level_list:
         # ustar threshold from change point detection
         for i in cf_batch["Levels"][level].keys():
             cfname = cf_batch["Levels"][level][i]
+            if not os.path.isfile(cfname):
+                msg = " Control file "+cfname+" not found"
+                logger.error(msg)
+                continue
             logger.info('Starting CPD with '+cfname)
             cf = qcio.get_controlfilecontents(cfname)
             if "Options" not in cf: cf["Options"]={}
@@ -136,6 +148,10 @@ for level in level_list:
         # L4 processing
         for i in cf_batch["Levels"][level].keys():
             cfname = cf_batch["Levels"][level][i]
+            if not os.path.isfile(cfname):
+                msg = " Control file "+cfname+" not found"
+                logger.error(msg)
+                continue
             logger.info('Starting L4 processing with '+cfname)
             cf_l4 = qcio.get_controlfilecontents(cfname)
             if "Options" not in cf_l4: cf_l4["Options"]={}
@@ -168,6 +184,10 @@ for level in level_list:
         # L5 processing
         for i in cf_batch["Levels"][level].keys():
             cfname = cf_batch["Levels"][level][i]
+            if not os.path.isfile(cfname):
+                msg = " Control file "+cfname+" not found"
+                logger.error(msg)
+                continue
             logger.info('Starting L5 processing with '+cfname)
             cf_l5 = qcio.get_controlfilecontents(cfname)
             if "Options" not in cf_l5: cf_l5["Options"]={}
@@ -200,6 +220,10 @@ for level in level_list:
         # L6 processing
         for i in cf_batch["Levels"][level].keys():
             cfname = cf_batch["Levels"][level][i]
+            if not os.path.isfile(cfname):
+                msg = " Control file "+cfname+" not found"
+                logger.error(msg)
+                continue
             logger.info('Starting L6 processing with '+cfname)
             cf = qcio.get_controlfilecontents(cfname)
             if "Options" not in cf: cf["Options"]={}

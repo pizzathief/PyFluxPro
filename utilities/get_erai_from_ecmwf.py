@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 from ecmwfapi import ECMWFDataServer
+import datetime
+import dateutil.parser
 import sys
 
 erai_info = {}
@@ -25,14 +27,14 @@ if len(sys.argv)==1:
 
 if sys.argv[1].lower()=="australia":
     erai_info["area"] = "-10/110/-45/155"
-    target_directory = "/mnt/OzFlux/ERAI/"
-    start_year = 2014
-    end_year = 2016
+    target_directory = "/home/peter/OzFlux/ERAI/"
+    start_date = "2017-01-01"
+    end_date = "2017-04-30"
 elif sys.argv[1].lower()=="usa":
     erai_info["area"] = "70/229.5/30/300"
     target_directory = "/home/peter/AmeriFlux/ERAI/"
-    start_year = 2009
-    end_year = 2010
+    start_date = "2016-01-01"
+    end_date = "2017-01-01"
 else:
     print "Unrecognised country option entered on command line"
     print "Valid country options are:"
@@ -41,9 +43,19 @@ else:
     sys.exit()
 
 server = ECMWFDataServer()
-year_list = range(start_year,end_year,1)
+sd = dateutil.parser.parse(start_date)
+ed = dateutil.parser.parse(end_date)
+start_year = sd.year
+end_year = ed.year
+year_list = range(start_year,end_year+1)
 for year in year_list:
     print " Processing year: ",str(year)
-    erai_info["date"] = str(year)+"-01-01/to/"+str(year+1)+"-01-01"
+    sds = str(year)+"-01-01"
+    edc = datetime.datetime(year+1,1,1,0,0,0)
+    eds = edc.strftime("%Y-%m-%d")
+    if ed < edc:
+        eds = ed.strftime("%Y-%m-%d")
+    erai_info["date"] = sds+"/to/"+eds
+    #print sds+"/to/"+eds
     erai_info["target"] = target_directory+"ERAI_"+str(year)+".nc"
     server.retrieve(erai_info)

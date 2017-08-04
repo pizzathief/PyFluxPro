@@ -56,22 +56,6 @@ def cfoptionskeylogical(cf,Key='',default=False):
         returnValue = default
     return returnValue
 
-#def CheckQCFlags(ds):
-    #"""
-    #Purpose:
-     #Make sure that all values of -9999 in a data series have a non-zero QC flag value.
-    #Usage:
-     #qcutils.CheckQCFlags(ds)
-    #Author: PRI
-    #Date: August 2014
-    #"""
-    #for ThisOne in ds.series.keys():
-        #data = numpy.ma.masked_values(ds.series[ThisOne]["Data"],-9999)
-        #flag = numpy.ma.masked_equal(ds.series[ThisOne]["Flag"],0)
-        #mask = data.mask&flag.mask
-        #index = numpy.ma.where(mask==True)[0]
-        #ds.series[ThisOne]["Flag"][index] = numpy.int32(8)
-
 def CheckQCFlags(ds):
     """
     Purpose:
@@ -90,15 +74,22 @@ def CheckQCFlags(ds):
         mask = data.mask&flag.mask
         index = numpy.ma.where(mask==True)[0]
         if len(index)!=0:
-            msg = " "+ThisOne+" has "+str(len(index))+" missing values flagged OK"
+            msg = " "+ThisOne+": "+str(len(index))+" missing values with flag = 0 (forced to 8)"
             logger.warning(msg)
-            pass
-        #ds.series[ThisOne]["Flag"][index] = numpy.int32(8)
-    ## force all values != -9999 to have QC flag = 0, 10, 20 etc
-    #for ThisOne in ds.series.keys():
-        #index = numpy.where((abs(ds.series[ThisOne]['Data']-numpy.float64(c.missing_value))>c.eps)&
-                            #(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))
-        #ds.series[ThisOne]["Flag"][index] = numpy.int32(0)
+            ds.series[ThisOne]["Flag"][index] = numpy.int32(8)
+    # force all values != -9999 to have QC flag = 0, 10, 20 etc
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    missing_array = numpy.ones(nRecs)*float(c.missing_value)
+    series_list = ds.series.keys()
+    if "DateTime" in series_list:
+        series_list.remove("DateTime")
+    for ThisOne in series_list:
+        bool_array = numpy.isclose(ds.series[ThisOne]["Data"], missing_array)
+        index = numpy.where((bool_array == False)&(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))
+        if len(index)!=0:
+            msg = " "+ThisOne+": "+str(len(index))+" non-missing values with flag != 0 (forced to 0)"
+            logger.warning(msg)
+            ds.series[ThisOne]["Flag"][index] = numpy.int32(0)
     return
 
 def CheckTimeStep(ds):
