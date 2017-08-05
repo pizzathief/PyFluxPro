@@ -16,8 +16,10 @@ from configobj import ConfigObj
 import matplotlib.pyplot as plt
 import numpy
 import scipy
+import scipy.stats
 from scipy.interpolate import InterpolatedUnivariateSpline
 import xlrd
+import xlwt
 # pfp modules
 if not os.path.exists("../scripts/"):
     print "PyFluxPro: the scripts directory is missing"
@@ -298,6 +300,53 @@ def read_site_master(xl_file_path, sheet_name):
 
     return site_info
 
+def xl_write_ISD_timesteps(xl_file_path, data):
+    """
+    Purpose:
+     Writes a dictionary to a worksheet in an Excel workbook.
+     This routine has 2 arguments,an Excel worksheet instance and
+     a dictionary of data to be written out.  The dictionary
+     format needs to be:
+      data[site][year]["mean"]
+      data[site][year]["stdev"]
+      data[site][year]["mode"]
+    Usage:
+     qcio.xl_write_ISD_timesteps(xl_file_path, data)
+      where xl_file_path is an Excel workbook file name
+            data         is a dictionary as defined above
+    Side effects:
+     Writes to an Excel worksheet instance.
+    Called by:
+    Calls:
+    Author: PRI
+    Date: August 2017
+    """
+    # get a workbook
+    xl_book = xlwt.Workbook()
+    # get a list of the sheets to add
+    site_list = data.keys()
+    year_list = data[site_list[0]].keys()
+    stat_list = data[site_list[0]][year_list[0]].keys()
+    # loop over the statistics
+    for stat in stat_list:
+        # add a worksheet for the statistics
+        xl_sheet = xl_book.add_sheet(stat)
+        # write the header line
+        for col, year in enumerate(year_list):
+            xl_sheet.write(0,col+1,year)
+        # write the data, one row per site, one column per year
+        for row, site in enumerate(site_list):
+            xl_sheet.write(row+1,0,site)
+            for col, year in enumerate(year_list):
+                if stat in data[site][year].keys():
+                    xl_sheet.write(row+1,col+1,data[site][year][stat])
+                else:
+                    xl_sheet.write(row+1,col+1,"")
+    # save the workbook
+    xl_book.save(xl_file_path)
+    
+    return
+
 # read the control file file
 cf = qcio.load_controlfile(path='../controlfiles')
 xl_file_path = cf["Files"]["xl_file_path"]
@@ -308,6 +357,8 @@ out_base_path = cf["Files"]["out_base_path"]
 site_info = read_site_master(xl_file_path, xl_sheet_name)
 # get a list of sites
 site_list = site_info.keys()
+# creat a dictionary to hold the ISD site time steps
+isd_time_steps = OrderedDict()
 
 for site in site_list:
     # construct the output file path
@@ -338,7 +389,7 @@ for site in site_list:
     if not isinstance(isd_site_list, list):
         isd_site_list = [isd_site_list]
     time_zone = site_info[site]["Time zone"]
-    time_step = int(site_info[site]["Time step"])
+    time_step = int(round(float(site_info[site]["Time step"])))
     start_year = int(site_info[site]["Start year"])
     end_year = int(site_info[site]["End year"])
     # get the list of years to process
@@ -348,6 +399,10 @@ for site in site_list:
         ds_out = {}
         isd_year_path = os.path.join(isd_base_path,str(year))
         for isd_site in isd_site_list:
+            if isd_site not in isd_time_steps.keys():
+                isd_time_steps[isd_site] = OrderedDict()
+            if year not in isd_time_steps[isd_site].keys():
+                isd_time_steps[isd_site][year] = OrderedDict()
             isd_file_path = os.path.join(isd_year_path,str(isd_site)+"-"+str(year)+".gz")
             if not os.path.isfile(isd_file_path):
                 continue
@@ -357,6 +412,13 @@ for site in site_list:
                 msg = " Unable to read file, skipping ..."
                 logger.warning(msg)
                 continue
+            # get an array of time steps in seconds
+            dt = qcutils.get_timestep(ds_in)
+            # and get dt in minutes
+            dt = dt/float(60)
+            isd_time_steps[isd_site][year]["mean"] = numpy.mean(dt)
+            isd_time_steps[isd_site][year]["stdev"] = numpy.std(dt)
+            isd_time_steps[isd_site][year]["mode"] = scipy.stats.mode(dt)[0][0]
             # interpolate from the ISD site time step to the tower time step
             ds_out[site_index[isd_site]] = interpolate_ds(ds_in, time_step, k=1)
             # adjust time from UTC to local using the time zone
@@ -454,5 +516,9 @@ for site in site_list:
     #cf_concat.filename = "../controlfiles/ISD/concat.txt"
     #cf_concat.write()
     qcio.nc_concatenate(cf_concat)    
+
+# write the time steps out to an Excel file
+xl_file_path = os.path.join(isd_base_path, "ISD_site_timesteps.xls")
+xl_write_ISD_timesteps(xl_file_path, isd_time_steps)
 
 logger.info("All done")

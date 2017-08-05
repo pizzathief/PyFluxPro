@@ -2206,6 +2206,53 @@ def xl_write_SOLOStats(ds):
             xlCol = xlCol + 1
     xlfile.save(xl_filename)
 
+def xl_write_ISD_timesteps(xl_file_path, data):
+    """
+    Purpose:
+     Writes a dictionary to a worksheet in an Excel workbook.
+     This routine has 2 arguments,an Excel worksheet instance and
+     a dictionary of data to be written out.  The dictionary
+     format needs to be:
+      data[site][year]["mean"]
+      data[site][year]["stdev"]
+      data[site][year]["mode"]
+    Usage:
+     qcio.xl_write_ISD_timesteps(xl_file_path, data)
+      where xl_file_path is an Excel workbook file name
+            data         is a dictionary as defined above
+    Side effects:
+     Writes to an Excel worksheet instance.
+    Called by:
+    Calls:
+    Author: PRI
+    Date: August 2017
+    """
+    # get a workbook
+    xl_book = xlwt.Workbook()
+    # get a list of the sheets to add
+    site_list = data.keys()
+    year_list = data[site_list[0]].keys()
+    stat_list = data[site_list[0]][year_list[0]].keys()
+    # loop over the statistics
+    for stat in stat_list:
+        # add a worksheet for the statistics
+        xl_sheet = xl_book.add_sheet(stat)
+        # write the header line
+        for col, year in enumerate(year_list):
+            xl_sheet.write(0,col+1,year)
+        # write the data, one row per site, one column per year
+        for row, site in enumerate(site_list):
+            xl_sheet.write(row+1,0,site)
+            for col, year in enumerate(year_list):
+                print site,year,stat
+                if stat == "mode":
+                    pass
+                xl_sheet.write(row+1,col+1,data[site][year][stat])
+    # save the workbook
+    xl_book.save(xl_file_path)
+    
+    return
+
 def xl_write_data(xl_sheet,data,xlCol=0):
     """
     Purpose:

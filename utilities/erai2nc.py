@@ -62,7 +62,7 @@ xl_file_path = cf["Files"]["xl_file_path"]
 xl_sheet_name = cf["Files"]["xl_sheet_name"]
 erai_path = cf["Files"]["erai_path"]
 out_base_path = cf["Files"]["out_base_path"]
-site_sa_limit = cf["Files"]["site_sa_limit"]
+site_sa_limit = cf["Options"]["site_sa_limit"]
 # get the site information from the site master spreadsheet
 site_info = read_site_master(xl_file_path, xl_sheet_name)
 # get a list of sites
@@ -128,7 +128,7 @@ for n, erai_name in enumerate(erai_list):
         site_latitude = site_info[site_name]["Latitude"]
         site_longitude = site_info[site_name]["Longitude"]
         site_timezone = site_info[site_name]["Time zone"]
-        site_timestep = site_info[site_name]["Time step"]
+        site_timestep = int(round(float(site_info[site_name]["Time step"])))
         # index of the site in latitude dimension
         site_lat_index = int(((latitude[0]-site_latitude)/lat_resolution)+0.5)
         erai_latitude = latitude[site_lat_index]
