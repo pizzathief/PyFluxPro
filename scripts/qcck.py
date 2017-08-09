@@ -337,7 +337,7 @@ def do_SONICcheck(cf, ds, code=3):
     if "Diag_SONIC" in series_list:
         pass
     elif "Diag_CSAT" in series_list:
-        ds.series["Diag_SONIC"] = copy.deepcopy(ds.series["Diag_CSAT"])
+        ds.series[unicode("Diag_SONIC")] = copy.deepcopy(ds.series["Diag_CSAT"])
     else:
         msg = " Sonic diagnostics not found in data, skipping sonic checks ..."
         logger.warning(msg)
@@ -573,7 +573,7 @@ def do_li7500check(cf, ds, code=4):
         pass
     elif "Diag_7500" in series_list:
         # backward compatibility with early OFQC
-        ds.series["Diag_IRGA"] = copy.deepcopy(ds.series["Diag_7500"])
+        ds.series[unicode("Diag_IRGA")] = copy.deepcopy(ds.series["Diag_7500"])
     else:
         msg = " IRGA diagnostics not found in data, skipping IRGA checks ..."
         logger.warning(msg)

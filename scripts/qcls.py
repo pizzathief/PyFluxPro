@@ -45,7 +45,8 @@ def l1qc(cf):
     qcutils.round_datetime(ds1,mode="nearest_second")
     #check for gaps in the Python datetime series and fix if present
     fixtimestepmethod = qcutils.get_keyvaluefromcf(cf,["options"],"FixTimeStepMethod",default="round")
-    if qcutils.CheckTimeStep(ds1): qcutils.FixTimeStep(ds1,fixtimestepmethod=fixtimestepmethod)
+    if qcutils.CheckTimeStep(ds1):
+        qcutils.FixTimeStep(ds1,fixtimestepmethod=fixtimestepmethod)
     # recalculate the Excel datetime
     qcutils.get_xldatefromdatetime(ds1)
     # get the Year, Month, Day etc from the Python datetime
@@ -129,36 +130,48 @@ def l3qc(cf,ds2):
     # get the air temperature from the CSAT virtual temperature
     qcts.TaFromTv(cf,ds3)
     # merge the HMP and corrected CSAT data
-    qcts.MergeSeries(cf,ds3,'Ta',convert_units=True)
+    qcts.MergeSeries(cf,ds3,"Ta",convert_units=True)
     qcutils.CheckUnits(ds3,"Ta","C",convert_units=True)
     # calculate humidities (absolute, specific and relative) from whatever is available
     qcts.CalculateHumidities(ds3)
     # merge the 7500 CO2 concentration
-    qcts.MergeSeries(cf,ds3,'CO2',convert_units=True)
+    # PRI 09/08/2017 possibly the ugliest thing I have done yet
+    # This needs to be abstracted to a general alias checking routine at the
+    # start of the L3 processing so that possible aliases are mapped to a single
+    # set of variable names.
+    if "CO2" in cf["Variables"]:
+        CO2 = "CO2"
+    elif "Cc" in cf["Variables"]:
+        CO2 = "Cc"
+    else:
+        msg = "Label for CO2 ('CO2','Cc') not found in control file"
+        logger.error(msg)
+        return
+    qcts.MergeSeries(cf, ds3, CO2, convert_units=True)
     # PRI - disable CO2 units conversion from whatever to mg/m3
     #     - this step is, as far as I can see, redundant, see qcts.Fc_WPL()
     #qcutils.CheckUnits(ds3,"Cc","mg/m3",convert_units=True)
     # add relevant meteorological values to L3 data
     qcts.CalculateMeteorologicalVariables(ds3)
     # check to see if the user wants to use the fluxes in the L2 file
-    if not qcutils.cfoptionskeylogical(cf,Key="UseL2Fluxes",default=False):
+    if not qcutils.cfoptionskeylogical(cf, Key="UseL2Fluxes", default=False):
         # check the covariancve units and change if necessary
         qcts.CheckCovarianceUnits(ds3)
         # do the 2D coordinate rotation
-        qcts.CoordRotation2D(cf,ds3)
+        qcts.CoordRotation2D(cf, ds3)
         # do the Massman frequency attenuation correction
-        qcts.MassmanStandard(cf,ds3)
+        qcts.MassmanStandard(cf, ds3)
         # calculate the fluxes
-        qcts.CalculateFluxes(cf,ds3)
+        qcts.CalculateFluxes(cf, ds3)
         # approximate wT from virtual wT using wA (ref: Campbell OPECSystem manual)
-        qcts.FhvtoFh(cf,ds3)
+        qcts.FhvtoFh(cf, ds3)
         # correct the H2O & CO2 flux due to effects of flux on density measurements
-        qcts.Fe_WPL(cf,ds3)
-        qcts.Fc_WPL(cf,ds3)
+        qcts.Fe_WPL(cf, ds3)
+        qcts.Fc_WPL(cf, ds3)
     # convert CO2 units if required
-    qcutils.ConvertCO2Units(cf,ds3,Cc='CO2')
+    qcutils.ConvertCO2Units(cf, ds3, CO2=CO2)
     # calculate Fc storage term - single height only at present
-    qcts.CalculateFcStorage(cf,ds3)
+    qcts.CalculateFcStorage(cf, ds3)
     # convert Fc and Fc_storage units if required
     qcutils.ConvertFcUnits(cf,ds3,Fc='Fc',Fc_storage='Fc_storage')
     # merge Fc and Fc_storage series if required
