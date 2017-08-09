@@ -457,21 +457,23 @@ def do_EC155check(cf,ds):
     # list of series that depend on IRGA data quality
     EC155_list = ['H2O_IRGA_Av','CO2_IRGA_Av','H2O_IRGA_Sd','CO2_IRGA_Sd','H2O_IRGA_Vr','CO2_IRGA_Vr',
                  'UzA','UxA','UyA','UzH','UxH','UyH','UzC','UxC','UyC']
-    index = numpy.where(ds.series['Diag_IRGA']['Flag']!=0)
-    logger.info('  EC155Check: Diag_IRGA rejects ' + str(numpy.size(index)))
+    idx = numpy.where(ds.series['Diag_IRGA']['Flag']!=0)
+    logger.info('  EC155Check: Diag_IRGA rejects ' + str(numpy.size(idx)))
     EC155_dependents = []
     for item in ['Signal_H2O','Signal_CO2','H2O_IRGA_Sd','CO2_IRGA_Sd']:
-        if item in ds.series.keys(): EC155_dependents.append(item)
+        if item in ds.series.keys():
+            EC155_dependents.append(item)
+    flag = numpy.copy(ds.series['Diag_IRGA']['Flag'])
     for item in EC155_dependents:
-        index = numpy.where(ds.series[item]['Flag']!=0)
-        logger.info('  EC155Check: '+item+' rejected '+str(numpy.size(index))+' points')
-        ds.series['Diag_IRGA']['Flag'] = ds.series['Diag_IRGA']['Flag'] + ds.series[item]['Flag']
-    index = numpy.where((ds.series['Diag_IRGA']['Flag']!=0))
-    logger.info('  EC155Check: Total rejected ' + str(numpy.size(index)))
+        idx = numpy.where(ds.series[item]['Flag'] != 0)[0]
+        logger.info('  EC155Check: '+item+' rejected '+str(numpy.size(idx))+' points')
+        flag[idx] = numpy.int32(1)
+    idx = numpy.where(flag !=0 )[0]
+    logger.info('  EC155Check: Total rejected ' + str(numpy.size(idx)))
     for ThisOne in EC155_list:
         if ThisOne in ds.series.keys():
-            ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
+            ds.series[ThisOne]['Data'][idx] = numpy.float64(c.missing_value)
+            ds.series[ThisOne]['Flag'][idx] = numpy.int32(4)
         else:
             logger.warning(' do_EC155check: series '+str(ThisOne)+' in EC155 list not found in data structure')
     if 'EC155Check' not in ds.globalattributes['Functions']:
@@ -558,7 +560,7 @@ def do_IRGAcheck(cf,ds):
     else:
         msg = " Unsupported IRGA type "+irga_type+", contact the devloper ..."
         logger.error(msg)
-        return
+    return
 
 def do_li7500check(cf, ds, code=4):
     '''Rejects data values for series specified in LI75List for times when the Diag_7500
@@ -592,8 +594,8 @@ def do_li7500check(cf, ds, code=4):
         if label in irga_list_all:
             irga_list.append(label)
     # now tell the user how many points the IRGA diagnostic will remove
-    index = numpy.where(ds.series["Diag_IRGA"]["Flag"] != 0)
-    msg = "  Diag_IRGA rejected "+str(numpy.size(index))+" points"
+    idx = numpy.where(ds.series["Diag_IRGA"]["Flag"] != 0)
+    msg = "  Diag_IRGA rejected "+str(numpy.size(idx))+" points"
     logger.info(msg)
     # and then we start with the dependents
     # and again we list everything we may have used in the past for backwards compatibility
@@ -617,18 +619,19 @@ def do_li7500check(cf, ds, code=4):
         if (std in irga_dependents) and (var in irga_dependents):
             irga_dependents_nodups.remove(var)
     # now we can do the business
+    flag = numpy.copy(ds.series["Diag_IRGA"]["Flag"])
     for label in irga_dependents_nodups:
-        index = numpy.where(ds.series[label]["Flag"] != 0)
-        logger.info("  IRGACheck: "+label+" rejected "+str(numpy.size(index))+" points")
-        ds.series["Diag_IRGA"]["Flag"] = ds.series["Diag_IRGA"]["Flag"] + ds.series[label]["Flag"]
-    index = numpy.where((ds.series["Diag_IRGA"]["Flag"] != 0))
-    msg = "  IRGACheck: Total rejected is " + str(numpy.size(index))
-    percent = float(100)*numpy.size(index)/numpy.size(ds.series["Diag_IRGA"]["Flag"])
+        idx = numpy.where(ds.series[label]["Flag"] != 0)
+        logger.info("  IRGACheck: "+label+" rejected "+str(numpy.size(idx))+" points")
+        flag[idx] = numpy.int32(1)
+    idx = numpy.where(flag != 0)[0]
+    msg = "  IRGACheck: Total rejected is " + str(numpy.size(idx))
+    percent = float(100)*numpy.size(idx)/numpy.size(flag)
     msg = msg + " (" + str(int(percent+0.5)) + "%)"
     logger.info(msg)
     for label in irga_dependents:
-        ds.series[label]['Data'][index] = numpy.float64(c.missing_value)
-        ds.series[label]['Flag'][index] = numpy.int32(code)
+        ds.series[label]['Data'][idx] = numpy.float64(c.missing_value)
+        ds.series[label]['Flag'][idx] = numpy.int32(code)
 
 def do_li7500acheck(cf,ds):
     #msg = " Li-7500A check not implemented yet, contact the developer ..."
@@ -647,24 +650,28 @@ def do_li7500acheck(cf,ds):
     logger.info(' Doing the 7500A check')
     LI75List = ['H2O_IRGA_Av','CO2_IRGA_Av','H2O_IRGA_Sd','CO2_IRGA_Sd','H2O_IRGA_Vr','CO2_IRGA_Vr',
                 'UzA','UxA','UyA','UzC','UxC','UyC']
-    index = numpy.where(ds.series['Diag_IRGA']['Flag']!=0)
-    logger.info('  7500ACheck: Diag_IRGA ' + str(numpy.size(index)))
+    idx = numpy.where(ds.series['Diag_IRGA']['Flag']!=0)[0]
+    logger.info('  7500ACheck: Diag_IRGA ' + str(numpy.size(idx)))
     LI75_dependents = []
     for item in ['Signal_H2O','Signal_CO2','H2O_IRGA_Sd','CO2_IRGA_Sd','H2O_IRGA_Vr','CO2_IRGA_Vr']:
-        if item in ds.series.keys(): LI75_dependents.append(item)
-    if "H2O_IRGA_Sd" and "H2O_IRGA_Vr" in LI75_dependents: LI75_dependents.remove("H2O_IRGA_Vr")
-    if "CO2_IRGA_Sd" and "CO2_IRGA_Vr" in LI75_dependents: LI75_dependents.remove("CO2_IRGA_Vr")
+        if item in ds.series.keys():
+            LI75_dependents.append(item)
+    if "H2O_IRGA_Sd" and "H2O_IRGA_Vr" in LI75_dependents:
+        LI75_dependents.remove("H2O_IRGA_Vr")
+    if "CO2_IRGA_Sd" and "CO2_IRGA_Vr" in LI75_dependents:
+        LI75_dependents.remove("CO2_IRGA_Vr")
+    flag = numpy.copy(ds.series['Diag_IRGA']['Flag'])
     for item in LI75_dependents:
         if item in ds.series.keys():
-            index = numpy.where(ds.series[item]['Flag']!=0)
-            logger.info('  7500ACheck: '+item+' rejected '+str(numpy.size(index))+' points')
-            ds.series['Diag_IRGA']['Flag'] = ds.series['Diag_IRGA']['Flag'] + ds.series[item]['Flag']
-    index = numpy.where((ds.series['Diag_IRGA']['Flag']!=0))
-    logger.info('  7500ACheck: Total ' + str(numpy.size(index)))
+            idx = numpy.where(ds.series[item]['Flag']!=0)
+            logger.info('  7500ACheck: '+item+' rejected '+str(numpy.size(idx))+' points')
+            flag[idx] = numpy.int32(1)
+    idx = numpy.where(flag != 0)[0]
+    logger.info('  7500ACheck: Total ' + str(numpy.size(idx)))
     for ThisOne in LI75List:
         if ThisOne in ds.series.keys():
-            ds.series[ThisOne]['Data'][index] = numpy.float64(c.missing_value)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(4)
+            ds.series[ThisOne]['Data'][idx] = numpy.float64(c.missing_value)
+            ds.series[ThisOne]['Flag'][idx] = numpy.int32(4)
         else:
             #logger.warning('  qcck.do_7500acheck: series '+str(ThisOne)+' in LI75List not found in ds.series')
             pass
