@@ -72,11 +72,11 @@ def CheckQCFlags(ds):
         data = numpy.ma.masked_values(ds.series[ThisOne]["Data"],-9999)
         flag = numpy.ma.masked_equal(numpy.mod(ds.series[ThisOne]["Flag"],10),0)
         mask = data.mask&flag.mask
-        index = numpy.ma.where(mask==True)[0]
-        if len(index)!=0:
-            msg = " "+ThisOne+": "+str(len(index))+" missing values with flag = 0 (forced to 8)"
+        idx = numpy.ma.where(mask==True)[0]
+        if len(idx)!=0:
+            msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
             logger.warning(msg)
-            ds.series[ThisOne]["Flag"][index] = numpy.int32(8)
+            ds.series[ThisOne]["Flag"][idx] = numpy.int32(8)
     # force all values != -9999 to have QC flag = 0, 10, 20 etc
     nRecs = int(ds.globalattributes["nc_nrecs"])
     missing_array = numpy.ones(nRecs)*float(c.missing_value)
@@ -85,11 +85,12 @@ def CheckQCFlags(ds):
         series_list.remove("DateTime")
     for ThisOne in series_list:
         bool_array = numpy.isclose(ds.series[ThisOne]["Data"], missing_array)
-        index = numpy.where((bool_array == False)&(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))
-        if len(index)!=0:
-            msg = " "+ThisOne+": "+str(len(index))+" non-missing values with flag != 0 (forced to 0)"
+        idx = numpy.where((bool_array == False)&(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))[0]
+        if len(idx)!=0:
+            msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0"
             logger.warning(msg)
-            ds.series[ThisOne]["Flag"][index] = numpy.int32(0)
+            #msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0 (forced to 0)"
+            #ds.series[ThisOne]["Flag"][idx] = numpy.int32(0)
     return
 
 def CheckTimeStep(ds):
@@ -740,9 +741,10 @@ def FixTimeGaps(ds):
     idx_gaps = FindIndicesOfBInA(ldt_gaps,ldt_nogaps)
     # update the series of Python datetimes
     ds.series['DateTime']['Data'] = ldt_nogaps
-    org_flag = ds.series['DateTime']['Flag'].astype(numpy.int32)
-    ds.series['DateTime']['Flag'] = numpy.ones(nRecs,dtype=numpy.int32)
-    ds.series['DateTime']['Flag'][idx_gaps] = org_flag
+    ds.series['DateTime']['Flag'] = numpy.zeros(len(ldt_nogaps),dtype=numpy.int32)
+    #org_flag = ds.series['DateTime']['Flag'].astype(numpy.int32)
+    #ds.series['DateTime']['Flag'] = numpy.ones(nRecs,dtype=numpy.int32)
+    #ds.series['DateTime']['Flag'][idx_gaps] = org_flag
     # get a list of series in the data structure
     series_list = [item for item in ds.series.keys() if '_QCFlag' not in item]
     # remove the datetime-related series from data structure
@@ -757,6 +759,7 @@ def FixTimeGaps(ds):
         data_nogaps[idx_gaps] = data_gaps
         flag_nogaps[idx_gaps] = flag_gaps
         CreateSeries(ds,ThisOne,data_nogaps,Flag=flag_nogaps,Attr=attr)
+    return
 
 def FixTimeStep(ds,fixtimestepmethod="round"):
     """
@@ -1569,14 +1572,11 @@ def get_xldatefromdatetime(ds):
     else:
         datemode = int(0)
     nRecs = int(ds.globalattributes["nc_nrecs"])
-    # get the Excel datetime series, flag and attributes
-    if "xlDateTime" in ds.series.keys():
-        xldt_org,xldt_flag,xldt_attr = GetSeriesasMA(ds,"xlDateTime")
-    else:
-        xldt_flag = numpy.zeros(nRecs,dtype=numpy.int32)
-        xldt_attr = MakeAttributeDictionary(long_name="Date/time in Excel format",units="days since 1899-12-31 00:00:00")
+    # get the Excel datetime attributes
+    xldt_attr = MakeAttributeDictionary(long_name="Date/time in Excel format",units="days since 1899-12-31 00:00:00")
     # get a local pointer to the Python DateTime series in ds
     ldt = ds.series["DateTime"]["Data"]
+    flag = ds.series["DateTime"]["Flag"]
     # get a list of Excel datetimes from the Python datetime objects
     xldate = [xlrd.xldate.xldate_from_datetime_tuple((ldt[i].year,
                                                       ldt[i].month,
@@ -1586,8 +1586,8 @@ def get_xldatefromdatetime(ds):
                                                       ldt[i].second),
                                                       datemode) for i in range(0,len(ldt))]
     xldt_new = numpy.ma.array(xldate, dtype=numpy.float64)
-    # overwrite the existing Excel datetime series
-    CreateSeries(ds,"xlDateTime",xldt_new,Flag=xldt_flag,Attr=xldt_attr)
+    # create the Excel datetime series
+    CreateSeries(ds,"xlDateTime",xldt_new,Flag=flag,Attr=xldt_attr)
 
 def get_ymdhmsfromdatetime(ds):
     '''

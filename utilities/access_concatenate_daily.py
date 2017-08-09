@@ -23,9 +23,9 @@ import pytz
 import pdb
 from scipy.interpolate import interp1d
 import sys
-# path to OzFluxQC scripts
-sys.path.append('/home/pisaac/Python/OzFluxQC/scripts/')
-# OzFluxQC modules
+# since the scripts directory is there, try importing the modules
+sys.path.append('../scripts')
+# PFP
 import constants as c
 import meteorologicalfunctions as mf
 import qcio
@@ -354,11 +354,14 @@ def interpolate_to_30minutes(ds_60minutes):
     dt_utc_30minutes = [x for x in perdelta(dt_utc_60minutes[0],dt_utc_60minutes[-1],datetime.timedelta(minutes=30))]
     # update the global attribute "nc_nrecs"
     ds_30minutes.globalattributes['nc_nrecs'] = nRecs_30minutes
-    flag_30minutes = numpy.zeros(nRecs_30minutes)
     ds_30minutes.series["DateTime"] = {}
     ds_30minutes.series["DateTime"]["Data"] = dt_loc_30minutes
+    flag = numpy.zeros(len(dt_loc_30minutes),dtype=numpy.int32)
+    ds_30minutes.series["DateTime"]["Flag"] = flag
     ds_30minutes.series["DateTime_UTC"] = {}
     ds_30minutes.series["DateTime_UTC"]["Data"] = dt_utc_30minutes
+    flag = numpy.zeros(len(dt_utc_30minutes),dtype=numpy.int32)
+    ds_30minutes.series["DateTime_UTC"]["Flag"] = flag
     # get the year, month etc from the datetime
     qcutils.get_xldatefromdatetime(ds_30minutes)
     qcutils.get_ymdhmsfromdatetime(ds_30minutes)
@@ -383,10 +386,13 @@ def interpolate_to_30minutes(ds_60minutes):
         ci_30minutes = int_fn(x_30minutes)
         idx = numpy.where(abs(ci_30minutes-float(0))>c.eps)[0]
         series_30minutes[idx] = numpy.float64(c.missing_value)
+        flag_30minutes = numpy.zeros(nRecs_30, dtype=numpy.int32)
+        flag_30minutes[idx] = numpy.int32(1)
         qcutils.CreateSeries(ds_30minutes,label,series_30minutes,Flag=flag_30minutes,Attr=attr)
     # get the UTC hour
     hr_utc = [float(x.hour)+float(x.minute)/60 for x in dt_utc_30minutes]
     attr = qcutils.MakeAttributeDictionary(long_name='UTC hour')
+    flag_30minutes = numpy.zeros(nRecs_30, dtype=numpy.int32)
     qcutils.CreateSeries(ds_30minutes,'Hr_UTC',hr_utc,Flag=flag_30minutes,Attr=attr)
     return ds_30minutes
 
@@ -398,7 +404,7 @@ def get_instantaneous_precip30(ds_30minutes):
             # get the accumulated precipitation
             accum,flag,attr = qcutils.GetSeries(ds_30minutes,label)
             # get the 30 minute precipitation
-            precip = numpy.ma.ediff1d(accum,to_begin=0)
+            precip = numpy.ediff1d(accum,to_begin=0)
             # now we deal with the reset of accumulated precipitation at 00, 06, 12 and 18 UTC
             # indices of analysis times 00, 06, 12, and 18
             idx1 = numpy.where(numpy.mod(hr_utc,6)==0)[0]
@@ -415,10 +421,14 @@ def get_instantaneous_precip30(ds_30minutes):
             # set precipitations less than 0.01 mm to 0
             idx3 = numpy.ma.where(precip<0.01)[0]
             precip[idx3] = float(0)
+            # set instantaneous precipitation to missing when accumlated precipitation was missing
+            idx = numpy.where(flag!=0)[0]
+            precip[idx] = float(c.missing_value)
             # set some variable attributes
             attr["long_name"] = "Precipitation total over time step"
             attr["units"] = "mm/30 minutes"
             qcutils.CreateSeries(ds_30minutes,label,precip,Flag=flag,Attr=attr)
+    return
 
 def get_instantaneous_precip60(ds_60minutes):
     hr_utc,f,a = qcutils.GetSeries(ds_60minutes,'Hr_UTC')
@@ -428,7 +438,7 @@ def get_instantaneous_precip60(ds_60minutes):
             # get the accumulated precipitation
             accum,flag,attr = qcutils.GetSeries(ds_60minutes,label)
             # get the 30 minute precipitation
-            precip = numpy.ma.ediff1d(accum,to_begin=0)
+            precip = numpy.ediff1d(accum,to_begin=0)
             # now we deal with the reset of accumulated precipitation at 00, 06, 12 and 18 UTC
             # indices of analysis times 00, 06, 12, and 18
             idx1 = numpy.where(numpy.mod(hr_utc,6)==0)[0]
@@ -437,6 +447,9 @@ def get_instantaneous_precip60(ds_60minutes):
             # set accumulated precipitations less than 0.001 mm to 0
             idx2 = numpy.ma.where(precip<0.01)[0]
             precip[idx2] = float(0)
+            # set instantaneous precipitation to missing when accumlated precipitation was missing
+            idx = numpy.where(flag!=0)[0]
+            precip[idx] = float(c.missing_value)
             # set some variable attributes
             attr["long_name"] = "Precipitation total over time step"
             attr["units"] = "mm/60 minutes"
@@ -512,6 +525,9 @@ def access_read_mfiles2(file_list,var_list=[]):
         ncfile.close()
     # return with the data structure
     return f
+
+def makedummyseries(shape):
+    return numpy.ma.masked_all(shape)
 # !!! end of function definitions !!!
 
 # !!! start of main program !!!
@@ -523,7 +539,8 @@ console.setFormatter(formatter)
 console.setLevel(logging.INFO)
 logging.getLogger('').addHandler(console)
 # get the control file name from the command line
-cf_name = sys.argv[1]
+#cf_name = sys.argv[1]
+cf_name = qcio.get_controlfilename(path='../controlfiles',title='Choose a control file')
 # get the control file contents
 logging.info('Reading the control file')
 cf = configobj.ConfigObj(cf_name)
@@ -532,6 +549,7 @@ logging.info('Getting control file contents')
 site_list = cf["Sites"].keys()
 var_list = cf["Variables"].keys()
 # loop over sites
+#site_list = ["AdelaideRiver"]
 for site in site_list:
     info = get_info_dict(cf,site)
     logging.info("Processing site "+info["site_name"])
