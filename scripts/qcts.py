@@ -1152,7 +1152,7 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     qcutils.CreateSeries(ds,'S',S,Flag=flag,Attr=attr)
     flag = numpy.where(numpy.ma.getmaskarray(Cs)==True,ones,zeros)
     attr = qcutils.MakeAttributeDictionary(long_name='Specific heat capacity',units='J/m3/K')
-    qcutils.CreateSeries(ds,'Cs',Cs,Flag=Fg_flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Cs',Cs,Flag=flag,Attr=attr)
     if qcutils.cfoptionskeylogical(cf,Key='RelaxFgStorage'):
         ReplaceWhereMissing(ds.series['Fg'],ds.series['Fg'],ds.series['Fg_Av'],FlagValue=20)
         if 'RelaxFgStorage' not in ds.globalattributes['Functions']:
@@ -1552,6 +1552,9 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
         logger.warning(" WPL correction for Fc disabled in control file")
         return
     logger.info(' Applying WPL correction to Fc')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     Fc_raw,Fc_raw_flag,Fc_raw_attr = qcutils.GetSeriesasMA(ds,Fc_raw_in)
     Fh,f,a = qcutils.GetSeriesasMA(ds,Fh_in)
     Fe,f,a = qcutils.GetSeriesasMA(ds,Fe_in)
@@ -1564,6 +1567,13 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
         logger.error(msg)
         sys.exit()
     Ah = Ah*c.g2kg                                # absolute humidity from g/m3 to kg/m3
+    # deal with aliases for CO2 concentration
+    if Cc_in not in ds.series.keys() and "Cc" in ds.series.keys():
+        Cc_in = "Cc"
+    else:
+        msg = "Fc_WPL: did not find CO2 in data structure"
+        log.error(msg)
+        sys.exit()
     Cc,Cc_flag,Cc_attr = qcutils.GetSeriesasMA(ds,Cc_in)
     if Cc_attr["units"]!="mg/m3":
         if Cc_attr["units"]=="umol/mol":
@@ -1571,7 +1581,7 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
             logger.warning(msg)
             Cc = mf.co2_mgpm3fromppm(Cc,Ta,ps)
         else:
-            msg = " Fc_WPL: unrecognised units ("+Cc_attr["units"]+") for Cc"
+            msg = " Fc_WPL: unrecognised units ("+Cc_attr["units"]+") for CO2"
             logger.error(msg)
             sys.exit()
     rhod,f,a = qcutils.GetSeriesasMA(ds,'rhod')
@@ -1587,12 +1597,17 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
     attr = qcutils.MakeAttributeDictionary(long_name='WPL corrected Fc',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
     qcutils.CreateSeries(ds,Fc_wpl_out,Fc_wpl_data,Flag=Fc_wpl_flag,Attr=attr)
+    # save the WPL correction terms
     attr = qcutils.MakeAttributeDictionary(long_name='WPL correction to Fc due to Fe',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
-    qcutils.CreateSeries(ds,'co2_wpl_Fe',co2_wpl_Fe,Flag=Fc_wpl_flag,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(co2_wpl_Fe)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'co2_wpl_Fe',co2_wpl_Fe,Flag=flag,Attr=attr)
     attr = qcutils.MakeAttributeDictionary(long_name='WPL correction to Fc due to Fh',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
-    qcutils.CreateSeries(ds,'co2_wpl_Fh',co2_wpl_Fh,Flag=Fc_wpl_flag,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(co2_wpl_Fh)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'co2_wpl_Fh',co2_wpl_Fh,Flag=flag,Attr=attr)
+    
+    return
 
 def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah',ps_in='ps'):
     """
@@ -1683,6 +1698,12 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='w
       Fh_out   - label of sensible heat flux, default is 'Fh'
     '''
     logger.info(' Converting virtual Fh to Fh')
+    # deal with sonic temperature aliases
+    if Tv_in not in ds.series.keys() and "Tv_CSAT" in ds.series.keys():
+        Tv_in = "Tv_CSAT"
+    else:
+        logger.error(" FhvtoFh: sonic virtual temperature not found in data structure")
+        return
     # get the input series
     Fhv,f,a = qcutils.GetSeriesasMA(ds,Fhv_in)              # get the virtual heat flux
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_in)                # get the virtual temperature, C
@@ -2539,8 +2560,12 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
     #       approximation involved here is of the order of 1%.
     logger.info(' Calculating Ta from Tv')
     # check to see if we have enough data to proceed
-    if Tv_in not in ds.series.keys():
-        logger.error(" TaFromTv: sonic virtual temperature ("+str(Tv_in)+") not found in data structure")
+    # deal with possible aliases for the sonic temperature
+    if Tv_in not in ds.series.keys() and "Tv_CSAT" in ds.series.keys():
+        Tv_in = "Tv_CSAT"
+        Ta_out = "Ta_CSAT"
+    else:
+        logger.error(" TaFromTv: sonic virtual temperature not found in data structure")
         return
     if Ah_in not in ds.series.keys() and RH_in not in ds.series.keys() and q_in not in ds.series.keys():
         labstr = str(Ah_in)+","+str(RH_in)+","+str(q_in)

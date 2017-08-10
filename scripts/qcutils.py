@@ -74,9 +74,10 @@ def CheckQCFlags(ds):
         mask = data.mask&flag.mask
         idx = numpy.ma.where(mask==True)[0]
         if len(idx)!=0:
-            msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
+            msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0"
             logger.warning(msg)
-            ds.series[ThisOne]["Flag"][idx] = numpy.int32(8)
+            #msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
+            #ds.series[ThisOne]["Flag"][idx] = numpy.int32(8)
     # force all values != -9999 to have QC flag = 0, 10, 20 etc
     nRecs = int(ds.globalattributes["nc_nrecs"])
     missing_array = numpy.ones(nRecs)*float(c.missing_value)
@@ -176,32 +177,32 @@ def contiguous_regions(condition):
     idx.shape = (-1,2)
     return idx
 
-def ConvertCO2Units(cf,ds,Cc='Cc'):
-    Cc_units_out = "mg/m3"            # default value
-    Cc_units_in = ds.series[Cc]['Attr']['units']
+def ConvertCO2Units(cf, ds, CO2='CO2'):
+    CO2_units_out = "mg/m3"            # default value
+    CO2_units_in = ds.series[CO2]['Attr']['units']
     if 'Options' in cf:
         if 'CO2Units' in cf['Options']:
-            Cc_units_out = str(cf['Options']['CO2Units'])
-    if Cc_units_out!=Cc_units_in:
-        logger.info(' Converting CO2 concentration from '+Cc_units_in+' to '+Cc_units_out)
-        if Cc_units_out=="umol/mol" and Cc_units_in=="mg/m3":
-            c_mgpm3,flag,attr = GetSeriesasMA(ds,Cc)
+            CO2_units_out = str(cf['Options']['CO2Units'])
+    if CO2_units_out!=CO2_units_in:
+        logger.info(' Converting CO2 concentration from '+CO2_units_in+' to '+CO2_units_out)
+        if CO2_units_out=="umol/mol" and CO2_units_in=="mg/m3":
+            c_mgpm3,flag,attr = GetSeriesasMA(ds,CO2)
             T,f,a = GetSeriesasMA(ds,'Ta')
             p,f,a = GetSeriesasMA(ds,'ps')
             c_ppm = mf.co2_ppmfrommgpm3(c_mgpm3,T,p)
             attr["long_name"] = attr["long_name"]+", converted to umol/mol"
-            attr["units"] = Cc_units_out
+            attr["units"] = CO2_units_out
             attr["standard_name"] = "mole_concentration_of_carbon_dioxide_in_air"
-            CreateSeries(ds,Cc,c_ppm,Flag=flag,Attr=attr)
-        elif Cc_units_out=="mg/m3" and Cc_units_in=="umol/mol":
-            c_ppm,flag,attr = GetSeriesasMA(ds,Cc)
+            CreateSeries(ds,CO2,c_ppm,Flag=flag,Attr=attr)
+        elif CO2_units_out=="mg/m3" and CO2_units_in=="umol/mol":
+            c_ppm,flag,attr = GetSeriesasMA(ds,CO2)
             T,f,a = GetSeriesasMA(ds,'Ta')
             p,f,a = GetSeriesasMA(ds,'ps')
             c_mgpm3 = mf.co2_mgpm3fromppm(c_ppm,T,p)
             attr["long_name"] = attr["long_name"]+", converted to mg/m3"
-            attr["units"] = Cc_units_out
+            attr["units"] = CO2_units_out
             attr["standard_name"] = "mass_concentration_of_carbon_dioxide_in_air"
-            CreateSeries(ds,Cc,c_mgpm3,Flag=flag,Attr=attr)
+            CreateSeries(ds,CO2,c_mgpm3,Flag=flag,Attr=attr)
         else:
             logger.info('  ConvertCO2Units: input or output units for CO2 concentration not recognised')
     else:
@@ -933,14 +934,35 @@ def GetDateIndex(ldt,date,ts=30,default=0,match='exact'):
     Author: PRI
     Date: Back in the day
     """
+    # trap default values of -1 since -1 + 1 = 0
     if default == -1:
         default = len(ldt)-1
+    # is the input date a string?
     if isinstance(date, str):
-        date = dateutil.parser.parse(date)
-    if isinstance(date, datetime.datetime):
+        # if so, is it an empty string?
+        if len(date) != 0:
+            # if not empty, see if we can parse it
+            try:
+                date = dateutil.parser.parse(date)
+                if (date>=ldt[0]) and (date<=ldt[-1]):
+                    # date string parsed OK, is it within the datetime range of the data?
+                    i = numpy.where(numpy.array(ldt) == date)[0][0]
+                else:
+                    # set to default if not within the datetime range of the data
+                    i = default
+            except:
+                # set to default if parsing date string failed
+                i = default
+        else:
+            # set to default if date string empty
+            i = default
+    elif isinstance(date, datetime.datetime):
+        # the input date was a datetime object
+        # check it is within the datetime range of the data
         if (date>=ldt[0]) and (date<=ldt[-1]):
             i = numpy.where(numpy.array(ldt) == date)[0][0]
         else:
+            # set to default if not within the datetime range of the data
             i = default
     else:
         msg = " Unrecognised object passed in as date, returning default index"
