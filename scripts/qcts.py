@@ -1568,12 +1568,13 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
         sys.exit()
     Ah = Ah*c.g2kg                                # absolute humidity from g/m3 to kg/m3
     # deal with aliases for CO2 concentration
-    if Cc_in not in ds.series.keys() and "Cc" in ds.series.keys():
-        Cc_in = "Cc"
-    else:
-        msg = "Fc_WPL: did not find CO2 in data structure"
-        logger.error(msg)
-        sys.exit()
+    if Cc_in not in ds.series.keys():
+        if "Cc" in ds.series.keys():
+            Cc_in = "Cc"
+        else:
+            msg = "Fc_WPL: did not find CO2 in data structure"
+            logger.error(msg)
+            sys.exit()
     Cc,Cc_flag,Cc_attr = qcutils.GetSeriesasMA(ds,Cc_in)
     if Cc_attr["units"]!="mg/m3":
         if Cc_attr["units"]=="umol/mol":
@@ -1699,11 +1700,12 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='w
     '''
     logger.info(' Converting virtual Fh to Fh')
     # deal with sonic temperature aliases
-    if Tv_in not in ds.series.keys() and "Tv_CSAT" in ds.series.keys():
-        Tv_in = "Tv_CSAT"
-    else:
-        logger.error(" FhvtoFh: sonic virtual temperature not found in data structure")
-        return
+    if Tv_in not in ds.series.keys():
+        if "Tv_CSAT" in ds.series.keys():
+            Tv_in = "Tv_CSAT"
+        else:
+            logger.error(" FhvtoFh: sonic virtual temperature not found in data structure")
+            return
     # get the input series
     Fhv,f,a = qcutils.GetSeriesasMA(ds,Fhv_in)              # get the virtual heat flux
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_in)                # get the virtual temperature, C
@@ -2561,12 +2563,13 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
     logger.info(' Calculating Ta from Tv')
     # check to see if we have enough data to proceed
     # deal with possible aliases for the sonic temperature
-    if Tv_in not in ds.series.keys() and "Tv_CSAT" in ds.series.keys():
-        Tv_in = "Tv_CSAT"
-        Ta_out = "Ta_CSAT"
-    else:
-        logger.error(" TaFromTv: sonic virtual temperature not found in data structure")
-        return
+    if Tv_in not in ds.series.keys():
+        if "Tv_CSAT" in ds.series.keys():
+            Tv_in = "Tv_CSAT"
+            Ta_out = "Ta_CSAT"
+        else:
+            logger.error(" TaFromTv: sonic virtual temperature not found in data structure")
+            return
     if Ah_in not in ds.series.keys() and RH_in not in ds.series.keys() and q_in not in ds.series.keys():
         labstr = str(Ah_in)+","+str(RH_in)+","+str(q_in)
         logger.error(" TaFromTv: no humidity data ("+labstr+") found in data structure")
