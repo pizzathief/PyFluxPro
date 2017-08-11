@@ -1572,7 +1572,7 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
         Cc_in = "Cc"
     else:
         msg = "Fc_WPL: did not find CO2 in data structure"
-        log.error(msg)
+        logger.error(msg)
         sys.exit()
     Cc,Cc_flag,Cc_attr = qcutils.GetSeriesasMA(ds,Cc_in)
     if Cc_attr["units"]!="mg/m3":

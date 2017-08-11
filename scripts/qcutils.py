@@ -74,10 +74,9 @@ def CheckQCFlags(ds):
         mask = data.mask&flag.mask
         idx = numpy.ma.where(mask==True)[0]
         if len(idx)!=0:
-            msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0"
+            msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
             logger.warning(msg)
-            #msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
-            #ds.series[ThisOne]["Flag"][idx] = numpy.int32(8)
+            ds.series[ThisOne]["Flag"][idx] = numpy.int32(8)
     # force all values != -9999 to have QC flag = 0, 10, 20 etc
     nRecs = int(ds.globalattributes["nc_nrecs"])
     missing_array = numpy.ones(nRecs)*float(c.missing_value)
@@ -88,10 +87,9 @@ def CheckQCFlags(ds):
         bool_array = numpy.isclose(ds.series[ThisOne]["Data"], missing_array)
         idx = numpy.where((bool_array == False)&(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))[0]
         if len(idx)!=0:
-            msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0"
+            msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0 (forced to missing)"
             logger.warning(msg)
-            #msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0 (forced to 0)"
-            #ds.series[ThisOne]["Flag"][idx] = numpy.int32(0)
+            ds.series[ThisOne]["Data"][idx] = numpy.float64(c.missing_value)
     return
 
 def CheckTimeStep(ds):
