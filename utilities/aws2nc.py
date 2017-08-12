@@ -106,48 +106,48 @@ for site_name in sorted(site_list):
         ds.globalattributes["longitude"] = bom_sites_info[site_name][str(bom_id)]["longitude"]
         flag = numpy.zeros(nRecs,dtype=numpy.int32)
         Seconds = numpy.zeros(nRecs,dtype=numpy.float64)
-        qcutils.CreateSeries(ds,'Year',data_dict[bom_id][:,1],Flag=flag,Attr=qcutils.MakeAttributeDictionary(long_name='Year',units='none'))
-        qcutils.CreateSeries(ds,'Month',data_dict[bom_id][:,2],Flag=flag,Attr=qcutils.MakeAttributeDictionary(long_name='Month',units='none'))
-        qcutils.CreateSeries(ds,'Day',data_dict[bom_id][:,3],Flag=flag,Attr=qcutils.MakeAttributeDictionary(long_name='Day',units='none'))
-        qcutils.CreateSeries(ds,'Hour',data_dict[bom_id][:,4],Flag=flag,Attr=qcutils.MakeAttributeDictionary(long_name='Hour',units='none'))
-        qcutils.CreateSeries(ds,'Minute',data_dict[bom_id][:,5],Flag=flag,Attr=qcutils.MakeAttributeDictionary(long_name='Minute',units='none'))
-        qcutils.CreateSeries(ds,'Second',Seconds,Flag=flag,Attr=qcutils.MakeAttributeDictionary(long_name='Second',units='none'))
+        qcutils.CreateSeries(ds,'Year',data_dict[bom_id][:,1],flag,qcutils.MakeAttributeDictionary(long_name='Year',units='none'))
+        qcutils.CreateSeries(ds,'Month',data_dict[bom_id][:,2],flag,qcutils.MakeAttributeDictionary(long_name='Month',units='none'))
+        qcutils.CreateSeries(ds,'Day',data_dict[bom_id][:,3],flag,qcutils.MakeAttributeDictionary(long_name='Day',units='none'))
+        qcutils.CreateSeries(ds,'Hour',data_dict[bom_id][:,4],flag,qcutils.MakeAttributeDictionary(long_name='Hour',units='none'))
+        qcutils.CreateSeries(ds,'Minute',data_dict[bom_id][:,5],flag,qcutils.MakeAttributeDictionary(long_name='Minute',units='none'))
+        qcutils.CreateSeries(ds,'Second',Seconds,flag,qcutils.MakeAttributeDictionary(long_name='Second',units='none'))
         # now get the Python datetime
         qcutils.get_datetimefromymdhms(ds)
         # now put the data into the data structure
         attr=qcutils.MakeAttributeDictionary(long_name='Precipitation since 0900',units='mm',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'Precip',data_dict[bom_id][:,6],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Precip',data_dict[bom_id][:,6],flag,attr)
         attr=qcutils.MakeAttributeDictionary(long_name='Air temperature',units='C',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'Ta',data_dict[bom_id][:,7],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Ta',data_dict[bom_id][:,7],flag,attr)
         attr=qcutils.MakeAttributeDictionary(long_name='Dew point temperature',units='C',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'Td',data_dict[bom_id][:,8],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Td',data_dict[bom_id][:,8],flag,attr)
         attr=qcutils.MakeAttributeDictionary(long_name='Relative humidity',units='%',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'RH',data_dict[bom_id][:,9],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'RH',data_dict[bom_id][:,9],flag,attr)
         attr=qcutils.MakeAttributeDictionary(long_name='Wind speed',units='m/s',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'Ws',data_dict[bom_id][:,10],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Ws',data_dict[bom_id][:,10],flag,attr)
         attr=qcutils.MakeAttributeDictionary(long_name='Wind direction',units='degT',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'Wd',data_dict[bom_id][:,11],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Wd',data_dict[bom_id][:,11],flag,attr)
         attr=qcutils.MakeAttributeDictionary(long_name='Wind gust',units='m/s',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'Wg',data_dict[bom_id][:,12],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Wg',data_dict[bom_id][:,12],flag,attr)
         data_dict[bom_id][:,13] = data_dict[bom_id][:,13]/float(10)
         attr=qcutils.MakeAttributeDictionary(long_name='Air Pressure',units='kPa',
                                              bom_id=str(bom_id),bom_name=bom_sites_info[site_name][str(bom_id)]["site_name"],
                                              bom_dist=bom_sites_info[site_name][str(bom_id)]["distance"])
-        qcutils.CreateSeries(ds,'ps',data_dict[bom_id][:,13],Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'ps',data_dict[bom_id][:,13],flag,attr)
         # fix any time stamp issues
         if qcutils.CheckTimeStep(ds):
             qcutils.FixTimeStep(ds)
@@ -198,10 +198,10 @@ for site_name in sorted(site_list):
     ds_all.series['DateTime']["Attr"]["units"] = "None"
     # get the year, month, day, hour, minute and seconds from the Python datetime
     qcutils.get_ymdhmsfromdatetime(ds_all)
-    # get the xlDateTime from the 
+    # get the xlDateTime from the
     xlDateTime = qcutils.get_xldatefromdatetime(ds_all)
     attr = qcutils.MakeAttributeDictionary(long_name="Date/time in Excel format",units="days since 1899-12-31 00:00:00")
-    qcutils.CreateSeries(ds_all,"xlDateTime",xlDateTime,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_all,"xlDateTime",xlDateTime,flag,attr)
     # loop over the stations
     for idx,bom_id in enumerate(ds_dict.keys()):
         log.info("Merging BoM site: "+str(bom_id))
@@ -217,7 +217,7 @@ for site_name in sorted(site_list):
             flag_all[index] = flag
             output_label = label+"_"+str(idx)
             attr["bom_id"] = str(bom_id)
-            qcutils.CreateSeries(ds_all,output_label,data_all,Flag=flag_all,Attr=attr)
+            qcutils.CreateSeries(ds_all,output_label,data_all,flag_all,attr)
     # get precipitation per time step
     # now get precipitation per time step from the interpolated precipitation accumulated over the day
     precip_list = [x for x in ds_all.series.keys() if ("Precip" in x) and ("_QCFlag" not in x)]
@@ -259,7 +259,7 @@ for site_name in sorted(site_list):
         accum_attr["long_name"] = "Precipitation total over time step"
         accum_attr["units"] = "mm/30 minutes"
         # put the precipitation per time step back into the data struicture
-        qcutils.CreateSeries(ds_all,output_label,precip,Flag=accum_flag,Attr=accum_attr)
+        qcutils.CreateSeries(ds_all,output_label,precip,accum_flag,accum_attr)
     # calculate missing humidities
     RH_list = sorted([x for x in ds_all.series.keys() if ("RH" in x) and ("_QCFlag" not in x)])
     Ta_list = sorted([x for x in ds_all.series.keys() if ("Ta" in x) and ("_QCFlag" not in x)])
@@ -271,12 +271,12 @@ for site_name in sorted(site_list):
         Ah = mf.absolutehumidityfromRH(Ta, RH)
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity',units='g/m3',standard_name='not defined',
                                                bom_id=a["bom_id"],bom_name=a["bom_name"],bom_dist=a["bom_dist"])
-        qcutils.CreateSeries(ds_all,RH_label.replace("RH","Ah"),Ah,Flag=f,Attr=attr)
+        qcutils.CreateSeries(ds_all,RH_label.replace("RH","Ah"),Ah,f,attr)
         q = mf.specifichumidityfromRH(RH, Ta, ps)
         attr = qcutils.MakeAttributeDictionary(long_name='Specific humidity',units='kg/kg',standard_name='not defined',
                                                bom_id=a["bom_id"],bom_name=a["bom_name"],bom_dist=a["bom_dist"])
-        qcutils.CreateSeries(ds_all,RH_label.replace("RH","q"),q,Flag=f,Attr=attr)
-    
+        qcutils.CreateSeries(ds_all,RH_label.replace("RH","q"),q,f,attr)
+
     # now write the data structure to file
     # OMG, the user may want to overwrite the old data ...
     if os.path.exists(ncname):

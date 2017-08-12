@@ -111,18 +111,18 @@ def TRF(data_dict, Eo, rb):
 def optimise_rb(data_dict, params_dict):
 
     # Initialise error state variable
-    error_state = 0              
-    
+    error_state = 0
+
     # Get drivers and response
     drivers_dict = {driver: data_dict[driver] for driver in ['TempC']}
-    response_array = data_dict['NEE']        
-    
+    response_array = data_dict['NEE']
+
     try:
         params = scipy.optimize.curve_fit(lambda x, b:
                            TRF(x, params_dict['Eo_default'], b),
-                           drivers_dict, 
-                           response_array, 
-                           p0 = [params_dict['rb_prior']])[0]                           
+                           drivers_dict,
+                           response_array,
+                           p0 = [params_dict['rb_prior']])[0]
     except RuntimeError:
         params = [numpy.nan]
 
@@ -130,7 +130,7 @@ def optimise_rb(data_dict, params_dict):
     if params[0] < 0:
         error_state = 9
         params = [numpy.nan]
-       
+
     return params, error_state
 
 # code from Partition_NEE.py
@@ -151,27 +151,27 @@ def get_dates(datetime_array, configs_dict):
     shift_datetime_array = datetime_array - datetime.timedelta(minutes = shift_mins)
 
     # Check that first and last days are complete and revise start and end dates if required
-    temp_date = datetime.datetime.combine((shift_datetime_array[0] + datetime.timedelta(1)).date(), 
+    temp_date = datetime.datetime.combine((shift_datetime_array[0] + datetime.timedelta(1)).date(),
                                     datetime.datetime.min.time())
     num_obs = len(numpy.where(shift_datetime_array < temp_date)[0])
     if num_obs < 24 * (1 / configs_dict['measurement_interval']):
         start_date = start_date + datetime.timedelta(1)
-    temp_date = datetime.datetime.combine(shift_datetime_array[-1].date(), 
+    temp_date = datetime.datetime.combine(shift_datetime_array[-1].date(),
                                     datetime.datetime.min.time())
     num_obs = len(numpy.where(shift_datetime_array >= temp_date)[0])
     if num_obs < 24 * (1 / configs_dict['measurement_interval']):
         end_date = end_date - datetime.timedelta(1)
-    
+
     # Calculate the dates that represent the centre of the window for each step
     num_days = (end_date - start_date).days + 1 - window # Add 1 so is inclusive of both end members
     first_fit_day = start_date + datetime.timedelta(window / 2)
     step_days = numpy.arange(0, num_days, configs_dict['step_size_days'])
     step_dates_array = [first_fit_day + datetime.timedelta(i) for i in step_days]
 
-    # Make an index dictionary for step dates    
+    # Make an index dictionary for step dates
     step_dates_index_dict = {}
-    for date in step_dates_array:    
-        date_time = (datetime.datetime.combine(date, datetime.datetime.min.time()) 
+    for date in step_dates_array:
+        date_time = (datetime.datetime.combine(date, datetime.datetime.min.time())
                      + datetime.timedelta(hours = 12))
         start_date = date_time - datetime.timedelta(window / 2.0)
         start_date = max(start_date,datetime_array[0])
@@ -180,7 +180,7 @@ def get_dates(datetime_array, configs_dict):
         start_ind = numpy.where(datetime_array == start_date)[0].item() + 1
         end_ind = numpy.where(datetime_array == end_date)[0].item()
         step_dates_index_dict[date] = [start_ind, end_ind]
-    
+
     # Make an index dictionary for all dates
     all_dates_index_dict = {}
     for date in all_dates_array:
@@ -199,7 +199,7 @@ def get_dates(datetime_array, configs_dict):
             end_date = min(end_date,datetime_array[-1])
             end_ind = numpy.where(datetime_array == end_date)[0].item()
         all_dates_index_dict[date] = [start_ind, end_ind]
-    
+
     # Make an index dictionary for years
     years_index_dict = {}
     year_array = numpy.array([i.year for i in shift_datetime_array])
@@ -207,7 +207,7 @@ def get_dates(datetime_array, configs_dict):
     for yr in year_list:
         index = numpy.where(year_array == yr)[0]
         years_index_dict[yr] = [index[0], index[-1]]
-    
+
     return step_dates_index_dict, all_dates_index_dict, years_index_dict
 
 def make_initial_guess_dict(data_d):
@@ -215,7 +215,7 @@ def make_initial_guess_dict(data_d):
     # Calculate the parameter values that are intialised from data
     index = numpy.where(data_d['PAR'] < 10)[0]
     daytime_NEE_mean = numpy.nanmean(data_d['NEE'][index])
-    daytime_NEE_range = (numpy.nanpercentile(data_d['NEE'][index], 5) - 
+    daytime_NEE_range = (numpy.nanpercentile(data_d['NEE'][index], 5) -
                          numpy.nanpercentile(data_d['NEE'][index], 95))
 
     params_dict = {'Eo_prior': 100,
@@ -226,13 +226,13 @@ def make_initial_guess_dict(data_d):
                    'alpha_default': 0,
                    'beta_default': 0,
                    'k_default': 0 }
-    
+
     return params_dict
 
 def optimise_all(data_dict, params_dict):
 
     # Initialise error state variable
-    error_state = 0              
+    error_state = 0
 
     drivers_dict = {driver: data_dict[driver] for driver in ['TempC']}
     response_array = data_dict['NEE']
@@ -240,22 +240,22 @@ def optimise_all(data_dict, params_dict):
     try:
         params = scipy.optimize.curve_fit(lambda x, a, b:
                            TRF(x, a, b),
-                           drivers_dict, 
-                           response_array, 
-                           p0 = [params_dict['Eo_prior'], 
+                           drivers_dict,
+                           response_array,
+                           p0 = [params_dict['Eo_prior'],
                                  params_dict['rb_prior']])[0]
     except RuntimeError:
         params = [np.nan, np.nan]
         error_state = 3
 
-    return params, error_state        
+    return params, error_state
 
 def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
-    
+
     # Initialise local variables with configurations
     min_pct = configs_dict['minimum_pct_annual']
     msmt_int = configs_dict['measurement_interval']
-    
+
     # Get Eo for each year and compile dictionary
     status = {"code":0,"message":"OK"}
     yearsEo_dict = {}
@@ -273,13 +273,13 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
         days = 366 if calendar.isleap(yr) else 365
         recs = days * (24 / msmt_int) / 2
 
-        # Subset data        
+        # Subset data
         sub_dict = subset_window(data_dict, year_index_dict[yr])
         sub_dict = subset_nan(sub_dict)
         noct_flag = True
         # no need to subset for day/night when input data is ER
         #sub_dict = subset_daynight(sub_dict, noct_flag)
-        
+
         # Calculate percent of potential annual data that the subset contains
         pct = round(float(len(sub_dict['NEE'])) / recs * 100)
 
@@ -289,7 +289,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
         else:
             msg = " Less than "+str(min_pct)+ "% for year "+str(yr)+" ("+str(pct)+"%)"
             logger.warning(msg)
-            params, error_code = [numpy.nan, numpy.nan], 10                                         
+            params, error_code = [numpy.nan, numpy.nan], 10
 
         # Assign year to pass, range_fail or nan_fail list for subsequent QC and fill
         Eo = params[0]
@@ -305,7 +305,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
             Eo_pass_keys.append(yr)
 
         logger.info(" E0 for "+str(yr) + ": " + str(round(params[0], 1)))
-    
+
     # Do QC on Eo
     if len(Eo_pass_keys) != len(yearsEo_dict):
         if len(Eo_nan_fail_keys) == len(yearsEo_dict):
@@ -328,7 +328,7 @@ def optimise_annual_Eo(data_dict, params_dict, configs_dict, year_index_dict):
         else:
             for i in Eo_range_fail_keys:
                 if yearsEo_dict[i] < 50:
-                    yearsEo_dict[i]=50 
+                    yearsEo_dict[i]=50
                 else:
                     yearsEo_dict[i]=400
             if len(Eo_range_fail_keys)<=1:
@@ -392,7 +392,7 @@ def rpLT_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.rpLT[series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.rpLT[series]["output"])
-        qcutils.CreateSeries(ds,ds.rpLT[series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.rpLT[series]["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -405,7 +405,7 @@ def rpLT_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
-        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
 
 def rpLT_initplot(**kwargs):
     # set the margins, heights, widths etc
@@ -506,7 +506,7 @@ def rpLT_plot(pd,ds,series,driverlist,targetlabel,outputlabel,LT_info,si=0,ei=-1
     ds.rpLT[series]["results"]["Var (LT)"].append(var_mod)
     ds.rpLT[series]["results"]["Var ratio"].append(var_obs/var_mod)
     ds.rpLT[series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    ds.rpLT[series]["results"]["Avg (LT)"].append(numpy.ma.average(mod))    
+    ds.rpLT[series]["results"]["Avg (LT)"].append(numpy.ma.average(mod))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]
@@ -555,11 +555,11 @@ def subset_window(data_dict, index_list):
     sub_dict = {}
     for i in data_dict.keys():
         sub_dict[i] = data_dict[i][index_list[0]: index_list[1] + 1]
-    
+
     return sub_dict
 
 def subset_daynight(data_dict, noct_flag):
-    
+
     # Turn dictionary into an array
     temp_array = numpy.empty([len(data_dict['NEE']), len(data_dict)])
     for i, var in enumerate(data_dict.keys()):
@@ -571,20 +571,20 @@ def subset_daynight(data_dict, noct_flag):
     else:
         daynight_index = numpy.where(data_dict['PAR'] > 10)[0]
     temp_array = temp_array[daynight_index]
-    
+
     sub_dict = {var: temp_array[:, i] for i, var in enumerate(data_dict.keys())}
 
     return sub_dict
 
 def subset_nan(data_dict):
-    
+
     # Turn dictionary into an array
     temp_array = numpy.empty([len(data_dict['NEE']), len(data_dict)])
     for i, var in enumerate(data_dict.keys()):
         temp_array[:, i] = data_dict[var]
 
     # Create nan subsetting index and subset data and count
-    QCdata_index = numpy.where(numpy.all(~numpy.isnan(temp_array), axis=1))    
+    QCdata_index = numpy.where(numpy.all(~numpy.isnan(temp_array), axis=1))
     temp_array = temp_array[QCdata_index]
 
     sub_dict = {var: temp_array[:, i] for i, var in enumerate(data_dict.keys())}
@@ -602,7 +602,7 @@ def estimate_Re_GPP(sub_d, params_d, GPP = False):
     return_dict = {}
     if GPP:
         GPP, Re = light.LRF_part(sub_d, params_d['Eo'], params_d['rb'],
-                                 params_d['alpha'], params_d['beta'], 
+                                 params_d['alpha'], params_d['beta'],
                                  params_d['k'])
         return_dict['Re'] = Re
         return_dict['GPP'] = GPP
@@ -616,7 +616,7 @@ def plot_windows(data_dict, configs_dict, date, noct_flag):
     # Set parameters from dicts
     path = configs_dict['window_plot_output_path']
     window = configs_dict['window_size_days']
-    
+
     for i in range(2):
         sub_d = subset_daynight(data_dict, noct_flag)
         if noct_flag:
@@ -625,20 +625,20 @@ def plot_windows(data_dict, configs_dict, date, noct_flag):
             x_var = sub_d['TempC']
             y_var1 = sub_d['NEE']
             y_var2 = sub_d['Re']
-        else:            
+        else:
             daynight_ind = 'day'
             x_lab = r'PAR ($\mu mol\/photons\/m^{-2}s^{-1}$)'
             x_var = sub_d['PAR']
             y_var1 = sub_d['NEE']
             y_var2 = sub_d['NEE_est']
-              
+
         # Plot
         date_str = datetime.datetime.strftime(date,'%Y-%m-%d')
         fig = plt.figure(figsize = (13,8))
         fig.patch.set_facecolor('white')
         plt.plot(x_var, y_var1, 'bo' , label = 'NEE_obs')
         plt.plot(x_var, y_var2, 'ro', label = 'NEE_est')
-        plt.title('Fit for ' + str(window) + ' day window centred on ' + 
+        plt.title('Fit for ' + str(window) + ' day window centred on ' +
                   date_str + '\n', fontsize = 22)
         plt.xlabel(x_lab, fontsize = 16)
         plt.ylabel(r'NEE ($\mu mol C\/m^{-2} s^{-1}$)', fontsize = 16)
@@ -647,7 +647,7 @@ def plot_windows(data_dict, configs_dict, date, noct_flag):
         plt.tight_layout()
         fig.savefig(os.path.join(path, plot_out_name))
         plt.close(fig)
-        
+
     return
 
 def interp_params(param_rslt_array):
@@ -657,9 +657,9 @@ def interp_params(param_rslt_array):
         fp = array_1D[:]
         nan_index = numpy.isnan(fp)
         fp[nan_index] = numpy.interp(xp[nan_index], xp[~nan_index], fp[~nan_index])
-        return fp   
-    
-    arr = param_rslt_array.copy()    
+        return fp
+
+    arr = param_rslt_array.copy()
     num_vars = numpy.shape(arr)
     if len(num_vars) == 1:
         arr = do_interp(arr)
@@ -668,4 +668,4 @@ def interp_params(param_rslt_array):
         for i in range(num_vars):
             arr[:, i] = do_interp(arr[:, i])
 
-    return arr            
+    return arr

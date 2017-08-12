@@ -202,7 +202,7 @@ def csv_read_series(cf):
         line = csv_file.readline()
     # sniff the CSV dialect
     dialect = csv.Sniffer().sniff(line, delimiters)
-    # rewind to the start 
+    # rewind to the start
     csv_file.seek(0)
     # and read the file with the dialect set
     csv_reader = csv.reader(csv_file,dialect)
@@ -344,7 +344,7 @@ def read_eddypro_full(csvname):
     ds.series['DateTime']['Data'] = adatetime
     qcutils.round_datetime(ds,mode="nearest_timestep")
     qcutils.get_ymdhmsfromdatetime(ds)
-    
+
     variable = {"Label":"ustar"}
     variable["Data"] = numpy.array(us_data_list,dtype=numpy.float64)
     variable["Flag"] = numpy.array(us_flag_list,dtype=numpy.int32)
@@ -562,7 +562,7 @@ def smap_write_csv(cf):
     cfvars = cf["Variables"]
     smap_list = cfvars.keys()
     ncFileName = get_infilenamefromcf(cf)
-    csvFileName_base = get_outfilenamefromcf(cf)    
+    csvFileName_base = get_outfilenamefromcf(cf)
     # read the netCDF file
     ds = nc_read_series(ncFileName)
     ts = int(ds.globalattributes["time_step"])
@@ -801,13 +801,17 @@ def fn_write_csv(cf):
     writer = csv.writer(csvfile)
     # read the netCDF file
     ds = nc_read_series(ncFileName)
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     # Tumbarumba doesn't have RH in the netCDF files
     if "RH" not in ds.series.keys():
         Ah,f,a = qcutils.GetSeriesasMA(ds,'Ah')
         Ta,f,a = qcutils.GetSeriesasMA(ds,'Ta')
         RH = mf.RHfromabsolutehumidity(Ah, Ta)
         attr = qcutils.MakeAttributeDictionary(long_name='Relative humidity',units='%',standard_name='relative_humidity')
-        qcutils.CreateSeries(ds,"RH",RH,FList=['Ta','Ah'],Attr=attr)
+        flag = numpy.where(numpy.ma.getmaskarray(RH)==True,ones,zeros)
+        qcutils.CreateSeries(ds,"RH",RH,flag,attr)
     ts = int(ds.globalattributes["time_step"])
     ts_delta = datetime.timedelta(minutes=ts)
     # get the datetime series
@@ -1216,7 +1220,7 @@ def nc_concatenate(cf):
                 Fc = mf.Fc_umolpm2psfrommgpm2ps(Fc)
                 attr['units'] = 'umol/m2/s'
                 attr['standard_name'] = 'surface_upward_mole_flux_of_carbon_dioxide'
-                qcutils.CreateSeries(ds_n,ThisOne,Fc,Flag=flag,Attr=attr)
+                qcutils.CreateSeries(ds_n,ThisOne,Fc,flag,attr)
         ds.series[ThisOne] = {}
         ds.series[ThisOne]['Data'] = ds_n.series[ThisOne]['Data']
         ds.series[ThisOne]['Flag'] = ds_n.series[ThisOne]['Flag']
@@ -1505,7 +1509,7 @@ def ncsplit_run(split_gui):
     # loop over the series
     for item in series_list:
         data,flag,attr = qcutils.GetSeriesasMA(ds_in,item,si=si,ei=ei)
-        qcutils.CreateSeries(ds_out,item,data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_out,item,data,flag,attr)
     # deal with the Python datetime series
     ldt_out = ldt_in[si:ei+1]
     ldt_out_flag = ldt_in_flag[si:ei+1]
@@ -2250,7 +2254,7 @@ def xl_write_ISD_timesteps(xl_file_path, data):
                 xl_sheet.write(row+1,col+1,data[site][year][stat])
     # save the workbook
     xl_book.save(xl_file_path)
-    
+
     return
 
 def xl_write_data(xl_sheet,data,xlCol=0):
@@ -2536,5 +2540,5 @@ def xlsx_write_series(ds, xlsxfullname, outputlist=None):
                 xlFlagSheet.write(j+3,xlcol,int(ds.series[ThisOne]['Flag'][j]),flag_format)
         # increment the column pointer
         xlcol = xlcol + 1
-    
+
     xlfile.close()

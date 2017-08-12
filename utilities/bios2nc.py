@@ -60,7 +60,7 @@ for site in site_list:
     qcutils.get_ymdhmsfromdatetime(ds_30)
     xl_date_loc = qcutils.get_xldatefromdatetime(ds_30)
     attr = qcutils.MakeAttributeDictionary(long_name="Date/time (local) in Excel format",units="days since 1899-12-31 00:00:00")
-    qcutils.CreateSeries(ds_30,"xlDateTime",xl_date_loc,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"xlDateTime",xl_date_loc,flag,attr)
     # get the data
     for label in var_list:
         bios_name = cf["Variables"][label]["bios_name"]
@@ -77,42 +77,42 @@ for site in site_list:
         for this_attr in bios_ncfile.variables[bios_name].ncattrs():
             attr[this_attr] = getattr(bios_ncfile.variables[bios_name],this_attr)
         attr["missing_value"] = c.missing_value
-        qcutils.CreateSeries(ds_30,label,data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_30,label,data,flag,attr)
     # close the netCDF file
     bios_ncfile.close()
     # convert precipitation from kg/m2/s to mm/30 minutes
     precip,flag,attr = qcutils.GetSeriesasMA(ds_30,"Precip")
     precip = float(1800)*precip
     attr["units"] = "mm"
-    qcutils.CreateSeries(ds_30,"Precip",precip,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Precip",precip,flag,attr)
     # convert Ta from K to C
     Ta,flag,attr = qcutils.GetSeriesasMA(ds_30,"Ta")
     Ta = Ta - c.C2K
     attr["units"] = "C"
-    qcutils.CreateSeries(ds_30,"Ta",Ta,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Ta",Ta,flag,attr)
     # convert Ts from K to C
     Ts,flag,attr = qcutils.GetSeriesasMA(ds_30,"Ts")
     Ts = Ts - c.C2K
     attr["units"] = "C"
-    qcutils.CreateSeries(ds_30,"Ts",Ts,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Ts",Ts,flag,attr)
     # convert ps from hPa to kPa
     ps,flag,attr = qcutils.GetSeriesasMA(ds_30,"ps")
     ps = ps/float(10)
     attr["units"] = "kPa"
-    qcutils.CreateSeries(ds_30,"ps",ps,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"ps",ps,flag,attr)
     # calculate relative humidity
     q,f,a = qcutils.GetSeriesasMA(ds_30,"q")
     Ta,f,a = qcutils.GetSeriesasMA(ds_30,"Ta")
     ps,f,a = qcutils.GetSeriesasMA(ds_30,"ps")
     RH = mf.RHfromspecifichumidity(q, Ta, ps)
     attr = qcutils.MakeAttributeDictionary(long_name='Relative humidity',units='%',standard_name='not defined')
-    qcutils.CreateSeries(ds_30,"RH",RH,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"RH",RH,flag,attr)
     # calculate absolute humidity
     Ta,f,a = qcutils.GetSeriesasMA(ds_30,"Ta")
     RH,f,a = qcutils.GetSeriesasMA(ds_30,"RH")
     Ah = mf.absolutehumidityfromRH(Ta, RH)
     attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity',units='g/m3',standard_name='not defined')
-    qcutils.CreateSeries(ds_30,"Ah",Ah,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Ah",Ah,flag,attr)
     # calculate net radiation
     Fsd,f,a = qcutils.GetSeriesasMA(ds_30,"Fsd")
     Fld,f,a = qcutils.GetSeriesasMA(ds_30,"Fld")
@@ -123,20 +123,20 @@ for site in site_list:
     Fn = (Fsd-Fsu)+(Fld-Flu)
     attr = qcutils.MakeAttributeDictionary(long_name='Up-welling long wave',
                          standard_name='surface_upwelling_longwave_flux_in_air',units='W/m2')
-    qcutils.CreateSeries(ds_30,"Flu",Flu,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Flu",Flu,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Up-welling short wave',
                          standard_name='surface_upwelling_shortwave_flux_in_air',units='W/m2')
-    qcutils.CreateSeries(ds_30,"Fsu",Fsu,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Fsu",Fsu,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Calculated net radiation',
                          standard_name='surface_net_allwave_radiation',units='W/m2')
-    qcutils.CreateSeries(ds_30,"Fn",Fn,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Fn",Fn,flag,attr)
     # calculate available energy
     Fn,f,a = qcutils.GetSeriesasMA(ds_30,"Fn")
     Fg,f,a = qcutils.GetSeriesasMA(ds_30,"Fg")
     Fa = Fn - Fg
     attr = qcutils.MakeAttributeDictionary(long_name='Calculated available energy',
                          standard_name='not defined',units='W/m2')
-    qcutils.CreateSeries(ds_30,"Fa",Fa,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds_30,"Fa",Fa,flag,attr)
     # if requested, average from 30 minute time step to 60 minute time step
     if average:
         nRecs_30 = ds_30.globalattributes["nc_nrecs"]
@@ -162,12 +162,12 @@ for site in site_list:
         idx = [i for i in range(len(ldt_30)) if ldt_30[i].minute==0]
         time_30,flag_30,attr = qcutils.GetSeriesasMA(ds_30,"time")
         time_60 = time_30[idx]
-        qcutils.CreateSeries(ds_60,"time",time_60,Flag=flag_60,Attr=attr)
+        qcutils.CreateSeries(ds_60,"time",time_60,flag_60,attr)
         # and then precipitation
         precip_30,flag_30,attr = qcutils.GetSeriesasMA(ds_30,"Precip")
         precip_30_2d = numpy.reshape(precip_30,(nRecs_60,2))
         precip_60 = numpy.sum(precip_30_2d,axis=1)
-        qcutils.CreateSeries(ds_60,"Precip",precip_60,Flag=flag_60,Attr=attr)
+        qcutils.CreateSeries(ds_60,"Precip",precip_60,flag_60,attr)
         # get a list of the variables, exclude the QC flags
         series_list = [item for item in ds_30.series.keys() if "_QCFlag" not in item]
         # remove the datetime variables
@@ -179,7 +179,7 @@ for site in site_list:
             data_30,flag_30,attr = qcutils.GetSeriesasMA(ds_30,series)
             data_30_2d=numpy.reshape(data_30,(nRecs_60,2))
             data_60=numpy.average(data_30_2d,axis=1)
-            qcutils.CreateSeries(ds_60,series,data_60,Flag=flag_60,Attr=attr)
+            qcutils.CreateSeries(ds_60,series,data_60,flag_60,attr)
         # get the year, month etc
         qcutils.get_ymdhmsfromdatetime(ds_60)
         # get the Excel datetime values

@@ -38,7 +38,7 @@ nRecs_60minute = len(dt_aws_60minute)
 series_list = ds_aws_30minute.series.keys()
 for item in ["DateTime","Ddd","Day","Minute","xlDateTime","Hour","time","Month","Second","Year"]:
     if item in series_list: series_list.remove(item)
-    
+
     # get the 60 minute data structure
     ds_aws_60minute = qcio.DataStructure()
     # get the global attributes
@@ -63,7 +63,7 @@ for item in ["DateTime","Ddd","Day","Minute","xlDateTime","Hour","time","Month",
             flag_2d = numpy.reshape(flag_30minute,(nRecs_30minute/2,2))
             data_60minute = numpy.ma.sum(data_2d,axis=1)
             flag_60minute = numpy.ma.max(flag_2d,axis=1)
-            qcutils.CreateSeries(ds_aws_60minute,item,data_60minute,Flag=flag_60minute,Attr=attr)
+            qcutils.CreateSeries(ds_aws_60minute,item,data_60minute,flag_60minute,attr)
         elif "Wd" in item:
             Ws_30minute,flag_30minute,attr = qcutils.GetSeriesasMA(ds_aws_30minute,item,si=si_wholehour,ei=ei_wholehour)
             Wd_30minute,flag_30minute,attr = qcutils.GetSeriesasMA(ds_aws_30minute,item,si=si_wholehour,ei=ei_wholehour)
@@ -75,14 +75,14 @@ for item in ["DateTime","Ddd","Day","Minute","xlDateTime","Hour","time","Month",
             V_60minute = numpy.ma.sum(V_2d,axis=1)
             Ws_60minute,Wd_60minute = qcutils.convert_UVtoWsWd(U_60minute,V_60minute)
             flag_60minute = numpy.ma.max(flag_2d,axis=1)
-            qcutils.CreateSeries(ds_aws_60minute,item,Wd_60minute,Flag=flag_60minute,Attr=attr)
+            qcutils.CreateSeries(ds_aws_60minute,item,Wd_60minute,flag_60minute,attr)
         else:
             data_30minute,flag_30minute,attr = qcutils.GetSeriesasMA(ds_aws_30minute,item,si=si_wholehour,ei=ei_wholehour)
             data_2d = numpy.reshape(data_30minute,(nRecs_30minute/2,2))
             flag_2d = numpy.reshape(flag_30minute,(nRecs_30minute/2,2))
             data_60minute = numpy.ma.average(data_2d,axis=1)
             flag_60minute = numpy.ma.max(flag_2d,axis=1)
-            qcutils.CreateSeries(ds_aws_60minute,item,data_60minute,Flag=flag_60minute,Attr=attr)
+            qcutils.CreateSeries(ds_aws_60minute,item,data_60minute,flag_60minute,attr)
     # write out the 60 minute data
     nc_60minute = aws_name.replace('.nc','_60minute.nc')
     ncfile = qcio.nc_open_write(nc_60minute)

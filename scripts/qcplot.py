@@ -82,7 +82,7 @@ def get_yarray(ds,ThisOne,si=0,ei=-1):
     if numpy.ma.count(yarray)==0:
         yarray = numpy.ma.zeros(numpy.size(yarray))
     return yarray,nRecs,nNotM,nMskd
-    
+
 def get_yaxislimitsfromcf(cf,nFig,maxkey,minkey,nSer,YArray):
     if maxkey in cf['Plots'][str(nFig)].keys():                               # Y axis minima specified
         maxlist = ast.literal_eval(cf['Plots'][str(nFig)][maxkey])     # Evaluate the minima list
@@ -168,6 +168,9 @@ def pltfingerprint_readncfiles(cf):
 
 def plot_fingerprint(cf):
     """ Do a fingerprint plot"""
+    # set up some variable aliases
+    aliases = {"CO2":["CO2", "Cc"], "Cc":["Cc", "CO2"],
+               "H2O":["H2O", "Ah"], "Ah":["Ah", "H2O"]}
     # read the input files
     ds = pltfingerprint_readncfiles(cf)
     # create a dictionary to hold the fingerprint plot information
@@ -193,7 +196,7 @@ def plot_fingerprint(cf):
         else:
             plt.ioff()
         fig = plt.figure(nFig,figsize=(13,8))
-        fig.clf()        
+        fig.clf()
         fig.canvas.set_window_title(cf["Plots"][str(nFig)]["Title"])
         plt.figtext(0.5,0.95,title_str,horizontalalignment='center')
         fig_var_list = qcutils.GetPlotVariableNamesFromCF(cf,nFig)
@@ -211,10 +214,23 @@ def plot_fingerprint(cf):
             nDays = len(ldt)/nPerDay
             sd = datetime.datetime.toordinal(ldt[0])
             ed = datetime.datetime.toordinal(ldt[-1])
+            # let's check the named variable is in the data structure
             if nc_varname not in ds[infilename].series.keys():
-                msg = " Variable "+nc_varname+" not found in data structure, skipping ..."
-                logger.warning(msg)
-                continue
+                # if it isn't, let's look for an alias
+                if nc_varname in aliases.keys():
+                    found_alias = False
+                    for alias in aliases[nc_varname]:
+                        if alias in ds[infilename].series.keys():
+                            nc_varname = alias
+                            found_alias = True
+                    if not found_alias:
+                        msg = " Variable "+nc_varname+" not found in data structure, skipping ..."
+                        logger.warning(msg)
+                        continue
+                else:
+                    msg = " No alias found for "+nc_varname+", skipping ..."
+                    logger.warning(msg)
+                    continue
             data,flag,attr = qcutils.GetSeriesasMA(ds[infilename],nc_varname,si=si,ei=ei)
             data = qcck.cliptorange(data,fp_info["variables"][var]["Lower"],fp_info["variables"][var]["Upper"])
             data_daily = data.reshape(nDays,nPerDay)
@@ -264,13 +280,16 @@ def plot_fingerprint(cf):
 
 def plot_fluxnet(cf):
     """ Plot the FluxNet style plots. """
-    
+
     series_list = cf["Variables"].keys()
     infilename = qcio.get_infilenamefromcf(cf)
-    
+
     ds = qcio.nc_read_series(infilename)
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     site_name = ds.globalattributes["site_name"]
-    
+
     ldt=ds.series["DateTime"]["Data"]
     sdt = ldt[0]
     edt = ldt[-1]
@@ -280,8 +299,9 @@ def plot_fluxnet(cf):
         Ta,f,a = qcutils.GetSeriesasMA(ds,'Ta')
         RH = mf.RHfromabsolutehumidity(Ah, Ta)
         attr = qcutils.MakeAttributeDictionary(long_name='Relative humidity',units='%',standard_name='relative_humidity')
-        qcutils.CreateSeries(ds,"RH",RH,FList=['Ta','Ah'],Attr=attr)
-    
+        flag = numpy.where(numpy.ma.getmaskarray(RH)==True,ones,zeros)
+        qcutils.CreateSeries(ds,"RH",RH,flag,attr)
+
     nFig = 0
     plt.ion()
     for series in series_list:
@@ -466,7 +486,7 @@ def plot_quickcheck(cf):
     #  then soil ...
     Sws_30min,flag,attr = qcutils.GetSeriesasMA(ds,qcutils.GetAltName(cf,ds,'Sws'),si=si,ei=ei)
     Ts_30min,flag,attr = qcutils.GetSeriesasMA(ds,qcutils.GetAltName(cf,ds,'Ts'),si=si,ei=ei)
-    
+
     # get the number of days in the data set
     ntsInDay = float(24.0*60.0/float(ts))
     if math.modf(ntsInDay)[0]!=0:
@@ -478,7 +498,7 @@ def plot_quickcheck(cf):
         print 'quickcheck: Not a whole number of days ', nDays
         sys.exit
     nDays = int(nDays)
-    
+
     # *** start of section based on 30 minute data ***
     # scatter plot of (Fh+Fe) versys Fa, all data
     logger.info(' Doing surface energy balance plots ')
@@ -551,7 +571,7 @@ def plot_quickcheck(cf):
     Sws_daily = Sws_30min.reshape(nDays,ntsInDay)
     Ts_daily = Ts_30min.reshape(nDays,ntsInDay)
     us_daily = us_30min.reshape(nDays,ntsInDay)
-    
+
     # get the SEB ratio
     # get the daytime data, defined by Fsd>10 W/m2
     Fa_day = numpy.ma.masked_where(nm_daily==True,Fa_daily)
@@ -571,7 +591,7 @@ def plot_quickcheck(cf):
     index = numpy.where(numpy.ma.getmaskarray(SEB_day_avg)==True)[0]
     #index = numpy.ma.where(numpy.ma.getmaskarray(SEB_day_avg)==True)[0]
     SEB_day_num[index] = 0
-    
+
     # get the EF
     # get the daytime data, defined by Fsd>10 W/m2
     Fa_day = numpy.ma.masked_where(nm_daily==True,Fa_daily)
@@ -587,7 +607,7 @@ def plot_quickcheck(cf):
     index = numpy.where(numpy.ma.getmaskarray(EF_day_avg)==True)[0]
     #index = numpy.ma.where(numpy.ma.getmaskarray(EF_day_avg)==True)[0]
     EF_day_num[index] = 0
-    
+
     # get the BR
     # get the daytime data, defined by Fsd>10 W/m2
     Fe_day = numpy.ma.masked_where(nm_daily==True,Fe_daily)
@@ -603,7 +623,7 @@ def plot_quickcheck(cf):
     index = numpy.where(numpy.ma.getmaskarray(BR_day_avg)==True)[0]
     #index = numpy.ma.where(numpy.ma.getmaskarray(BR_day_avg)==True)[0]
     BR_day_num[index] = 0
-    
+
     # get the Wue
     # get the daytime data, defined by Fsd>10 W/m2
     Fe_day = numpy.ma.masked_where(nm_daily==True,Fe_daily)
@@ -1028,7 +1048,7 @@ def plot_quickcheck(cf):
     figname='plots/'+ds.globalattributes['site_name'].replace(' ','')+'_'+ds.globalattributes['nc_level']+'_QC_'+'DiurnalFcByMonth.png'
     fig.savefig(figname,format='png')
     # draw the plot on the screen
-    plt.draw()    
+    plt.draw()
 
 def plot_setup(cf,nFig):
     p = {}
@@ -1152,7 +1172,7 @@ def plotxy(cf,nFig,plt_cf,dsa,dsb,si,ei):
     SiteName = dsa.globalattributes['site_name']
     PlotDescription = cf['Plots'][str(nFig)]['Title']
     fig = plt.figure(int(nFig))
-    
+
     fig.clf()
     plt.figtext(0.5,0.95,SiteName+': '+PlotDescription,ha='center',size=16)
     XSeries = ast.literal_eval(plt_cf['XSeries'])

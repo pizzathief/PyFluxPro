@@ -191,7 +191,7 @@ for n, erai_name in enumerate(erai_list):
         alt_solar_tts = numpy.array([pysolar.GetAltitude(erai_latitude,erai_longitude,dt) for dt in dt_erai_utc_tts])
         idx = numpy.where(alt_solar_tts<=0)[0]
         alt_solar_tts[idx] = float(0)
-        
+
         # Interpolate the 3 hourly accumulated downwelling shortwave to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Fsd_3d = erai_file.variables["ssrd"][:,:,:]
@@ -216,8 +216,8 @@ for n, erai_name in enumerate(erai_list):
         Fsd_erai_tts = coef_tts*numpy.sin(numpy.deg2rad(alt_solar_tts))
         flag = numpy.zeros(len(Fsd_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Downwelling short wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fsd",Fsd_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fsd",Fsd_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly accumulated net shortwave to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Fn_sw_3d = erai_file.variables["ssr"][:,:,:]
@@ -240,13 +240,13 @@ for n, erai_name in enumerate(erai_list):
         Fn_sw_erai_tts = coef_tts*numpy.sin(numpy.deg2rad(alt_solar_tts))
         flag = numpy.zeros(len(Fn_sw_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Net short wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fn_sw",Fn_sw_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fn_sw",Fn_sw_erai_tts,flag,attr)
+
         Fsu_erai_tts = Fsd_erai_tts - Fn_sw_erai_tts
         flag = numpy.zeros(len(Fsu_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Upwelling short wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fsu",Fsu_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fsu",Fsu_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly accumulated downwelling longwave to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Fld_3d = erai_file.variables["strd"][:,:,:]
@@ -263,8 +263,8 @@ for n, erai_name in enumerate(erai_list):
         Fld_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fld_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Downwelling long wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fld",Fld_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fld",Fld_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly accumulated net longwave to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Fn_lw_3d = erai_file.variables["str"][:,:,:]
@@ -283,18 +283,18 @@ for n, erai_name in enumerate(erai_list):
         Fn_lw_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fn_lw_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Net long wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fn_lw",Fn_lw_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fn_lw",Fn_lw_erai_tts,flag,attr)
+
         Flu_erai_tts = Fld_erai_tts - Fn_lw_erai_tts
         flag = numpy.zeros(len(Flu_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Upwelling long wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Flu",Flu_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Flu",Flu_erai_tts,flag,attr)
+
         Fn_erai_tts = (Fsd_erai_tts - Fsu_erai_tts) + (Fld_erai_tts - Flu_erai_tts)
         flag = numpy.zeros(len(Fn_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Net all wave radiation",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fn",Fn_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fn",Fn_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly accumulated sensible heat flux to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Fh_3d = erai_file.variables["sshf"][:,:,:]
@@ -313,8 +313,8 @@ for n, erai_name in enumerate(erai_list):
         Fh_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fh_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Sensible heat flux",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fh",Fh_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fh",Fh_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly accumulated latent heat flux to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Fe_3d = erai_file.variables["slhf"][:,:,:]
@@ -333,19 +333,19 @@ for n, erai_name in enumerate(erai_list):
         Fe_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fe_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Latent heat flux",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fe",Fe_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fe",Fe_erai_tts,flag,attr)
+
         # get Fg as residual
         Fg_erai_tts = Fn_erai_tts - Fh_erai_tts - Fe_erai_tts
         flag = numpy.zeros(len(Fg_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Ground heat flux",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fg",Fg_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"Fg",Fg_erai_tts,flag,attr)
         # and then Fa
         Fa_erai_tts = Fn_erai_tts - Fg_erai_tts
         flag = numpy.zeros(len(Fa_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Available energy",units="W/m2")
-        qcutils.CreateSeries(ds_erai,"Fa",Fa_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Fa",Fa_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly air pressure to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         ps_3d = erai_file.variables["sp"][:,:,:]
@@ -356,8 +356,8 @@ for n, erai_name in enumerate(erai_list):
         ps_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(ps_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Surface pressure",units="kPa")
-        qcutils.CreateSeries(ds_erai,"ps",ps_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"ps",ps_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly air temperature to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Ta_3d = erai_file.variables["t2m"][:,:,:]
@@ -368,8 +368,8 @@ for n, erai_name in enumerate(erai_list):
         Ta_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Ta_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Air temperature",units="C")
-        qcutils.CreateSeries(ds_erai,"Ta",Ta_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Ta",Ta_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly dew point temperature to the tower time step
         # and convert to Ah, RH and q
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
@@ -385,22 +385,22 @@ for n, erai_name in enumerate(erai_list):
         VPD_erai_tts = es_erai_tts - e_erai_tts
         flag = numpy.zeros(len(VPD_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Vapour pressure deficit",units="kPa")
-        qcutils.CreateSeries(ds_erai,"VPD",VPD_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"VPD",VPD_erai_tts,flag,attr)
         RH_erai_tts = float(100)*e_erai_tts/es_erai_tts
         flag = numpy.zeros(len(RH_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Relative humidity",units="percent")
-        qcutils.CreateSeries(ds_erai,"RH",RH_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"RH",RH_erai_tts,flag,attr)
         # get the absolute humidity
         Ah_erai_tts = mf.absolutehumidityfromRH(Ta_erai_tts,RH_erai_tts)
         flag = numpy.zeros(len(Ah_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Absolute humidity",units="g/m3")
-        qcutils.CreateSeries(ds_erai,"Ah",Ah_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"Ah",Ah_erai_tts,flag,attr)
         # get the specific humidity
         q_erai_tts = mf.specifichumidityfromRH(RH_erai_tts,Ta_erai_tts,ps_erai_tts)
         flag = numpy.zeros(len(q_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Specific humidity",units="kg/kg")
-        qcutils.CreateSeries(ds_erai,"q",q_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"q",q_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly boundary layer height to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Habl_3d = erai_file.variables["blh"][:,:,:]
@@ -411,8 +411,8 @@ for n, erai_name in enumerate(erai_list):
         Habl_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Habl_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Boundary layer height",units="m")
-        qcutils.CreateSeries(ds_erai,"Habl",Habl_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Habl",Habl_erai_tts,flag,attr)
+
         # Spread the 3 hourly accumulated precipitation to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Precip_3d = erai_file.variables["tp"][:,:,:]
@@ -426,8 +426,8 @@ for n, erai_name in enumerate(erai_list):
         Precip_erai_tts[idx] = Precip_erai_3hr
         flag = numpy.zeros(len(Precip_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Precipitation",units="mm")
-        qcutils.CreateSeries(ds_erai,"Precip",Precip_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Precip",Precip_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly soil moisture to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Sws_3d = erai_file.variables["swvl1"][:,:,:]
@@ -438,8 +438,8 @@ for n, erai_name in enumerate(erai_list):
         Sws_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Sws_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Soil moisture",units="frac")
-        qcutils.CreateSeries(ds_erai,"Sws",Sws_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Sws",Sws_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly soil temperature to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Ts_3d = erai_file.variables["stl1"][:,:,:]
@@ -450,8 +450,8 @@ for n, erai_name in enumerate(erai_list):
         Ts_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Ts_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Soil temperature",units="C")
-        qcutils.CreateSeries(ds_erai,"Ts",Ts_erai_tts,Flag=flag,Attr=attr)
-        
+        qcutils.CreateSeries(ds_erai,"Ts",Ts_erai_tts,flag,attr)
+
         # Interpolate the 3 hourly U and V components to the tower time step
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         # U first ...
@@ -463,7 +463,7 @@ for n, erai_name in enumerate(erai_list):
         U_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(U_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="U component of wind speed",units="m/s")
-        qcutils.CreateSeries(ds_erai,"U",U_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"U",U_erai_tts,flag,attr)
         # ... then V
         V_3d = erai_file.variables["v10"][:,:,:]
         V_erai_3hr = V_3d[:,site_lat_index,site_lon_index]
@@ -473,18 +473,18 @@ for n, erai_name in enumerate(erai_list):
         V_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(V_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="V component of wind speed",units="m/s")
-        qcutils.CreateSeries(ds_erai,"V",V_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"V",V_erai_tts,flag,attr)
         # now get the wind speed and direction
         Ws_erai_tts = numpy.sqrt(U_erai_tts*U_erai_tts + V_erai_tts*V_erai_tts)
         flag = numpy.zeros(len(Ws_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Wind speed",units="m/s")
-        qcutils.CreateSeries(ds_erai,"Ws",Ws_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"Ws",Ws_erai_tts,flag,attr)
         Wd_erai_tts = float(270) - numpy.arctan2(V_erai_tts,U_erai_tts)*float(180)/numpy.pi
         idx = numpy.where(Wd_erai_tts>360)[0]
         if len(idx)>0: Wd_erai_tts[idx] = Wd_erai_tts[idx] - float(360)
         flag = numpy.zeros(len(Wd_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Wind direction",units="deg")
-        qcutils.CreateSeries(ds_erai,"Wd",Wd_erai_tts,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds_erai,"Wd",Wd_erai_tts,flag,attr)
         # write the yearly file for this site
         ncfile = qcio.nc_open_write(out_file_path)
         qcio.nc_write_series(ncfile,ds_erai,ndims=1)

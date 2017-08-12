@@ -313,7 +313,7 @@ def rpFFNET_createdict(cf,ds,series):
     # create an empty series in ds if the SOLO output series doesn't exist yet
     if ds.ffnet[series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.ffnet[series]["output"])
-        qcutils.CreateSeries(ds,ds.ffnet[series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.ffnet[series]["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -326,7 +326,7 @@ def rpFFNET_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
-        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
 
 def rpFFNET_done(ds,FFNET_gui,rpFFNET_info):
     # destroy the FFNET GUI
@@ -580,7 +580,7 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
     ds.ffnet[series]["results"]["Var (FFNET)"].append(var_mod)
     ds.ffnet[series]["results"]["Var ratio"].append(var_obs/var_mod)
     ds.ffnet[series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    ds.ffnet[series]["results"]["Avg (FFNET)"].append(numpy.ma.average(mod))    
+    ds.ffnet[series]["results"]["Avg (FFNET)"].append(numpy.ma.average(mod))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]
@@ -620,7 +620,7 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
         plt.ioff()
     else:
         plt.ion()
-    
+
 def rpFFNET_progress(FFNET_gui,text):
     """
         Update progress message in FFNET GUI
@@ -772,7 +772,7 @@ def rpFFNET_run_nogui(cf,ds,rpFFNET_info):
     rpFFNET_info["show_plots"] = True
     opt = qcutils.get_keyvaluefromcf(cf,["GUI","FFNET"],"show_plots",default="yes")
     if opt.lower()=="no": rpFFNET_info["show_plots"] = False
-    
+
     rpFFNET_info["site_name"] = ds.globalattributes["site_name"]
     rpFFNET_info["time_step"] = int(ds.globalattributes["time_step"])
     rpFFNET_info["nperhr"] = int(float(60)/rpFFNET_info["time_step"]+0.5)
@@ -868,7 +868,7 @@ def rpSOLO_createdict(cf,ds,series):
     # create an empty series in ds if the SOLO output series doesn't exist yet
     if ds.solo[series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.solo[series]["output"])
-        qcutils.CreateSeries(ds,ds.solo[series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.solo[series]["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -881,7 +881,7 @@ def rpSOLO_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
-        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
 
 def rpSOLO_done(ds,SOLO_gui,solo_info):
     # destroy the SOLO GUI
@@ -1085,7 +1085,7 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
     ds.solo[series]["results"]["Var (SOLO)"].append(var_mod)
     ds.solo[series]["results"]["Var ratio"].append(var_obs/var_mod)
     ds.solo[series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    ds.solo[series]["results"]["Avg (SOLO)"].append(numpy.ma.average(mod))    
+    ds.solo[series]["results"]["Avg (SOLO)"].append(numpy.ma.average(mod))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]
@@ -1367,7 +1367,7 @@ def rpSOLO_runseqsolo(ds,driverlist,targetlabel,outputlabel,nRecs,si=0,ei=-1):
     '''
     Run SEQSOLO.
     '''
-    # get the number of drivers    
+    # get the number of drivers
     ndrivers = len(driverlist)
     # add an extra column for the target data
     seqsoloinputdata = numpy.zeros((nRecs,ndrivers+1))

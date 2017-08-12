@@ -24,6 +24,9 @@ def AhfromRH(ds,Ah_out,RH_in,Ta_in):
     Author: PRI
     Date: September 2015
     """
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     for item in [RH_in,Ta_in]:
         if item not in ds.series.keys():
             msg = " AhfromRH: Requested series "+item+" not found, "+Ah_out+" not calculated"
@@ -39,7 +42,8 @@ def AhfromRH(ds,Ah_out,RH_in,Ta_in):
     Ah_attr = qcutils.MakeAttributeDictionary(long_name="Absolute humidity calculated from "+RH_in+" and "+Ta_in,
                                               height=RH_attr["height"],
                                               units="g/m3")
-    qcutils.CreateSeries(ds,Ah_out,Ah_data,FList=[RH_in,Ta_in],Attr=Ah_attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Ah_data)==True,ones,zeros)
+    qcutils.CreateSeries(ds,Ah_out,Ah_data,flag,Ah_attr)
     return 1
 
 def AhfromMR(ds,Ah_out,MR_in,Ta_in,ps_in):
@@ -56,6 +60,9 @@ def AhfromMR(ds,Ah_out,MR_in,Ta_in,ps_in):
     Author: PRI
     Date: September 2015
     """
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     for item in [MR_in,Ta_in,ps_in]:
         if item not in ds.series.keys():
             msg = " AhfromMR: Requested series "+item+" not found, "+Ah_out+" not calculated"
@@ -73,7 +80,8 @@ def AhfromMR(ds,Ah_out,MR_in,Ta_in,ps_in):
     Ah_attr = qcutils.MakeAttributeDictionary(long_name=long_name,
                                               height=MR_attr["height"],
                                               units="g/m3")
-    qcutils.CreateSeries(ds,Ah_out,Ah_data,FList=[MR_in,Ta_in,ps_in],Attr=Ah_attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Ah_data)==True,ones,zeros)
+    qcutils.CreateSeries(ds,Ah_out,Ah_data,flag,Ah_attr)
     return 1
 
 def DateTimeFromDoY(ds,Year_in,DoY_in,Hdh_in):
@@ -119,7 +127,7 @@ def DateTimeFromTimeStamp(ds,TimeStamp_in,fmt=""):
         dayfirst = False
         if fmt.index("Y") < fmt.index("D"): yearfirst = True
         if fmt.index("D") < fmt.index("M"): dayfirst = True
-        dt = [dateutil.parser.parse(str(TimeStamp[i]),dayfirst=dayfirst,yearfirst=yearfirst) 
+        dt = [dateutil.parser.parse(str(TimeStamp[i]),dayfirst=dayfirst,yearfirst=yearfirst)
               for i in idx]
     # we have finished with the timestamp so delete it from the data structure
     del ds.series[TimeStamp_in]
@@ -138,7 +146,7 @@ def DateTimeFromTimeStamp(ds,TimeStamp_in,fmt=""):
         ds.series[item]["Flag"] = ds.series[item]["Flag"][idx]
     ds.globalattributes["nc_nrecs"] = nRecs
     return 1
-    
+
 def DateTimeFromDateAndTimeString(ds,DateString_in,TimeString_in):
     if DateString_in not in ds.series.keys():
         logger.error(" Requested date series "+DateString_in+" not found")
@@ -173,4 +181,3 @@ def test(arg1,arg2):
     print "got args:",arg1,arg2
     return "that worked"
 
-    

@@ -76,7 +76,7 @@ def gfMergeSeries_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.merge[merge_order][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge[merge_order][series]["output"])
-        qcutils.CreateSeries(ds,ds.merge[merge_order][series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.merge[merge_order][series]["output"],data,flag,attr)
 
 # functions for GapFillFluxFromDayRatio: deprecated
 def GapFillFluxFromDayRatio(cf,ds,series=''):
@@ -147,13 +147,13 @@ def GapFillFluxFromDayRatio(cf,ds,series=''):
     # put the gap filled data into the data structure
     units=qcutils.GetUnitsFromds(ds, series)
     attr = qcutils.MakeAttributeDictionary(long_name='gap filled using ratio (daily)',units=units)
-    qcutils.CreateSeries(ds,out_label,flux_gf,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,out_label,flux_gf,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='interpolated '+ratio_label,units='None')
-    qcutils.CreateSeries(ds,ratio_label,ratio_ts,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,ratio_label,ratio_ts,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='ratio times driver',units=units)
-    qcutils.CreateSeries(ds,series+'_rd',flux_rd,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,series+'_rd',flux_rd,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='interpolated climatological fluxes',units=units)
-    qcutils.CreateSeries(ds,series+'_ic',flux_ic,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,series+'_ic',flux_ic,flag,attr)
     if 'GapFillFluxFromDayRatio' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', GapFillFluxFromDayRatio'
 
@@ -248,10 +248,10 @@ def gfClimatology_createdict(cf,ds,series):
         # create an empty series in ds if the climatology output series doesn't exist yet
         if output not in ds.series.keys():
             data,flag,attr = qcutils.MakeEmptySeries(ds,output)
-            qcutils.CreateSeries(ds,output,data,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds,output,data,flag,attr)
 
 def gfClimatology_interpolateddaily(ds,series,output,xlbooks):
-    """ 
+    """
     Gap fill using data interpolated over a 2D array where the days are
     the rows and the time of day is the columns.
     """
@@ -309,7 +309,7 @@ def gfClimatology_interpolateddaily(ds,series,output,xlbooks):
             data[ii] = numpy.float64(c.missing_value)
             flag[ii] = numpy.int32(41)
     # put the gap filled data back into the data structure
-    qcutils.CreateSeries(ds,output,data,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,output,data,flag,attr)
 
 def gfClimatology_monthly(ds,series,output,xlbook):
     """ Gap fill using monthly climatology."""
@@ -783,8 +783,8 @@ def gfalternate_createdict(cf,ds,series,ds_alt):
         # create an empty series in ds if the alternate output series doesn't exist yet
         if output not in ds.series.keys():
             data,flag,attr = qcutils.MakeEmptySeries(ds,output)
-            qcutils.CreateSeries(ds,output,data,Flag=flag,Attr=attr)
-            qcutils.CreateSeries(ds,series+"_composite",data,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds,output,data,flag,attr)
+            qcutils.CreateSeries(ds,series+"_composite",data,flag,attr)
 
 def gfalternate_done(ds,alt_gui):
     """
@@ -1049,15 +1049,15 @@ def gfalternate_getmrevcorrected(data_dict,stat_dict,alternate_info):
     # local copies of the data
     data_tower = numpy.ma.copy(data_dict[label_tower]["data"])
     data_alternate = numpy.ma.copy(data_dict[label_output][label_alternate]["data"])
-    
+
     data_2d = gfalternate_getdataas2d(odt,data_tower,alternate_info)
     data_twr_hravg = numpy.ma.average(data_2d,axis=0)
     data_2d = gfalternate_getdataas2d(odt,data_alternate,alternate_info)
     data_alt_hravg = numpy.ma.average(data_2d,axis=0)
-    
+
     #data_twr_hravg = numpy.ma.copy(data_plot["tower"]["hourlyavg"])
     #data_alt_hravg = numpy.ma.copy(data_plot["alternate"][label_alternate]["lagcorr"]["hourlyavg"])
-    
+
     # calculate the means
     mean_tower = numpy.ma.mean(data_tower)
     mean_alternate = numpy.ma.mean(data_alternate)
@@ -1074,7 +1074,7 @@ def gfalternate_getmrevcorrected(data_dict,stat_dict,alternate_info):
 def gfalternate_getnumgoodpoints(data_tower,data_alternate):
     mask = numpy.ma.mask_or(data_tower.mask,data_alternate.mask,copy=True,shrink=False)
     return len(numpy.where(mask==False)[0])
-    
+
 def gfalternate_getodrcorrecteddata(data_dict,stat_dict,alternate_info):
     """
     Calculate the orthogonal distance regression fit between 2 1D arrays.
@@ -1098,7 +1098,7 @@ def gfalternate_getodrcorrecteddata(data_dict,stat_dict,alternate_info):
     stat_dict[label_output][label_alternate]["slope"] = odr_slope
     stat_dict[label_output][label_alternate]["offset"] = odr_offset
     stat_dict[label_output][label_alternate]["eqnstr"] = "y = %.3fx + %.3f"%(odr_slope,odr_offset)
-    
+
     #resols = sm.OLS(y,sm.add_constant(x,prepend=False)).fit()
     #if resols.params.shape[0]==2:
         #rma_slope = resols.params[0]/numpy.sqrt(resols.rsquared)
@@ -1329,7 +1329,7 @@ def gfalternate_initplot(data_dict,alternate_info,**kwargs):
     #pd["ts_bottom"] = pd["margin_bottom"]+pd["xy_height"]+pd["xyxy_space"]+pd["xy_height"]+pd["xyts_space"]
     label_tower = alternate_info["label_tower"]
     label_composite = alternate_info["label_composite"]
-    
+
     output_list = list(data_dict[label_tower]["output_list"])
     for item in [label_tower,label_composite]:
         if item in output_list: output_list.remove(item)
@@ -1457,7 +1457,7 @@ def gfalternate_matchstartendtimes(ds,ds_alternate):
             data_overlap[tower_index] = data[alternate_index]
             flag_overlap[tower_index] = flag[alternate_index]
             # write the truncated or padded series back into the alternate data structure
-            qcutils.CreateSeries(ds_alternate,series,data_overlap,Flag=flag_overlap,Attr=attr)
+            qcutils.CreateSeries(ds_alternate,series,data_overlap,flag_overlap,attr)
         # update the number of records in the file
         ds_alternate.globalattributes["nc_nrecs"] = nRecs_tower
     else:
@@ -1471,7 +1471,7 @@ def gfalternate_matchstartendtimes(ds,ds_alternate):
             d,f,attr = qcutils.GetSeriesasMA(ds_alternate,series)
             data = numpy.full(nRecs,c.missing_value,dtype=numpy.float64)
             flag = numpy.ones(nRecs,dtype=numpy.int32)
-            qcutils.CreateSeries(ds_alternate,series,data,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds_alternate,series,data,flag,attr)
     ds.returncodes["GapFillFromAlternate"] = "normal"
 
 def gfalternate_main(ds_tower,ds_alt,alternate_info,label_tower_list=[]):
@@ -1928,7 +1928,7 @@ def gfalternate_run_gui(ds_tower,ds_alt,alt_gui,alternate_info):
         alternate_info = {"overlap_startdate":startdate.strftime("%Y-%m-%d %H:%M"),
                           "overlap_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
                           "startdate":startdate.strftime("%Y-%m-%d %H:%M"),
-                          "enddate":enddate.strftime("%Y-%m-%d %H:%M")}        
+                          "enddate":enddate.strftime("%Y-%m-%d %H:%M")}
     else:
         logger.error("GapFillFromAlternate: unrecognised period option")
     # write Excel spreadsheet with fit statistics
@@ -2060,7 +2060,7 @@ def gfalternate_run_nogui(cf,ds_tower,ds_alt,alternate_info):
         alternate_info = {"overlap_startdate":startdate.strftime("%Y-%m-%d %H:%M"),
                           "overlap_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
                           "startdate":startdate.strftime("%Y-%m-%d %H:%M"),
-                          "enddate":enddate.strftime("%Y-%m-%d %H:%M")}        
+                          "enddate":enddate.strftime("%Y-%m-%d %H:%M")}
     else:
         logger.error("GapFillFromAlternate: unrecognised period option")
     # write Excel spreadsheet with fit statistics
@@ -2187,7 +2187,7 @@ def gfalternate_updatedict(cf,ds_tower,ds_alt):
             # create an empty series in ds if the alternate output series doesn't exist yet
             if output not in ds_tower.series.keys():
                 data,flag,attr = qcutils.MakeEmptySeries(ds_tower,output)
-                qcutils.CreateSeries(ds_tower,output,data,Flag=flag,Attr=attr)
+                qcutils.CreateSeries(ds_tower,output,data,flag,attr)
 
 def gfalternate_update_alternate_info(ds_tower,alternate_info):
     """Update the alternate_info dictionary."""
@@ -2470,7 +2470,7 @@ def gfSOLO_createdict(cf,ds,series):
         # create an empty series in ds if the SOLO output series doesn't exist yet
         if output not in ds.series.keys():
             data,flag,attr = qcutils.MakeEmptySeries(ds,output)
-            qcutils.CreateSeries(ds,output,data,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds,output,data,flag,attr)
 
 def gfSOLO_done(ds,solo_gui,solo_info):
     # plot the summary statistics if gap filling was done manually
@@ -3136,7 +3136,7 @@ def gfSOLO_runseqsolo(dsa,dsb,driverlist,targetlabel,outputlabel,nRecs,si=0,ei=-
     '''
     Run SEQSOLO.
     '''
-    # get the number of drivers    
+    # get the number of drivers
     ndrivers = len(driverlist)
     # add an extra column for the target data
     seqsoloinputdata = numpy.zeros((nRecs,ndrivers+1))
@@ -3517,4 +3517,4 @@ def ImportSeries(cf,ds):
         index = qcutils.FindIndicesOfBInA(ldt_import,ldt)
         data[index] = data_import
         flag[index] = flag_import
-        qcutils.CreateSeries(ds,label,data,Flag=flag,Attr=attr_import)
+        qcutils.CreateSeries(ds,label,data,flag,attr_import)

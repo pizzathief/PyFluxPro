@@ -87,9 +87,9 @@ def CheckQCFlags(ds):
         bool_array = numpy.isclose(ds.series[ThisOne]["Data"], missing_array)
         idx = numpy.where((bool_array == False)&(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))[0]
         if len(idx)!=0:
-            msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0 (forced to missing)"
+            msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0"
             logger.warning(msg)
-            ds.series[ThisOne]["Data"][idx] = numpy.float64(c.missing_value)
+            #ds.series[ThisOne]["Data"][idx] = numpy.float64(c.missing_value)
     return
 
 def CheckTimeStep(ds):
@@ -144,7 +144,7 @@ def CheckUnits(ds,label,units,convert_units=False):
         logger.info(msg)
         new_data = convert_units_func(ds,data,attr["units"],units)
         attr["units"] = units
-        CreateSeries(ds,label,new_data,Flag=flag,Attr=attr)
+        CreateSeries(ds,label,new_data,flag,attr)
     else:
         msg = " Units mismatch but conversion disabled"
         logger.error(msg)
@@ -161,8 +161,8 @@ def contiguous_regions(condition):
     """
     # Find the indicies of changes in "condition"
     d = numpy.diff(condition)
-    idx, = d.nonzero() 
-    # We need to start things after the change in "condition". Therefore, 
+    idx, = d.nonzero()
+    # We need to start things after the change in "condition". Therefore,
     # we'll shift the index by 1 to the right.
     idx += 1
     if condition[0]:
@@ -191,7 +191,7 @@ def ConvertCO2Units(cf, ds, CO2='CO2'):
             attr["long_name"] = attr["long_name"]+", converted to umol/mol"
             attr["units"] = CO2_units_out
             attr["standard_name"] = "mole_concentration_of_carbon_dioxide_in_air"
-            CreateSeries(ds,CO2,c_ppm,Flag=flag,Attr=attr)
+            CreateSeries(ds,CO2,c_ppm,flag,attr)
         elif CO2_units_out=="mg/m3" and CO2_units_in=="umol/mol":
             c_ppm,flag,attr = GetSeriesasMA(ds,CO2)
             T,f,a = GetSeriesasMA(ds,'Ta')
@@ -200,7 +200,7 @@ def ConvertCO2Units(cf, ds, CO2='CO2'):
             attr["long_name"] = attr["long_name"]+", converted to mg/m3"
             attr["units"] = CO2_units_out
             attr["standard_name"] = "mass_concentration_of_carbon_dioxide_in_air"
-            CreateSeries(ds,CO2,c_mgpm3,Flag=flag,Attr=attr)
+            CreateSeries(ds,CO2,c_mgpm3,flag,attr)
         else:
             logger.info('  ConvertCO2Units: input or output units for CO2 concentration not recognised')
     else:
@@ -222,14 +222,14 @@ def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
                 attr["long_name"] = attr["long_name"]+", converted to umol/m2/s"
                 attr["units"] = Fc_units_out
                 attr["standard_name"] = "surface_upward_mole_flux_of_carbon_dioxide"
-                CreateSeries(ds,Fc,Fc_umolpm2ps,Flag=flag,Attr=attr)
+                CreateSeries(ds,Fc,Fc_umolpm2ps,flag,attr)
             elif Fc_units_out=="mg/m2/s" and Fc_units_in=="umol/m2/s":
                 Fc_umolpm2ps,f,a = GetSeriesasMA(ds,Fc)
                 Fc_mgpm2ps = mf.Fc_mgpm2psfromumolpm2ps(Fc_umolpm2ps)
                 attr["long_name"] = attr["long_name"]+', converted to mg/m2/s'
                 attr["units"] = Fc_units_out
                 attr["standard_name"] = "not defined"
-                CreateSeries(ds,Fc,Fc_mgpm2ps,Flag=flag,Attr=attr)
+                CreateSeries(ds,Fc,Fc_mgpm2ps,flag,attr)
             else:
                 logger.info('  ConvertFcUnits: input or output units for Fc unrecognised')
     # convert units of Fc_storage if required, just go with boiler plate for now
@@ -242,13 +242,13 @@ def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
                 Fc_storage_umolpm2ps = mf.Fc_umolpm2psfrommgpm2ps(Fc_storage_mgpm2ps)
                 attr["long_name"] = attr["long_name"]+", converted to umol/m2/s"
                 attr["units"] = Fc_units_out
-                CreateSeries(ds,Fc_storage,Fc_storage_umolpm2ps,Flag=flag,Attr=attr)
+                CreateSeries(ds,Fc_storage,Fc_storage_umolpm2ps,flag,attr)
             elif Fc_units_out=="mg/m2/s" and Fc_storage_units_in=="umol/m2/s":
                 Fc_storage_umolpm2ps,f,a = GetSeriesasMA(ds,Fc_storage)
                 Fc_storage_mgpm2ps = mf.Fc_mgpm2psfromumolpm2ps(Fc_storage_umolpm2ps)
                 attr["long_name"] = attr["long_name"]+", converted to mg/m2/s"
                 attr["units"] = Fc_units_out
-                CreateSeries(ds,Fc_storage,Fc_storage_mgpm2ps,Flag=flag,Attr=attr)
+                CreateSeries(ds,Fc_storage,Fc_storage_mgpm2ps,flag,attr)
             else:
                 logger.info('  ConvertFcUnits: input or output units for Fc_storage unrecognised')
 
@@ -298,14 +298,14 @@ def convert_units_func(ds,old_data,old_units,new_units,mode="quiet"):
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
             logger.error(msg)
-            new_data = numpy.ma.array(old_data,copy=True,mask=True)            
+            new_data = numpy.ma.array(old_data,copy=True,mask=True)
     elif new_units in t_list:
         if old_units in t_list:
             new_data = convert_units_t(ds,old_data,old_units,new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
             logger.error(msg)
-            new_data = numpy.ma.array(old_data,copy=True,mask=True)            
+            new_data = numpy.ma.array(old_data,copy=True,mask=True)
     else:
         msg = "Unrecognised units combination "+old_units+" and "+new_units
         logger.error(msg)
@@ -456,7 +456,7 @@ def convert_anglestring(anglestring):
         # make sure we have 3 parts
         new.extend([0,0,0])
         # return with the string converted to a float
-        return (float(new[0])+float(new[1])/60.0+float(new[2])/3600.0) * direction[new_dir]    
+        return (float(new[0])+float(new[1])/60.0+float(new[2])/3600.0) * direction[new_dir]
 
 def convert_WsWdtoUV(Ws,Wd):
     """
@@ -493,7 +493,7 @@ def convert_UVtoWsWd(u,v):
     Ws = numpy.sqrt(u*u + v*v)
     return Ws,Wd
 
-def CreateSeries(ds,Label,Data,FList=None,Flag=None,Attr=None):
+def CreateSeries(ds,Label,Data,Flag,Attr):
     """
     Purpose:
      Create a series (1d array) of data in the data structure.
@@ -507,7 +507,7 @@ def CreateSeries(ds,Label,Data,FList=None,Flag=None,Attr=None):
     Usage:
      Fsd,flag,attr = qcutils.GetSeriesasMA(ds,"Fsd")
       ... do something to Fsd here ...
-     qcutils.CreateSeries(ds,"Fsd",Fsd,Flag=flag,Attr=attr)
+     qcutils.CreateSeries(ds,"Fsd",Fsd,flag,attr)
     Author: PRI
     Date: Back in the day
     """
@@ -648,7 +648,7 @@ def FindIndicesOfBInA(a,b):
     tmpset = set(a)
     indices = [i for i,item in enumerate(b) if item in tmpset]
     return indices
-    
+
 def RemoveDuplicateRecords(ds):
     """ Remove duplicate records."""
     # the ds.series["DateTime"]["Data"] series is actually a list
@@ -672,7 +672,7 @@ def RemoveDuplicateRecords(ds):
         data_dups,flag_dups,attr = GetSeriesasMA(ds,ThisOne)
         data_nodups = data_dups[idx_nodups]
         flag_nodups = flag_dups[idx_nodups]
-        CreateSeries(ds,ThisOne,data_nodups,Flag=flag_nodups,Attr=attr)
+        CreateSeries(ds,ThisOne,data_nodups,flag_nodups,attr)
     ds.globalattributes['nc_nrecs'] = len(ds.series["DateTime"]["Data"])
 
 def FixNonIntegralTimeSteps(ds,fixtimestepmethod=""):
@@ -711,7 +711,7 @@ def FixNonIntegralTimeSteps(ds,fixtimestepmethod=""):
         # replace the existing datetime series with the datetime series rounded to the nearest time step
         ds.series["DateTime"]["Data"] = ldt_rounded
     ds.globalattributes['nc_nrecs'] = len(ds.series["DateTime"]["Data"])
-    
+
 def FixTimeGaps(ds):
     """
     Purpose:
@@ -757,7 +757,7 @@ def FixTimeGaps(ds):
         data_gaps,flag_gaps,attr = GetSeriesasMA(ds,ThisOne)
         data_nogaps[idx_gaps] = data_gaps
         flag_nogaps[idx_gaps] = flag_gaps
-        CreateSeries(ds,ThisOne,data_nogaps,Flag=flag_nogaps,Attr=attr)
+        CreateSeries(ds,ThisOne,data_nogaps,flag_nogaps,attr)
     return
 
 def FixTimeStep(ds,fixtimestepmethod="round"):
@@ -1144,7 +1144,7 @@ def GetSeries(ds,ThisOne,si=0,ei=-1,mode="truncate"):
             Flag = Flag[si:ei+1]
         else:
             msg = 'GetSeries: unrecognised combination of si ('+str(si)+') and ei ('+str(ei)+')'
-            raise ValueError(msg)            
+            raise ValueError(msg)
     else:
         raise ValueError("GetSeries: unrecognised mode option "+str(mode))
     return Series,Flag,Attr
@@ -1487,7 +1487,7 @@ def get_number_from_heightstring(height):
     except:
         z = 0.0
     return z
-    
+
 def get_nrecs(ds):
     if 'nc_nrecs' in ds.globalattributes.keys():
         nRecs = int(ds.globalattributes['nc_nrecs'])
@@ -1607,7 +1607,7 @@ def get_xldatefromdatetime(ds):
                                                       datemode) for i in range(0,len(ldt))]
     xldt_new = numpy.ma.array(xldate, dtype=numpy.float64)
     # create the Excel datetime series
-    CreateSeries(ds,"xlDateTime",xldt_new,Flag=flag,Attr=xldt_attr)
+    CreateSeries(ds,"xlDateTime",xldt_new,flag,xldt_attr)
 
 def get_ymdhmsfromdatetime(ds):
     '''
@@ -1633,20 +1633,20 @@ def get_ymdhmsfromdatetime(ds):
     Second = numpy.array([dt[i].second for i in range(0,nRecs)]).astype(numpy.int32)
     Hdh = numpy.array([float(Hour[i])+float(Minute[i])/60. for i in range(0,nRecs)]).astype(numpy.float64)
     Ddd = numpy.array([(dt[i] - datetime.datetime(Year[i],1,1)).days+1+Hdh[i]/24. for i in range(0,nRecs)]).astype(numpy.float64)
-    CreateSeries(ds,'Year',Year,Flag=flag,Attr=MakeAttributeDictionary(long_name='Year',units='none'))
-    CreateSeries(ds,'Month',Month,Flag=flag,Attr=MakeAttributeDictionary(long_name='Month',units='none'))
-    CreateSeries(ds,'Day',Day,Flag=flag,Attr=MakeAttributeDictionary(long_name='Day',units='none'))
-    CreateSeries(ds,'Hour',Hour,Flag=flag,Attr=MakeAttributeDictionary(long_name='Hour',units='none'))
-    CreateSeries(ds,'Minute',Minute,Flag=flag,Attr=MakeAttributeDictionary(long_name='Minute',units='none'))
-    CreateSeries(ds,'Second',Second,Flag=flag,Attr=MakeAttributeDictionary(long_name='Second',units='none'))
-    CreateSeries(ds,'Hdh',Hdh,Flag=flag,Attr=MakeAttributeDictionary(long_name='Decimal hour of the day',units='none'))
-    CreateSeries(ds,'Ddd',Ddd,Flag=flag,Attr=MakeAttributeDictionary(long_name='Decimal day of the year',units='none'))
+    CreateSeries(ds,'Year',Year,flag,MakeAttributeDictionary(long_name='Year',units='none'))
+    CreateSeries(ds,'Month',Month,flag,MakeAttributeDictionary(long_name='Month',units='none'))
+    CreateSeries(ds,'Day',Day,flag,MakeAttributeDictionary(long_name='Day',units='none'))
+    CreateSeries(ds,'Hour',Hour,flag,MakeAttributeDictionary(long_name='Hour',units='none'))
+    CreateSeries(ds,'Minute',Minute,flag,MakeAttributeDictionary(long_name='Minute',units='none'))
+    CreateSeries(ds,'Second',Second,flag,MakeAttributeDictionary(long_name='Second',units='none'))
+    CreateSeries(ds,'Hdh',Hdh,flag,MakeAttributeDictionary(long_name='Decimal hour of the day',units='none'))
+    CreateSeries(ds,'Ddd',Ddd,flag,MakeAttributeDictionary(long_name='Decimal day of the year',units='none'))
 
 def get_ymdhmsfromxldate(ds):
     """
         Gets year, month, day, hour, and if available seconds, from
         excel-formatted Timestamp
-        
+
         Usage qcts.get_ymdhmsfromxldate(ds)
         cf: control file
         ds: data structure
@@ -1674,14 +1674,14 @@ def get_ymdhmsfromxldate(ds):
         Second[i] = int(DateTuple[5])
         Hdh[i] = float(DateTuple[3])+float(DateTuple[4])/60.
         Ddd[i] = ds.series['xlDateTime']['Data'][i] - xlrd.xldate.xldate_from_date_tuple((Year[i],1,1),datemode) + 1
-    CreateSeries(ds,'Year',Year,Flag=flag,Attr=MakeAttributeDictionary(long_name='Year',units='none'))
-    CreateSeries(ds,'Month',Month,Flag=flag,Attr=MakeAttributeDictionary(long_name='Month',units='none'))
-    CreateSeries(ds,'Day',Day,Flag=flag,Attr=MakeAttributeDictionary(long_name='Day',units='none'))
-    CreateSeries(ds,'Hour',Hour,Flag=flag,Attr=MakeAttributeDictionary(long_name='Hour',units='none'))
-    CreateSeries(ds,'Minute',Minute,Flag=flag,Attr=MakeAttributeDictionary(long_name='Minute',units='none'))
-    CreateSeries(ds,'Second',Second,Flag=flag,Attr=MakeAttributeDictionary(long_name='Second',units='none'))
-    CreateSeries(ds,'Hdh',Hdh,Flag=flag,Attr=MakeAttributeDictionary(long_name='Decimal hour of the day',units='none'))
-    CreateSeries(ds,'Ddd',Ddd,Flag=flag,Attr=MakeAttributeDictionary(long_name='Decimal day of the year',units='none'))
+    CreateSeries(ds,'Year',Year,flag,MakeAttributeDictionary(long_name='Year',units='none'))
+    CreateSeries(ds,'Month',Month,flag,MakeAttributeDictionary(long_name='Month',units='none'))
+    CreateSeries(ds,'Day',Day,flag,MakeAttributeDictionary(long_name='Day',units='none'))
+    CreateSeries(ds,'Hour',Hour,flag,MakeAttributeDictionary(long_name='Hour',units='none'))
+    CreateSeries(ds,'Minute',Minute,flag,MakeAttributeDictionary(long_name='Minute',units='none'))
+    CreateSeries(ds,'Second',Second,flag,MakeAttributeDictionary(long_name='Second',units='none'))
+    CreateSeries(ds,'Hdh',Hdh,flag,MakeAttributeDictionary(long_name='Decimal hour of the day',units='none'))
+    CreateSeries(ds,'Ddd',Ddd,flag,MakeAttributeDictionary(long_name='Decimal day of the year',units='none'))
 
 def haskey(cf,ThisOne,key):
     return key in cf['Variables'][ThisOne].keys()
@@ -1872,7 +1872,7 @@ def polyval(p,x):
 def rounddttots(dt,ts=30):
     dt += datetime.timedelta(minutes=int(ts/2))
     dt -= datetime.timedelta(minutes=dt.minute % int(ts),seconds=dt.second,microseconds=dt.microsecond)
-    return dt    
+    return dt
 
 def rounddttoseconds(dt):
     dt += datetime.timedelta(seconds=0.5)
@@ -1943,9 +1943,10 @@ def SeriestoMA(Series):
       Series (output)   is the input series convered to a masked array.
     """
     WasND = False
-    if not numpy.ma.isMA(Series):
-        WasND = True
-        Series = numpy.ma.masked_where(abs(Series-numpy.float64(c.missing_value))<c.eps,Series)
+    if Series.dtype == "float64":
+        if not numpy.ma.isMA(Series):
+            WasND = True
+            Series = numpy.ma.masked_where(abs(Series-numpy.float64(c.missing_value)) < c.eps, Series)
     return Series, WasND
 
 def SetUnitsInds(ds, ThisOne, units):

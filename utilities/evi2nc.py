@@ -124,7 +124,7 @@ for site in site_list:
     evi_interp2_smooth = s(time_UTC)
     # if requested, plot the data prior to output
     if do_plots:
-        plt.ion()        
+        plt.ion()
         fig=plt.figure()
         ax1 = plt.subplot(211)
         for i in range(evi.shape[1]):
@@ -143,7 +143,7 @@ for site in site_list:
         fig.savefig(png_filename,format="png")
         plt.draw()
         plt.ioff()
-        
+
     # create a data structure and write the global attributes
     ds = qcio.DataStructure()
     ds.series["DateTime"] = {}
@@ -172,7 +172,7 @@ for site in site_list:
     # get the Excel datetime
     qcutils.get_xldatefromdatetime(ds)
     # get the year, month, day, hour, minute and second
-    qcutils.get_ymdhmsfromdatetime(ds)    
+    qcutils.get_ymdhmsfromdatetime(ds)
     # put the QC'd, smoothed and interpolated EVI into the data structure
     flag = numpy.zeros(len(dt_loc),dtype=numpy.int32)
     attr = qcutils.MakeAttributeDictionary(long_name="MODIS EVI, smoothed and interpolated",units="none",
@@ -184,16 +184,15 @@ for site in site_list:
                                            evi_smooth_filter=str(evi_smooth_filter),
                                            sg_num_points=str(sg_num_points),
                                            sg_order=str(sg_num_points))
-    qcutils.CreateSeries(ds,"EVI",evi_interp2_smooth,Flag=flag,Attr=attr)
-    
+    qcutils.CreateSeries(ds,"EVI",evi_interp2_smooth,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name="MODIS EVI, interpolated",units="none",
                                            horiz_resolution="250m",
                                            cutout_size=str(site_cutout),
                                            evi_quality_threshold=str(evi_quality_threshold),
                                            evi_sd_threshold=str(evi_sd_threshold),
                                            evi_interpolate=str(evi_interpolate))
-    qcutils.CreateSeries(ds,"EVI_notsmoothed",evi_interp2,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"EVI_notsmoothed",evi_interp2,flag,attr)
     # now write the data structure to a netCDF file
     out_file = qcio.nc_open_write(out_name)
     qcio.nc_write_series(out_file,ds,ndims=1)
-    

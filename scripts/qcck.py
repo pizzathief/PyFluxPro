@@ -150,19 +150,19 @@ def ApplyTurbulenceFilter(cf,ds,ustar_threshold=None):
     ind_flag = numpy.zeros(len(ldt))
     long_name = "Turbulence indicator, 1 for turbulent, 0 for non-turbulent"
     ind_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="None")
-    qcutils.CreateSeries(ds,"turbulence_indicator",indicators["turbulence"]["values"],Flag=ind_flag,Attr=ind_attr)
+    qcutils.CreateSeries(ds,"turbulence_indicator",indicators["turbulence"]["values"],ind_flag,ind_attr)
     long_name = "Day indicator, 1 for day time, 0 for night time"
     ind_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="None")
-    qcutils.CreateSeries(ds,"day_indicator",indicators["day"]["values"],Flag=ind_flag,Attr=ind_attr)
+    qcutils.CreateSeries(ds,"day_indicator",indicators["day"]["values"],ind_flag,ind_attr)
     long_name = "Evening indicator, 1 for evening, 0 for not evening"
     ind_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="None")
-    qcutils.CreateSeries(ds,"evening_indicator",indicators["evening"]["values"],Flag=ind_flag,Attr=ind_attr)
+    qcutils.CreateSeries(ds,"evening_indicator",indicators["evening"]["values"],ind_flag,ind_attr)
     long_name = "Day/evening indicator, 1 for day/evening, 0 for not day/evening"
     ind_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="None")
-    qcutils.CreateSeries(ds,"dayevening_indicator",indicators["dayevening"]["values"],Flag=ind_flag,Attr=ind_attr)
+    qcutils.CreateSeries(ds,"dayevening_indicator",indicators["dayevening"]["values"],ind_flag,ind_attr)
     long_name = "Final indicator, 1 for use data, 0 for don't use data"
     ind_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="None")
-    qcutils.CreateSeries(ds,"final_indicator",indicators["final"]["values"],Flag=ind_flag,Attr=ind_attr)
+    qcutils.CreateSeries(ds,"final_indicator",indicators["final"]["values"],ind_flag,ind_attr)
     # loop over the series to be filtered
     for series in opt["filter_list"]:
         msg = " Applying "+opt["turbulence_filter"]+" filter to "+series
@@ -175,7 +175,7 @@ def ApplyTurbulenceFilter(cf,ds,ustar_threshold=None):
             logger.warning(msg)
             continue
         # save the non-filtered data
-        qcutils.CreateSeries(ds,series+"_nofilter",data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,series+"_nofilter",data,flag,attr)
         # now apply the filter
         data_filtered = numpy.ma.masked_where(indicators["final"]["values"]==0,data,copy=True)
         flag_filtered = numpy.copy(flag)
@@ -185,10 +185,10 @@ def ApplyTurbulenceFilter(cf,ds,ustar_threshold=None):
         for item in indicators["final"]["attr"].keys():
             attr[item] = indicators["final"]["attr"][item]
         # and write the filtered data to the data structure
-        qcutils.CreateSeries(ds,series,data_filtered,Flag=flag_filtered,Attr=attr)
+        qcutils.CreateSeries(ds,series,data_filtered,flag_filtered,attr)
         # and write a copy of the filtered datas to the data structure so it
         # will still exist once the gap filling has been done
-        qcutils.CreateSeries(ds,series+"_filtered",data_filtered,Flag=flag_filtered,Attr=attr)
+        qcutils.CreateSeries(ds,series+"_filtered",data_filtered,flag_filtered,attr)
     return
 
 def ApplyTurbulenceFilter_checks(cf,ds):
@@ -247,7 +247,7 @@ def ApplyTurbulenceFilter_checks(cf,ds):
     # check to see if all day time values are to be accepted
     opt["accept_day_times"] = qcutils.get_keyvaluefromcf(cf,["Options"],"AcceptDayTimes",default="Yes")
     opt["use_evening_filter"] = qcutils.get_keyvaluefromcf(cf,["Options"],"UseEveningFilter",default="Yes")
-    
+
     return opt
 
 def cliptorange(data, lower, upper):
@@ -262,13 +262,13 @@ def CoordinateAh7500AndFcGaps(cf,ds,Fcvar='Fc'):
     if qcutils.cfkeycheck(cf,Base='FunctionArgs',ThisOne='AhcheckFc'):
         Fclist = ast.literal_eval(cf['FunctionArgs']['AhcheckFc'])
         Fcvar = Fclist[0]
-    
+
     # index1  Index of bad Ah_7500_Av observations
     index1 = numpy.where((ds.series['Ah_7500_Av']['Flag']!=0) & (ds.series['Ah_7500_Av']['Flag']!=10))
-    
+
     # index2  Index of bad Fc observations
     index2 = numpy.where((ds.series[Fcvar]['Flag']!=0) & (ds.series[Fcvar]['Flag']!=10))
-    
+
     ds.series['Ah_7500_Av']['Data'][index2] = numpy.float64(c.missing_value)
     ds.series['Ah_7500_Av']['Flag'][index2] = ds.series[Fcvar]['Flag'][index2]
     ds.series['Ah_7500_Av']['Flag'][index1] = ds.series['Ah_7500_Av']['Flag'][index1]
@@ -302,7 +302,7 @@ def CoordinateFluxGaps(cf,ds,Fc_in='Fc',Fe_in='Fe',Fh_in='Fh'):
         if Fe.mask[j]==False:
             Fe.mask[j]=True
             Fe[j] = numpy.float64(c.missing_value)
-            ds.series[Fe_in]['Flag'][j] = numpy.int32(19)           
+            ds.series[Fe_in]['Flag'][j] = numpy.int32(19)
         if Fh.mask[j]==False:
             Fh.mask[j]=True
             Fh[j] = numpy.float64(c.missing_value)
@@ -403,7 +403,7 @@ def do_dependencycheck(cf, ds, section, series, code=23, mode="quiet"):
         dependent_flag[idx] = numpy.int32(code)
     # put the data back into the data structure
     dependent_attr["DependencyCheck_source"] = str(source_list)
-    qcutils.CreateSeries(ds,series,dependent_data,Flag=dependent_flag,Attr=dependent_attr)
+    qcutils.CreateSeries(ds,series,dependent_data,dependent_flag,dependent_attr)
     # our work here is done
     return
 
@@ -852,7 +852,7 @@ def do_lowercheck(cf,ds,section,series,code=2):
     ldt = ds.series["DateTime"]["Data"]
     ts = ds.globalattributes["time_step"]
     data, flag, attr = qcutils.GetSeriesasMA(ds, series)
-    
+
     lc_list = list(cf[section][series]["LowerCheck"].keys())
     for n,item in enumerate(lc_list):
         # this should be a list and we should probably check for compliance
@@ -898,7 +898,7 @@ def do_uppercheck(cf,ds,section,series,code=2):
     ldt = ds.series["DateTime"]["Data"]
     ts = ds.globalattributes["time_step"]
     data, flag, attr = qcutils.GetSeriesasMA(ds, series)
-    
+
     lc_list = list(cf[section][series]["UpperCheck"].keys())
     for n,item in enumerate(lc_list):
         # this should be a list and we should probably check for compliance

@@ -125,6 +125,6 @@ for site in site_list:
     ds.series["DateTime"]["Attr"]["long_name"] = "Datetime in local timezone"
     ds.series["DateTime"]["Attr"]["units"] = "None"
     qcutils.get_ymdhmsfromdatetime(ds)
-    qcutils.CreateSeries(ds,"evi",evi_interp_smooth,Flag=evi_flag,Attr=evi_attr)
+    qcutils.CreateSeries(ds,"evi",evi_interp_smooth,evi_flag,evi_attr)
     nc_file = qcio.nc_open_write(outfilename)
     qcio.nc_write_series(nc_file,ds)

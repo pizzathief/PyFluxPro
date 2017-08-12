@@ -41,7 +41,7 @@ def CalculateET(ds):
     ET = Fe*ts*60/c.Lv
     attr["long_name"] = "Evapo-transpiration calculated from latent heat flux"
     attr["units"] = "mm"
-    qcutils.CreateSeries(ds,"ET",ET,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"ET",ET,flag,attr)
 
 def CalculateNEE(cf,ds):
     """
@@ -109,7 +109,7 @@ def CalculateNEP(cf,ds):
         nee,flag,attr = qcutils.GetSeriesasMA(ds,nee_name)
         nep = float(-1)*nee
         attr["long_name"] = "Net Ecosystem Productivity calculated as -1*"+nee_name
-        qcutils.CreateSeries(ds,nep_name,nep,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,nep_name,nep,flag,attr)
 
 def cleanup_ustar_dict(ldt,ustar_dict):
     """
@@ -292,47 +292,47 @@ def ERUsingLasslop(cf,ds):
     long_name = "Base respiration at Tref from Lloyd-Taylor method used in Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
     flag = numpy.zeros(len(rb),dtype=numpy.int32)
-    qcutils.CreateSeries(ds,"rb_LL",rb,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"rb_LL",rb,flag,attr)
     E0 = LL_results["E0_tts"]
     units = "C"
     long_name = "Activation energy from Lloyd-Taylor method used in Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"E0_LL",E0,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"E0_LL",E0,flag,attr)
     logger.info(" Calculating ER using Lloyd-Taylor with Lasslop parameters")
     ER_LL = qcrpLL.ER_LloydTaylor(T,rb,E0)
     # write ecosystem respiration modelled by Lasslop et al (2010)
     units = Fc_attr["units"]
     long_name = "Ecosystem respiration modelled by Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"ER_LL_all",ER_LL,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"ER_LL_all",ER_LL,flag,attr)
     # parameters associated with GPP and GPP itself
     alpha = LL_results["alpha_tts"]
     units = "umol/J"
     long_name = "Canopy light use efficiency"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"alpha_LL",alpha,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"alpha_LL",alpha,flag,attr)
     beta = LL_results["beta_tts"]
     units = "umol/m2/s"
     long_name = "Maximum CO2 uptake at light saturation"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"beta_LL",beta,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"beta_LL",beta,flag,attr)
     k = LL_results["k_tts"]
     units = "none"
     long_name = "Sensitivity of response to VPD"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"k_LL",k,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"k_LL",k,flag,attr)
     GPP_LL = qcrpLL.GPP_RHLRC_D(Fsd,D,alpha,beta,k,D0)
     units = "umol/m2/s"
     long_name = "GPP modelled by Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"GPP_LL_all",GPP_LL,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"GPP_LL_all",GPP_LL,flag,attr)
     # NEE
     data = {"Fsd":Fsd,"T":T,"D":D}
     NEE_LL = qcrpLL.NEE_RHLRC_D(data,alpha,beta,k,D0,rb,E0)
     units = "umol/m2/s"
     long_name = "NEE modelled by Lasslop et al (2010)"
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    qcutils.CreateSeries(ds,"NEE_LL_all",NEE_LL,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"NEE_LL_all",NEE_LL,flag,attr)
 
 def ERUsingLloydTaylor(cf,ds):
     """
@@ -423,7 +423,7 @@ def ERUsingLloydTaylor(cf,ds):
         series_est_dict = {var: empty_array.copy() for var in series_rslt_list}
         series_est_dict['date_time'] = datetime_array
         # Create a dictionary containing initial guesses for each parameter
-        params_dict = qcrpLT.make_initial_guess_dict(data_dict)    
+        params_dict = qcrpLT.make_initial_guess_dict(data_dict)
         # *** start of annual estimates of E0 code ***
         # this section could be a separate routine
         # Get the annual estimates of Eo
@@ -455,7 +455,7 @@ def ERUsingLloydTaylor(cf,ds):
         # *** end of annual estimates of E0 code ***
         # *** start of estimating rb code for each window ***
         # this section could be a separate routine
-        # Rewrite the parameters dictionary so that there will be one set of 
+        # Rewrite the parameters dictionary so that there will be one set of
         # defaults for the free and one set of defaults for the fixed parameters
         params_dict = {'fixed_rb': qcrpLT.make_initial_guess_dict(data_dict),
                        'free_rb': qcrpLT.make_initial_guess_dict(data_dict)}
@@ -478,7 +478,7 @@ def ERUsingLloydTaylor(cf,ds):
             configs_dict['minimum_pct_noct_window']:
                 params, error_state = qcrpLT.optimise_rb(noct_dict,params_dict['fixed_rb'])
             else:
-                params, error_state = [numpy.nan], 10                                                      
+                params, error_state = [numpy.nan], 10
             # Send data to the results dict
             opt_params_dict['rb_noct'][param_index] = params
             opt_params_dict['Nocturnal rb error code'][param_index] = error_state
@@ -531,7 +531,7 @@ def ERUsingLloydTaylor(cf,ds):
         drivers = ds.rpLT[series]["drivers"]
         output = str(configs_dict["output_label"])
         ER_attr["comment1"] = "Drivers were "+str(drivers)
-        qcutils.CreateSeries(ds,output,ER_LT,Flag=ER_LT_flag,Attr=ER_attr)
+        qcutils.CreateSeries(ds,output,ER_LT,ER_LT_flag,ER_attr)
         # plot the respiration estimated using Lloyd-Taylor
         fig_num = fig_num + 1
         title = site_name+" : "+series+" estimated using Lloyd-Taylor"
@@ -693,7 +693,7 @@ def ERUsingSOLO(cf,ds):
     ## apply quantile filter
     #if qcutils.cfoptionskeylogical(cf,Key='UseQuantileFilter',default=False):
         #ER_attr["long_name"] = ER_attr["long_name"]+", quantile filter not used"
-        #qcutils.CreateSeries(ds,"ER_nqf",ER2,Flag=ER_flag,Attr=ER_attr)
+        #qcutils.CreateSeries(ds,"ER_nqf",ER2,ER_flag,ER_attr)
         #quantile_lower = float(qcutils.get_keyvaluefromcf(cf,["Options"],"QuantileValue",default="2.5"))
         #quantile_upper = float(100) - quantile_lower
         #q = numpy.percentile(numpy.ma.compressed(ER2),[quantile_lower,quantile_upper])
@@ -704,7 +704,7 @@ def ERUsingSOLO(cf,ds):
         #ER_attr["ER_quantile"] = str(quantile_lower)+","+str(quantile_upper)
 
     ## put the nocturnal, filtered Fc data into the data structure
-    #qcutils.CreateSeries(ds,"ER",ER2,Flag=ER_flag,Attr=ER_attr)
+    #qcutils.CreateSeries(ds,"ER",ER2,ER_flag,ER_attr)
     #return
 
 #def GetERFromFc(cf,ds):
@@ -768,7 +768,7 @@ def ERUsingSOLO(cf,ds):
     #er_indicator = turbulence_indicator*daynight_indicator
     ## apply the filter to get ER from Fc
     #ER = numpy.ma.masked_where(er_indicator==0,Fc,copy=True)
-    #qcutils.CreateSeries(ds,"ER",ER,Flag=ER_flag,Attr=ER_attr)
+    #qcutils.CreateSeries(ds,"ER",ER,ER_flag,ER_attr)
     #return 1
 
 def GetERFromFc2(cf,ds):
@@ -821,7 +821,7 @@ def GetERFromFc2(cf,ds):
     ER = numpy.ma.masked_where(daynight_indicator["values"]==0,Fc,copy=True)
     for item in daynight_indicator["attr"]:
         ER_attr[item] = daynight_indicator["attr"][item]
-    qcutils.CreateSeries(ds,"ER",ER,Flag=ER_flag,Attr=ER_attr)
+    qcutils.CreateSeries(ds,"ER",ER,ER_flag,ER_attr)
     return 1
 
 def check_for_missing_data(series_list,label_list):
@@ -1873,7 +1873,7 @@ def rpGPP_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.gpp[series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.gpp[series]["output"])
-        qcutils.CreateSeries(ds,ds.gpp[series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.gpp[series]["output"],data,flag,attr)
 
 def rpNEE_createdict(cf,ds,series):
     """ Creates a dictionary in ds to hold information about calculating NEE."""
@@ -1892,7 +1892,7 @@ def rpNEE_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.nee[series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.nee[series]["output"])
-        qcutils.CreateSeries(ds,ds.nee[series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.nee[series]["output"],data,flag,attr)
 
 def rpMerge_createdict(cf,ds,series):
     """ Creates a dictionary in ds to hold information about the merging of gap filled
@@ -1917,4 +1917,4 @@ def rpMerge_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.merge[merge_order][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge[merge_order][series]["output"])
-        qcutils.CreateSeries(ds,ds.merge[merge_order][series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.merge[merge_order][series]["output"],data,flag,attr)

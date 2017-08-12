@@ -357,7 +357,7 @@ def rpLL_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.rpLL[series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.rpLL[series]["output"])
-        qcutils.CreateSeries(ds,ds.rpLL[series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.rpLL[series]["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -370,4 +370,4 @@ def rpLL_createdict(cf,ds,series):
     # create an empty series in ds if the output series doesn't exist yet
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
-        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)

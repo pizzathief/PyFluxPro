@@ -27,18 +27,22 @@ def albedo(cf,ds):
             high solar angle specified by periods between 10.00 and 14.00, inclusive
             and
             full sunlight in which Fsd > 290 W/m2
-        
+
         Usage qcts.albedo(ds)
         ds: data structure
         """
     logger.info(' Applying albedo constraints')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     if 'albedo' not in ds.series.keys():
         if 'Fsd' in ds.series.keys() and 'Fsu' in ds.series.keys():
             Fsd,f,a = qcutils.GetSeriesasMA(ds,'Fsd')
             Fsu,f,a = qcutils.GetSeriesasMA(ds,'Fsu')
             albedo = Fsu / Fsd
             attr = qcutils.MakeAttributeDictionary(long_name='solar albedo',units='none',standard_name='solar_albedo')
-            qcutils.CreateSeries(ds,'albedo',albedo,FList=['Fsd','Fsu'],Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(albedo)==True,ones,zeros)
+            qcutils.CreateSeries(ds,'albedo',albedo,flag,attr)
         else:
             logger.warning('  Fsd or Fsu not in ds, albedo not calculated')
             return
@@ -48,7 +52,7 @@ def albedo(cf,ds):
             Fsd,f,a = qcutils.GetSeriesasMA(ds,'Fsd')
         else:
             Fsd,f,a = qcutils.GetSeriesasMA(ds,'Fn')
-    
+
     if qcutils.cfkeycheck(cf,ThisOne='albedo',key='Threshold'):
         Fsdbase = float(cf['Variables']['albedo']['Threshold']['Fsd'])
         ds.series['albedo']['Attr']['FsdCutoff'] = Fsdbase
@@ -67,7 +71,7 @@ def ApplyLinear(cf,ds,ThisOne):
         Applies a linear correction to variable passed from qcls. Time period
         to apply the correction, slope and offset are specified in the control
         file.
-        
+
         Usage qcts.ApplyLinear(cf,ds,x)
         cf: control file
         ds: data structure
@@ -106,7 +110,7 @@ def ApplyLinearDrift(cf,ds,ThisOne):
         in the control file.  This function applies to a dataset in which the
         start and end times in the control file are matched by the time period
         in the dataset.
-        
+
         Usage qcts.ApplyLinearDrift(cf,ds,x)
         cf: control file
         ds: data structure
@@ -150,7 +154,7 @@ def ApplyLinearDriftLocal(cf,ds,ThisOne):
         file.  This function applies to a dataset in which the start time in the
         control file is matched by dataset start time, but in which the end time
         in the control file extends beyond the dataset end.
-        
+
         Usage qcts.ApplyLinearDriftLocal(cf,ds,x)
         cf: control file
         ds: data structure
@@ -191,7 +195,7 @@ def AverageSeriesByElements(cf,ds,Av_out):
         Calculates the average of multiple time series.  Multiple time series
         are entered and a single time series representing the average at each
         observational period is returned.
-        
+
         Usage qcts.AverageSeriesByElements(cf,ds,Av_out)
         cf: control file object (must contain an entry for Av_out)
         ds: data structure
@@ -203,7 +207,7 @@ def AverageSeriesByElements(cf,ds,Av_out):
     srclist, standardname = qcutils.GetAverageSeriesKeys(cf,Av_out)
 #    logger.info(' Averaging series in '+str(srclist)+' into '+Av_out)
     logger.info(' Averaging '+str(srclist)+'==>'+Av_out)
-    
+
     nSeries = len(srclist)
     if nSeries==0:
         logger.error('  AverageSeriesByElements: no input series specified for'+str(Av_out))
@@ -221,7 +225,7 @@ def AverageSeriesByElements(cf,ds,Av_out):
 
         index = numpy.where(numpy.mod(tmp_flag,10)==0)    # find the elements with flag = 0, 10, 20 etc
         tmp_flag[index] = 0                               # set them all to 0
-        
+
         tmp_attr = ds.series[srclist[0]]['Attr'].copy()
         SeriesNameString = srclist[0]
         srclist.remove(srclist[0])
@@ -237,12 +241,12 @@ def AverageSeriesByElements(cf,ds,Av_out):
                                        #standard_name=standardname,units=ds.series[srclist[0]]['Attr']['units'])
     # this is a temporary fix, better to have a routine update the attr dictionary
     tmp_attr["long_name"] = tmp_attr["long_name"]+", element-wise average of series " + SeriesNameString
-    qcutils.CreateSeries(ds,Av_out,Av_data,Flag=Mn_flag,Attr=tmp_attr)
+    qcutils.CreateSeries(ds,Av_out,Av_data,Mn_flag,tmp_attr)
 
 def CalculateAvailableEnergy(ds,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg'):
     """
         Calculate the average energy as Fn - G.
-        
+
         Usage qcts.CalculateAvailableEnergy(ds,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
         ds: data structure
         Fa_out: output available energy variable to ds.  Example: 'Fa'
@@ -264,28 +268,30 @@ def CalculateAvailableEnergy(ds,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg'):
     Fa_calc_flag[idx] = numpy.int32(1)
     if Fa_out not in ds.series.keys():
         attr = qcutils.MakeAttributeDictionary(long_name='Available energy using '+Fn_in+','+Fg_in,units='W/m2')
-        qcutils.CreateSeries(ds,Fa_out,Fa_calc,Flag=Fa_calc_flag,Attr=attr)
-        #qcutils.CreateSeries(ds,Fa_out,Fa_calc,FList=[Fn_in,Fg_in],Attr=attr)
+        qcutils.CreateSeries(ds,Fa_out,Fa_calc,Fa_calc_flag,attr)
     else:
         Fa_exist,flag,attr = qcutils.GetSeriesasMA(ds,Fa_out)
         idx = numpy.where((numpy.ma.getmaskarray(Fa_exist)==True)&(numpy.ma.getmaskarray(Fa_calc)==False))[0]
         if len(idx)!=0:
             Fa_exist[idx] = Fa_calc[idx]
             flag[idx] = numpy.int32(20)
-        qcutils.CreateSeries(ds,Fa_out,Fa_exist,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,Fa_out,Fa_exist,flag,attr)
     return
 
 def CalculateFluxes(cf,ds):
     """
         Calculate the fluxes from the rotated covariances.
-        
+
         Usage qcts.CalculateFluxes(ds)
         ds: data structure
-        
+
         Pre-requisite: CoordRotation2D
-        
+
         Accepts meteorological constants or variables
         """
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     Ta,f,a = qcutils.GetSeriesasMA(ds,"Ta")
     ps,f,a = qcutils.GetSeriesasMA(ds,"ps")
     Ah,f,a = qcutils.GetSeriesasMA(ds,"Ah")
@@ -296,7 +302,7 @@ def CalculateFluxes(cf,ds):
     long_name = ''
     if 'Massman' in ds.globalattributes['Functions']:
         long_name = ' and frequency response corrected'
-    
+
     logger.info(" Calculating fluxes from covariances")
     if "wT" in ds.series.keys():
         ok_units = ["mC/s","Cm/s"]
@@ -305,7 +311,8 @@ def CalculateFluxes(cf,ds):
             Fhv = RhoCp*wT
             attr["long_name"] = "Virtual heat flux, rotated to natural wind coordinates"+long_name
             attr["units"] = "W/m2"
-            qcutils.CreateSeries(ds,"Fhv",Fhv,Flag=flag,Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(Fhv)==True,ones,zeros)
+            qcutils.CreateSeries(ds,"Fhv",Fhv,flag,attr)
         else:
             logger.error(" CalculateFluxes: Incorrect units for wA, Fe not calculated")
     else:
@@ -317,7 +324,8 @@ def CalculateFluxes(cf,ds):
             attr["long_name"] = "Latent heat flux, rotated to natural wind coordinates"+long_name
             attr["standard_name"] = "surface_upward_latent_heat_flux"
             attr["units"] = "W/m2"
-            qcutils.CreateSeries(ds,"Fe",Fe,Flag=flag,Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(Fe)==True,ones,zeros)
+            qcutils.CreateSeries(ds,"Fe",Fe,flag,attr)
         else:
             logger.error(" CalculateFluxes: Incorrect units for wA, Fe not calculated")
     else:
@@ -328,7 +336,8 @@ def CalculateFluxes(cf,ds):
             Fc = wC
             attr["long_name"] = "CO2 flux, rotated to natural wind coordinates"+long_name
             attr["units"] = "mg/m2/s"
-            qcutils.CreateSeries(ds,"Fc",Fc,Flag=flag,Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(Fc)==True,ones,zeros)
+            qcutils.CreateSeries(ds,"Fc",Fc,flag,attr)
         else:
             logger.error(" CalculateFluxes: Incorrect units for wC, Fc not calculated")
     else:
@@ -342,10 +351,12 @@ def CalculateFluxes(cf,ds):
             us = numpy.ma.sqrt(numpy.ma.sqrt(vs))
             attr["long_name"] = "Momentum flux, rotated to natural wind coordinates"+long_name
             attr["units"] = "kg/m/s2"
-            qcutils.CreateSeries(ds,"Fm",Fm,FList=["uw","vw"],Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(Fm)==True,ones,zeros)
+            qcutils.CreateSeries(ds,"Fm",Fm,flag,attr)
             attr["long_name"] = "Friction velocity, rotated to natural wind coordinates"+long_name
             attr["units"] = "m/s"
-            qcutils.CreateSeries(ds,"ustar",us,FList=["uw","vw"],Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(us)==True,ones,zeros)
+            qcutils.CreateSeries(ds,"ustar",us,flag,attr)
         else:
             logger.error("  CalculateFluxes: vw not found, Fm and ustar not calculated")
     else:
@@ -357,7 +368,7 @@ def CalculateLongwave(ds,Fl_out,Fl_in,Tbody_in):
     """
         Calculate the longwave radiation given the raw thermopile output and the
         sensor body temperature.
-        
+
         Usage qcts.CalculateLongwave(ds,Fl_out,Fl_in,Tbody_in)
         ds: data structure
         Fl_out: output longwave variable to ds.  Example: 'Flu'
@@ -365,11 +376,15 @@ def CalculateLongwave(ds,Fl_out,Fl_in,Tbody_in):
         Tbody_in: input sensor body temperature in ds.  Example: 'Tbody'
         """
     logger.info(' Calculating longwave radiation')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     Fl_raw,f,a = qcutils.GetSeriesasMA(ds,Fl_in)
     Tbody,f,a = qcutils.GetSeriesasMA(ds,Tbody_in)
     Fl = Fl_raw + c.sb*(Tbody + 273.15)**4
     attr = qcutils.MakeAttributeDictionary(long_name='Calculated longwave radiation using '+Fl_in+','+Tbody_in,units='W/m2')
-    qcutils.CreateSeries(ds,Fl_out,Fl,FList=[Fl_in,Tbody_in],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Fl)==True,ones,zeros)
+    qcutils.CreateSeries(ds,Fl_out,Fl,flag,attr)
 
 def CalculateHumidities(ds):
     """
@@ -464,10 +479,10 @@ def AbsoluteHumidityFromRH(ds):
         Ah[index] = Ah_new[index]
         Ah_flag[index] = Ah_new_flag[index]
         Ah_attr["long_name"] = Ah_attr["long_name"]+", merged with Ah calculated from RH"
-        qcutils.CreateSeries(ds,"Ah",Ah,Flag=Ah_flag,Attr=Ah_attr)
+        qcutils.CreateSeries(ds,"Ah",Ah,Ah_flag,Ah_attr)
     else:
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity',units='g/m3',standard_name='mass_concentration_of_water_vapor_in_air')
-        qcutils.CreateSeries(ds,'Ah',Ah_new,Flag=Ah_new_flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Ah',Ah_new,Ah_new_flag,attr)
 
 def AbsoluteHumidityFromq(ds):
     """ Calculate absolute humidity from specific humidity. """
@@ -485,10 +500,10 @@ def AbsoluteHumidityFromq(ds):
         Ah[index] = Ah_new[index]
         Ah_flag[index] = Ah_new_flag[index]
         Ah_attr["long_name"] = Ah_attr["long_name"]+", merged with Ah calculated from q"
-        qcutils.CreateSeries(ds,"Ah",Ah,Flag=Ah_flag,Attr=Ah_attr)
+        qcutils.CreateSeries(ds,"Ah",Ah,Ah_flag,Ah_attr)
     else:
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity',units='g/m3',standard_name='mass_concentration_of_water_vapor_in_air')
-        qcutils.CreateSeries(ds,"Ah",Ah_new,Flag=Ah_new_flag,Attr=attr)
+        qcutils.CreateSeries(ds,"Ah",Ah_new,Ah_new_flag,attr)
 
 def RelativeHumidityFromq(ds):
     """ Calculate relative humidity from specific humidity. """
@@ -505,11 +520,11 @@ def RelativeHumidityFromq(ds):
         RH[index] = RH_new[index]
         RH_flag[index] = RH_new_flag[index]
         RH_attr["long_name"] = RH_attr["long_name"]+", merged with RH calculated from q"
-        qcutils.CreateSeries(ds,"RH",RH,Flag=RH_flag,Attr=RH_attr)
+        qcutils.CreateSeries(ds,"RH",RH,RH_flag,RH_attr)
     else:
         attr = qcutils.MakeAttributeDictionary(long_name='Relative humidity',units='%',standard_name='relative_humidity')
-        qcutils.CreateSeries(ds,'RH',RH_new,Flag=RH_new_flag,Attr=attr)
-    
+        qcutils.CreateSeries(ds,'RH',RH_new,RH_new_flag,attr)
+
 def RelativeHumidityFromAh(ds):
     """ Calculate relative humidity from absolute humidity. """
     logger.info(' Calculating relative humidity from absolute humidity')
@@ -524,21 +539,21 @@ def RelativeHumidityFromAh(ds):
         RH[index] = RH_new[index]
         RH_flag[index] = RH_new_flag[index]
         RH_attr["long_name"] = RH_attr["long_name"]+", merged with RH calculated from Ah"
-        qcutils.CreateSeries(ds,"RH",RH,Flag=RH_flag,Attr=RH_attr)
+        qcutils.CreateSeries(ds,"RH",RH,RH_flag,RH_attr)
     else:
         attr = qcutils.MakeAttributeDictionary(long_name='Relative humidity',units='%',standard_name='relative_humidity')
-        qcutils.CreateSeries(ds,"RH",RH_new,Flag=RH_new_flag,Attr=attr)
+        qcutils.CreateSeries(ds,"RH",RH_new,RH_new_flag,attr)
 
 def smooth(x,window_len=11,window='hanning'):
     """
     Purpose:
         Smooth the data using a window with requested size.
         This method is based on the convolution of a scaled window with the signal.
-        The signal is prepared by introducing reflected copies of the signal 
+        The signal is prepared by introducing reflected copies of the signal
         (with the window size) in both ends so that transient parts are minimized
         in the begining and end part of the output signal.
     Input:
-        x: the input signal 
+        x: the input signal
         window_len: the dimension of the smoothing window; should be an odd integer
         window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
             flat window will produce a moving average smoothing.
@@ -548,7 +563,7 @@ def smooth(x,window_len=11,window='hanning'):
         t=linspace(-2,2,0.1)
         x=sin(t)+randn(len(t))*0.1
         y=smooth(x)
-    See also: 
+    See also:
         numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
         scipy.signal.lfilter
     TODO: the window parameter could be the window itself if an array instead of a string
@@ -591,10 +606,10 @@ def SpecificHumidityFromAh(ds):
         q[index] = q_new[index]
         q_flag[index] = q_new_flag[index]
         q_attr["long_name"] = q_attr["long_name"]+", merged with q calculated from Ah"
-        qcutils.CreateSeries(ds,"q",q,Flag=q_flag,Attr=q_attr)
+        qcutils.CreateSeries(ds,"q",q,q_flag,q_attr)
     else:
         attr = qcutils.MakeAttributeDictionary(long_name='Specific humidity',units='kg/kg',standard_name='specific_humidity')
-        qcutils.CreateSeries(ds,'q',q_new,Flag=q_new_flag,Attr=attr)
+        qcutils.CreateSeries(ds,'q',q_new,q_new_flag,attr)
 
 def SpecificHumidityFromRH(ds):
     """ Calculate specific humidity from relative humidity."""
@@ -611,10 +626,10 @@ def SpecificHumidityFromRH(ds):
         q[index] = q_new[index]
         q_flag[index] = q_new_flag[index]
         q_attr["long_name"] = q_attr["long_name"]+", merged with q calculated from RH"
-        qcutils.CreateSeries(ds,"q",q,Flag=q_flag,Attr=q_attr)
-    else:        
+        qcutils.CreateSeries(ds,"q",q,q_flag,q_attr)
+    else:
         attr = qcutils.MakeAttributeDictionary(long_name='Specific humidity',units='kg/kg',standard_name='specific_humidity')
-        qcutils.CreateSeries(ds,"q",q_new,Flag=q_new_flag,Attr=attr)
+        qcutils.CreateSeries(ds,"q",q_new,q_new_flag,attr)
 
 def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_CSAT',ps_name='ps',
                                      q_name="q",Ah_name='Ah',RH_name='RH'):
@@ -676,43 +691,43 @@ def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_CSAT',ps_name='
     # write the meteorological series to the data structure
     attr = qcutils.MakeAttributeDictionary(long_name='Vapour pressure',units='kPa',standard_name='water_vapor_partial_pressure_in_air')
     flag = numpy.where(numpy.ma.getmaskarray(e)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'e',e,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'e',e,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Saturation vapour pressure',units='kPa')
     flag = numpy.where(numpy.ma.getmaskarray(esat)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'esat',esat,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'esat',esat,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Density of dry air',units='kg/m3')
     flag = numpy.where(numpy.ma.getmaskarray(rhod)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'rhod',rhod,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'rhod',rhod,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Density of moist air',units='kg/m3',standard_name='air_density')
     flag = numpy.where(numpy.ma.getmaskarray(rhom)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'rhom',rhom,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'rhom',rhom,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Partial density of water vapour',units='kg/m3')
     flag = numpy.where(numpy.ma.getmaskarray(rhow)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'rhow',rhow,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'rhow',rhow,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Latent heat of vapourisation',units='J/kg')
     flag = numpy.where(numpy.ma.getmaskarray(Lv)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'Lv',Lv,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Lv',Lv,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Specific heat capacity of dry air',units='J/kg-K')
     flag = numpy.where(numpy.ma.getmaskarray(Cpd)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'Cpd',Cpd,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Cpd',Cpd,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Specific heat capacity of water vapour',units='J/kg-K')
     flag = numpy.where(numpy.ma.getmaskarray(Cpw)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'Cpw',Cpw,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Cpw',Cpw,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Specific heat capacity of moist air',units='J/kg-K')
     flag = numpy.where(numpy.ma.getmaskarray(Cpm)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'Cpm',Cpm,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Cpm',Cpm,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Product of air density and specific heat capacity',units='J/m3-K')
     flag = numpy.where(numpy.ma.getmaskarray(RhoCp)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'RhoCp',RhoCp,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'RhoCp',RhoCp,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Vapour pressure deficit',units='kPa',standard_name='water_vapor_saturation_deficit_in_air')
     flag = numpy.where(numpy.ma.getmaskarray(VPD)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'VPD',VPD,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'VPD',VPD,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Specific humidity deficit',units='kg/kg')
     flag = numpy.where(numpy.ma.getmaskarray(SHD)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'SHD',SHD,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'SHD',SHD,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='H2O mixing ratio',units='mmol/mol',standard_name='mole_concentration_of_water_vapor_in_air')
     flag = numpy.where(numpy.ma.getmaskarray(h2o)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'H2O',h2o,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'H2O',h2o,flag,attr)
 
 def CalculateNetRadiation(cf,ds,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu'):
     """
@@ -734,6 +749,9 @@ def CalculateNetRadiation(cf,ds,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fl
     Date: Sometime early on
     """
     logger.info(' Calculating net radiation from 4 components')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     if Fsd_in in ds.series.keys() and Fsu_in in ds.series.keys() and Fld_in in ds.series.keys() and Flu_in in ds.series.keys():
         Fsd,f,a = qcutils.GetSeriesasMA(ds,Fsd_in)
         Fsu,f,a = qcutils.GetSeriesasMA(ds,Fsu_in)
@@ -743,7 +761,8 @@ def CalculateNetRadiation(cf,ds,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fl
         if Fn_out not in ds.series.keys():
             attr = qcutils.MakeAttributeDictionary(long_name='Calculated net radiation using '+Fsd_in+','+Fsu_in+','+Fld_in+','+Flu_in,
                                  standard_name='surface_net_downwawrd_radiative_flux',units='W/m2')
-            qcutils.CreateSeries(ds,Fn_out,Fn_calc,FList=[Fsd_in,Fsu_in,Fld_in,Flu_in],Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(Fn_calc)==True,ones,zeros)
+            qcutils.CreateSeries(ds,Fn_out,Fn_calc,flag,attr)
         else:
             Fn_exist,flag,attr = qcutils.GetSeriesasMA(ds,Fn_out)
             idx = numpy.where((numpy.ma.getmaskarray(Fn_exist)==True)&(numpy.ma.getmaskarray(Fn_calc)==False))[0]
@@ -751,14 +770,14 @@ def CalculateNetRadiation(cf,ds,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fl
             if len(idx)!=0:
                 Fn_exist[idx] = Fn_calc[idx]
                 flag[idx] = numpy.int32(20)
-            qcutils.CreateSeries(ds,Fn_out,Fn_exist,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds,Fn_out,Fn_exist,flag,attr)
     else:
         nRecs = int(ds.globalattributes['nc_nrecs'])
         Fn = numpy.array([c.missing_value]*nRecs,dtype=numpy.float64)
         flag = numpy.ones(nRecs,dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name='Calculated net radiation (one or more components missing)',
                              standard_name='surface_net_downwawrd_radiative_flux',units='W/m2')
-        qcutils.CreateSeries(ds,Fn_out,Fn,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,Fn_out,Fn,flag,attr)
 
 def CheckCovarianceUnits(ds):
     """
@@ -778,7 +797,7 @@ def CheckCovarianceUnits(ds):
             ps,f,a = qcutils.GetSeriesasMA(ds,"ps")
             data = mf.co2_mgpm3fromppm(data,Ta,ps)
             attr["units"] = "mg/m2/s"
-            qcutils.CreateSeries(ds,item,data,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds,item,data,flag,attr)
     for item in h2o_list:
         if item not in ds.series.keys(): continue
         data,flag,attr = qcutils.GetSeriesasMA(ds,item)
@@ -788,17 +807,20 @@ def CheckCovarianceUnits(ds):
             data = mf.h2o_gpm3frommmolpmol(data,Ta,ps)
             attr["units"] = "g/m2/s"
             if "H" in item: item = item.replace("H","A")
-            qcutils.CreateSeries(ds,item,data,Flag=flag,Attr=attr)
+            qcutils.CreateSeries(ds,item,data,flag,attr)
 
 def CoordRotation2D(cf,ds):
     """
         2D coordinate rotation to force v = w = 0.  Based on Lee et al, Chapter
         3 of Handbook of Micrometeorology.  This routine does not do the third
         rotation to force v'w' = 0.
-        
+
         Usage qcts.CoordRotation2D(ds)
         ds: data structure
         """
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     # get the raw wind velocity components
     Ux,f,a = qcutils.GetSeriesasMA(ds,'Ux')          # longitudinal component in CSAT coordinate system
     Uy,f,a = qcutils.GetSeriesasMA(ds,'Uy')          # lateral component in CSAT coordinate system
@@ -891,52 +913,73 @@ def CoordRotation2D(cf,ds):
     # store the rotated quantities in the nc object
     # default behaviour of CreateSeries is to use the maximum value of the QC flag for any series specified in FList
     attr = qcutils.MakeAttributeDictionary(long_name='Horizontal rotation angle',units='deg',height=fm_height)
-    qcutils.CreateSeries(ds,'eta',eta,FList=['Ux','Uy','Uz'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(eta)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'eta',eta,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Vertical rotation angle',units='deg',height=fm_height)
-    qcutils.CreateSeries(ds,'theta',theta,FList=['Ux','Uy','Uz'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(theta)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'theta',theta,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Longitudinal component of wind-speed in natural wind coordinates',
                                            units='m/s',height=fm_height)
-    qcutils.CreateSeries(ds,'u',u,FList=['Ux','Uy','Uz'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(u)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'u',u,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Lateral component of wind-speed in natural wind coordinates',
                                            units='m/s',height=fm_height)
-    qcutils.CreateSeries(ds,'v',v,FList=['Ux','Uy','Uz'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(v)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'v',v,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Vertical component of wind-speed in natural wind coordinates',
                                            units='m/s',height=fm_height)
-    qcutils.CreateSeries(ds,'w',w,FList=['Ux','Uy','Uz'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(w)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'w',w,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Kinematic heat flux, rotated to natural wind coordinates',
                                            units='mC/s',height=fh_height)
-    qcutils.CreateSeries(ds,'wT',wT,FList=['Ux','Uy','Uz','UxT','UyT','UzT'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(wT)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'wT',wT,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Kinematic vapour flux, rotated to natural wind coordinates',
                                            units='g/m2/s',height=fe_height)
-    qcutils.CreateSeries(ds,'wA',wA,FList=['Ux','Uy','Uz','UxA','UyA','UzA'],Attr=attr)
-    #ReplaceRotatedCovariance(cf,ds,'wA','UzA')
+    flag = numpy.where(numpy.ma.getmaskarray(wA)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'wA',wA,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Kinematic CO2 flux, rotated to natural wind coordinates',
                                            units='mg/m2/s',height=fc_height)
-    qcutils.CreateSeries(ds,'wC',wC,FList=['Ux','Uy','Uz','UxC','UyC','UzC'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(wC)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'wC',wC,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Momentum flux X component, corrected to natural wind coordinates',
                                            units='m2/s2',height=fm_height)
-    Flist = ['Ux','Uy','Uz','UxUz','UxUy','UyUz','UxUx','UyUy','UzUz']
-    qcutils.CreateSeries(ds,'uw',uw,FList=Flist,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(uw)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'uw',uw,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Horizontal streamwise-crosswind covariance, rotated to natural wind coordinates',
                                            units='m2/s2',height=fm_height)
-    Flist = ['Ux','Uy','Uz','UxUz','UxUy','UyUz','UxUx','UyUy','UzUz']
-    qcutils.CreateSeries(ds,'uv',uv,FList=Flist,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(uv)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'uv',uv,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Momentum flux Y component, corrected to natural wind coordinates',
                                            units='m2/s2',height=fm_height)
-    Flist = ['Ux','Uy','Uz','UyUz','UxUz','UxUy','UxUx','UyUy']
-    qcutils.CreateSeries(ds,'vw',vw,FList=Flist,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(vw)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'vw',vw,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Variance of streamwise windspeed, rotated to natural wind coordinates',
                                            units='m2/s2',height=fm_height)
-    Flist = ['Ux','Uy','Uz','UzUz','UxUz','UyUz','UxUx','UyUy','UxUy']
-    qcutils.CreateSeries(ds,'uu',uu,FList=Flist,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(uu)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'uu',uu,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Variance of crossstream windspeed, rotated to natural wind coordinates',
                                            units='m2/s2',height=fm_height)
-    Flist = ['Ux','Uy','Uz','UxUx','UyUy','UxUy']
-    qcutils.CreateSeries(ds,'vv',vv,FList=Flist,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(vv)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'vv',vv,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Variance of vertical windspeed, rotated to natural wind coordinates',
                                            units='m2/s2',height=fm_height)
-    Flist = ['Ux','Uy','Uz','UzUz','UxUz','UyUz','UxUx','UyUy','UxUy']
-    qcutils.CreateSeries(ds,'ww',ww,FList=Flist,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(ww)==True,ones,zeros)
+    qcutils.CreateSeries(ds,'ww',ww,flag,attr)
+
     if qcutils.cfoptionskeylogical(cf,Key='RelaxRotation'):
         RotatedSeriesList = ['wT','wA','wC','uw','vw']
         NonRotatedSeriesList = ['UzT','UzA','UzC','UxUz','UyUz']
@@ -960,20 +1003,20 @@ def CalculateComponentsFromWsWd(ds):
     u,v = qcutils.convert_WsWdtoUV(Ws,Wd)
     u_attr = qcutils.MakeAttributeDictionary(long_name="U component of wind in meteorological coordinates (positive east)")
     v_attr = qcutils.MakeAttributeDictionary(long_name="V component of wind in meteorological coordinates (positive north)")
-    qcutils.CreateSeries(ds,"U",u,Flag=Wd_flag,Attr=u_attr)
-    qcutils.CreateSeries(ds,"V",v,Flag=Wd_flag,Attr=v_attr)
+    qcutils.CreateSeries(ds,"U",u,Wd_flag,u_attr)
+    qcutils.CreateSeries(ds,"V",v,Wd_flag,v_attr)
 
 def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
     """
     Calculate CO2 flux storage term in the air column beneath the CO2 instrument.  This
     routine assumes the air column between the sensor and the surface is well mixed.
-    
+
     Usage qcts.CalculateFcStorage(cf,ds,Fc_out,CO2_in)
-    cf: control file object    
+    cf: control file object
     ds: data structure
     Fc_out: series label of the CO2 flux storage term
     CO2_in: series label of the CO2 concentration
-    
+
     Parameters loaded from control file:
         zms: measurement height from surface, m
     """
@@ -981,6 +1024,8 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
         if qcutils.cfkeycheck(cf,Base='General',ThisOne='zms'):
             logger.info(' Calculating Fc storage (single height)')
             nRecs = int(ds.globalattributes['nc_nrecs'])
+            zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+            ones = numpy.ones(nRecs,dtype=numpy.int32)
             ts = int(ds.globalattributes['time_step'])
             zms = float(cf['General']['zms'])
             # get the input data
@@ -1003,10 +1048,8 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
             # make the output series attribute dictionary
             attr_out = qcutils.MakeAttributeDictionary(long_name=descr,units=Fc_storage_units)
             # put the storage flux in the data structure
-            flag = numpy.zeros(len(Fc_storage),dtype=numpy.int32)
-            idx = numpy.where(numpy.ma.getmaskarray(Fc_storage)==True)[0]
-            flag[idx] = numpy.int32(1)
-            qcutils.CreateSeries(ds,Fc_out,Fc_storage,Flag=flag,Attr=attr_out)
+            flag = numpy.where(numpy.ma.getmaskarray(Fc_storage)==True,ones,zeros)
+            qcutils.CreateSeries(ds,Fc_out,Fc_storage,flag,attr_out)
         else:
             logger.error('CalculateFcStorage: zms expected in General section of control file but not found')
     else:
@@ -1015,9 +1058,9 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
 def CorrectFcForStorage(cf,ds,Fc_out='Fc',Fc_in='Fc',Fc_storage_in='Fc_storage'):
     """
     Correct CO2 flux for storage in the air column beneath the CO2 instrument.
-    
+
     Usage qcts.CorrectFcForStorage(cf,ds,Fc_out,Fc_in,Fc_storage_in)
-    cf: control file object    
+    cf: control file object
     ds: data structure
     Fc_out: series label of the corrected CO2 flux
     Fc_in: series label of the input CO2 flux
@@ -1030,6 +1073,9 @@ def CorrectFcForStorage(cf,ds,Fc_out='Fc',Fc_in='Fc',Fc_storage_in='Fc_storage')
         logger.warning(msg)
         return
     logger.info(" ***!!! Applying Fc storage term !!!***")
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     Fc_raw,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,Fc_in)
     Fc_storage,Fc_storage_flag,Fc_storage_attr = qcutils.GetSeriesasMA(ds,Fc_storage_in)
     if Fc_attr["units"]!=Fc_storage_attr["units"]:
@@ -1042,9 +1088,10 @@ def CorrectFcForStorage(cf,ds,Fc_out='Fc',Fc_in='Fc',Fc_storage_in='Fc_storage')
         Fc[idx]=Fc_raw[idx]
         logger.info(" Replaced corrected Fc with "+str(len(idx))+" raw values")
     Fc_attr["long_name"] = Fc_attr["long_name"] + ", uncorrected"
-    qcutils.CreateSeries(ds,"Fc_raw",Fc_raw,Flag=Fc_flag,Attr=Fc_attr)
+    qcutils.CreateSeries(ds,"Fc_raw",Fc_raw,Fc_flag,Fc_attr)
     Fc_attr["long_name"] = Fc_attr["long_name"].replace(", uncorrected",", corrected for storage using supplied storage term")
-    qcutils.CreateSeries(ds,Fc_out,Fc,FList=[Fc_in,Fc_storage_in],Attr=Fc_attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Fc)==True,ones,zeros)
+    qcutils.CreateSeries(ds,Fc_out,Fc,flag,Fc_attr)
     if "CorrectFcForStorage" not in ds.globalattributes["Functions"]:
         ds.globalattributes["Functions"] = ds.globalattributes["Functions"]+", CorrectFcForStorage"
 
@@ -1059,13 +1106,13 @@ def CorrectIndividualFgForStorage(cf,ds):
 def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     """
         Correct ground heat flux for storage in the layer above the heat flux plate
-        
+
         Usage qcts.CorrectFgForStorage(cf,ds,Fg_out,Fg_in,Ts_in,Sws_in)
         ds: data structure
         Fg_out: output soil heat flux variable to ds.  Example: 'Fg'
         Fg_in: input soil heat flux in ds.  Example: 'Fg_Av'
         Ts_in: input soil temperature in ds.  Example: 'Ts'
-        
+
         Parameters loaded from control file:
             FgDepth: Depth of soil heat flux plates, m
             BulkDensity: soil bulk density, kg/m3
@@ -1112,7 +1159,7 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     if len(iom)!=0:
         logger.warning('  CorrectFgForStorage: Sws_default used for '+str(len(iom))+' values')
         Sws[iom] = Sws_default
-        Sws_flag[iom] = numpy.int32(22)
+        #Sws_flag[iom] = numpy.int32(22)
     # get the soil temperature difference from time step to time step
     dTs = numpy.ma.zeros(nRecs)
     dTs[1:] = numpy.ma.diff(Ts)
@@ -1122,7 +1169,7 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     #index = numpy.ma.where(numpy.ma.getmaskarray(dTs)==True)[0]
     dTs_flag[index] = numpy.int32(1)
     attr = qcutils.MakeAttributeDictionary(long_name='Change in soil temperature',units='C')
-    qcutils.CreateSeries(ds,"dTs",dTs,Flag=dTs_flag,Attr=attr)
+    qcutils.CreateSeries(ds,"dTs",dTs,dTs_flag,attr)
     # get the time difference
     dt = numpy.ma.zeros(nRecs)
     dt[1:] = numpy.diff(date2num(ds.series['DateTime']['Data']))*float(86400)
@@ -1134,25 +1181,26 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     # apply the storage term
     Fg_out_data = Fg + S
     # work out the QC flag
-    Fg_out_flag = numpy.zeros(nRecs,dtype=numpy.int32)
-    for item in [Fg_flag,Ts_flag,Sws_flag]:
-        Fg_out_flag = numpy.maximum(Fg_out_flag,item)
-    # trap and re-instate flag values of 1 (data missing at L1)
-    for item in [Fg_flag,Ts_flag,Sws_flag]:
-        index = numpy.where(item==numpy.int32(1))[0]
-        Fg_out_flag[index] = numpy.int32(1)
+    #Fg_out_flag = numpy.zeros(nRecs,dtype=numpy.int32)
+    #for item in [Fg_flag,Ts_flag,Sws_flag]:
+        #Fg_out_flag = numpy.maximum(Fg_out_flag,item)
+    ## trap and re-instate flag values of 1 (data missing at L1)
+    #for item in [Fg_flag,Ts_flag,Sws_flag]:
+        #index = numpy.where(item==numpy.int32(1))[0]
+        #Fg_out_flag[index] = numpy.int32(1)
     # put the corrected soil heat flux into the data structure
     attr= qcutils.MakeAttributeDictionary(long_name='Soil heat flux corrected for storage',units='W/m2',standard_name='downward_heat_flux_in_soil')
-    qcutils.CreateSeries(ds,Fg_out,Fg_out_data,Flag=Fg_out_flag,Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Fg_out_data)==True,ones,zeros)
+    qcutils.CreateSeries(ds,Fg_out,Fg_out_data,flag,attr)
     # save the input (uncorrected) soil heat flux series, this will be used if the correction is relaxed
     attr = qcutils.MakeAttributeDictionary(long_name='Soil heat flux uncorrected for storage',units='W/m2')
-    qcutils.CreateSeries(ds,'Fg_Av',Fg,Flag=Fg_flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Fg_Av',Fg,Fg_flag,attr)
     flag = numpy.where(numpy.ma.getmaskarray(S)==True,ones,zeros)
     attr = qcutils.MakeAttributeDictionary(long_name='Soil heat flux storage',units='W/m2')
-    qcutils.CreateSeries(ds,'S',S,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'S',S,flag,attr)
     flag = numpy.where(numpy.ma.getmaskarray(Cs)==True,ones,zeros)
     attr = qcutils.MakeAttributeDictionary(long_name='Specific heat capacity',units='J/m3/K')
-    qcutils.CreateSeries(ds,'Cs',Cs,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Cs',Cs,flag,attr)
     if qcutils.cfoptionskeylogical(cf,Key='RelaxFgStorage'):
         ReplaceWhereMissing(ds.series['Fg'],ds.series['Fg'],ds.series['Fg_Av'],FlagValue=20)
         if 'RelaxFgStorage' not in ds.globalattributes['Functions']:
@@ -1168,11 +1216,11 @@ def CorrectSWC(cf,ds):
         the functions cross.  The logarithmic curve is constrained at with a
         point at which the soil measurement = field porosity and the sensor
         measurement is maximised under saturation at field capacity.
-        
+
         Usage qcts.CorrectSWC(cf,ds)
         cf: control file
         ds: data structure
-        
+
         Parameters loaded from control file:
             SWCempList: list of raw CS616 variables
             SWCoutList: list of corrected CS616 variables
@@ -1194,6 +1242,9 @@ def CorrectSWC(cf,ds):
         """
     if not qcutils.cfoptionskeylogical(cf,Key='CorrectSWC'): return
     logger.info(' Correcting soil moisture data ...')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     SWCempList = ast.literal_eval(cf['Soil']['empSWCin'])
     SWCoutList = ast.literal_eval(cf['Soil']['empSWCout'])
     SWCattr = ast.literal_eval(cf['Soil']['SWCattr'])
@@ -1212,29 +1263,30 @@ def CorrectSWC(cf,ds):
     SWC_b0 = float(cf['Soil']['SWC_b0'])
     SWC_b1 = float(cf['Soil']['SWC_b1'])
     SWC_t = float(cf['Soil']['SWC_t'])
-    
+
     for i in range(len(SWCempList)):
         logger.info('  Applying empirical correction to '+SWCempList[i])
         invar = SWCempList[i]
         outvar = SWCoutList[i]
         attr = SWCattr[i]
         Sws,f,a = qcutils.GetSeriesasMA(ds,invar)
-        
+
         nRecs = len(Sws)
-        
+
         Sws_out = numpy.ma.empty(nRecs,float)
         Sws_out.fill(c.missing_value)
         Sws_out.mask = numpy.ma.empty(nRecs,bool)
         Sws_out.mask.fill(True)
-        
+
         index_high = numpy.ma.where((Sws.mask == False) & (Sws > SWC_t))[0]
         index_low = numpy.ma.where((Sws.mask == False) & (Sws < SWC_t))[0]
-        
+
         Sws_out[index_low] = SWC_b0 * numpy.exp(SWC_b1 * Sws[index_low])
         Sws_out[index_high] = (SWC_a1 * numpy.log(Sws[index_high])) + SWC_a0
-        
+
         attr = qcutils.MakeAttributeDictionary(long_name=attr,units='cm3 water/cm3 soil',standard_name='soil_moisture_content')
-        qcutils.CreateSeries(ds,outvar,Sws_out,FList=[invar],Attr=attr)
+        flag = numpy.where(numpy.ma.getmaskarray(Sws_out)==True,ones,zeros)
+        qcutils.CreateSeries(ds,outvar,Sws_out,flag,attr)
     if cf['Soil']['TDR']=='Yes':
         for i in range(len(TDRempList)):
             logger.info('  Applying empirical correction to '+TDRempList[i])
@@ -1242,27 +1294,28 @@ def CorrectSWC(cf,ds):
             outvar = TDRoutList[i]
             attr = TDRattr[i]
             Sws,f,a = qcutils.GetSeriesasMA(ds,invar)
-            
+
             nRecs = len(Sws)
-            
+
             Sws_out = numpy.ma.empty(nRecs,float)
             Sws_out.fill(c.missing_value)
             Sws_out.mask = numpy.ma.empty(nRecs,bool)
             Sws_out.mask.fill(True)
-            
+
             index_high = numpy.ma.where((Sws.mask == False) & (Sws > TDR_t))[0]
             index_low = numpy.ma.where((Sws.mask == False) & (Sws < TDR_t))[0]
-            
+
             Sws_out[index_low] = TDR_b0 * numpy.exp(TDR_b1 * Sws[index_low])
             Sws_out[index_high] = (TDR_a1 * numpy.log(Sws[index_high])) + TDR_a0
-            
+
             attr = qcutils.MakeAttributeDictionary(long_name=attr,units='cm3 water/cm3 soil',standard_name='soil_moisture_content')
-            qcutils.CreateSeries(ds,outvar,Sws_out,FList=[invar],Attr=attr)
+            flag = numpy.where(numpy.ma.getmaskarray(Sws_out)==True,ones,zeros)
+            qcutils.CreateSeries(ds,outvar,Sws_out,flag,attr)
 
 def CorrectWindDirection(cf,ds,Wd_in):
     """
         Correct wind direction for mis-aligned sensor direction.
-        
+
         Usage qcts.CorrectWindDirection(cf,ds,Wd_in)
         cf: control file
         ds: data structure
@@ -1294,18 +1347,22 @@ def LowPassFilterSws(cf,ds,Sws_out='Sws_LP',Sws_in='Sws',npoles=5,co_ny=0.05):
     moisture data that is less noisy than the data at the original time step but
     still resolves day-to-day changes and seasonal trends.
     '''
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     b,a = butter(npoles,co_ny)
     Sws,f,a = qcutils.GetSeries(ds,Sws_in)
     Sws_LP = filtfilt(b,a,Sws)
     attr = qcutils.MakeAttributeDictionary(long_name=attr,units='cm3 water/cm3 soil',standard_name='soil_moisture_content')
-    qcutils.CreateSeries(ds,outvar,Sws_out,FList=[invar],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Sws_out)==True,ones,zeros)
+    qcutils.CreateSeries(ds,outvar,Sws_out,flag,attr)
 
 def do_attributes(cf,ds):
     """
         Import attriubes in L1 control file to netCDF dataset.  Included
         global and variable attributes.  Also attach flag definitions to global
         meta-data for reference.
-        
+
         Usage qcts.do_attributes(cf,ds)
         cf: control file
         ds: data structure
@@ -1397,72 +1454,72 @@ def CalculateStandardDeviations(cf,ds):
         AhAh,flag,attr = qcutils.GetSeriesasMA(ds,'AhAh')
         Ah_7500_Sd = numpy.ma.sqrt(AhAh)
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity from IRGA, standard deviation',units='g/m3')
-        qcutils.CreateSeries(ds,'Ah_7500_Sd',Ah_7500_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Ah_7500_Sd',Ah_7500_Sd,flag,attr)
     if 'H2O_IRGA_Vr' in ds.series.keys() and 'H2O_IRGA_Sd' not in ds.series.keys():
         H2O_IRGA_Vr,flag,attr = qcutils.GetSeriesasMA(ds,'H2O_IRGA_Vr')
         H2O_IRGA_Sd = numpy.ma.sqrt(H2O_IRGA_Vr)
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity from IRGA, standard deviation',units='g/m3')
-        qcutils.CreateSeries(ds,'H2O_IRGA_Sd',H2O_IRGA_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'H2O_IRGA_Sd',H2O_IRGA_Sd,flag,attr)
     if 'Ah_7500_Sd' in ds.series.keys() and 'AhAh' not in ds.series.keys():
         Ah_7500_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'Ah_7500_Sd')
         AhAh = Ah_7500_Sd*Ah_7500_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity from IRGA, variance',units='(g/m3)2')
-        qcutils.CreateSeries(ds,'AhAh',AhAh,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'AhAh',AhAh,flag,attr)
     if 'H2O_IRGA_Sd' in ds.series.keys() and 'H2O_IRGA_Vr' not in ds.series.keys():
         H2O_IRGA_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'H2O_IRGA_Sd')
         H2O_IRGA_Vr = H2O_IRGA_Sd*H2O_IRGA_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='Absolute humidity from IRGA, variance',units='(g/m3)2')
-        qcutils.CreateSeries(ds,'H2O_IRGA_Vr',H2O_IRGA_Vr,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'H2O_IRGA_Vr',H2O_IRGA_Vr,flag,attr)
     if 'CcCc' in ds.series.keys() and 'Cc_7500_Sd' not in ds.series.keys():
         CcCc,flag,attr = qcutils.GetSeriesasMA(ds,'CcCc')
         Cc_7500_Sd = numpy.ma.sqrt(CcCc)
         attr = qcutils.MakeAttributeDictionary(long_name='CO2 concentration from IRGA, standard deviation',units='mg/m3')
-        qcutils.CreateSeries(ds,'Cc_7500_Sd',Cc_7500_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Cc_7500_Sd',Cc_7500_Sd,flag,attr)
     if 'CO2_IRGA_Sd' in ds.series.keys() and 'CO2_IRGA_Vr' not in ds.series.keys():
         CO2_IRGA_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'CO2_IRGA_Sd')
         CO2_IRGA_Vr = CO2_IRGA_Sd*CO2_IRGA_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='CO2 concentration from IRGA, variance',units='(mg/m3)2')
-        qcutils.CreateSeries(ds,'CO2_IRGA_Vr',CO2_IRGA_Vr,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'CO2_IRGA_Vr',CO2_IRGA_Vr,flag,attr)
     if 'Cc_7500_Sd' in ds.series.keys() and 'CcCc' not in ds.series.keys():
         Cc_7500_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'Cc_7500_Sd')
         CcCc = Cc_7500_Sd*Cc_7500_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='CO2 concentration from IRGA, variance',units='(mg/m3)2')
-        qcutils.CreateSeries(ds,'CcCc',CcCc,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'CcCc',CcCc,flag,attr)
     if 'CO2_IRGA_Vr' in ds.series.keys() and 'CO2_IRGA_Sd' not in ds.series.keys():
         CO2_IRGA_Vr,flag,attr = qcutils.GetSeriesasMA(ds,'CO2_IRGA_Vr')
         CO2_IRGA_Sd = numpy.ma.sqrt(CO2_IRGA_Vr)
         attr = qcutils.MakeAttributeDictionary(long_name='CO2 concentration from IRGA, standard deviation',units='mg/m3')
-        qcutils.CreateSeries(ds,'CO2_IRGA_Sd',CO2_IRGA_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'CO2_IRGA_Sd',CO2_IRGA_Sd,flag,attr)
     if 'Ux_Sd' in ds.series.keys() and 'UxUx' not in ds.series.keys():
         Ux_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'Ux_Sd')
         UxUx = Ux_Sd*Ux_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='Longitudinal velocity component from CSAT, variance',units='(m/s)2')
-        qcutils.CreateSeries(ds,'UxUx',UxUx,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'UxUx',UxUx,flag,attr)
     if 'UxUx' in ds.series.keys() and 'Ux_Sd' not in ds.series.keys():
         UxUx,flag,attr = qcutils.GetSeriesasMA(ds,'UxUx')
         Ux_Sd = numpy.ma.sqrt(UxUx)
         attr = qcutils.MakeAttributeDictionary(long_name='Longitudinal velocity component from CSAT, standard deviation',units='m/s')
-        qcutils.CreateSeries(ds,'Ux_Sd',Ux_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Ux_Sd',Ux_Sd,flag,attr)
     if 'Uy_Sd' in ds.series.keys() and 'UyUy' not in ds.series.keys():
         Uy_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'Uy_Sd')
         UyUy = Uy_Sd*Uy_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='Lateral velocity component from CSAT, variance',units='(m/s)2')
-        qcutils.CreateSeries(ds,'UyUy',UyUy,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'UyUy',UyUy,flag,attr)
     if 'UyUy' in ds.series.keys() and 'Uy_Sd' not in ds.series.keys():
         UyUy,flag,attr = qcutils.GetSeriesasMA(ds,'UyUy')
         Uy_Sd = numpy.ma.sqrt(UyUy)
         attr = qcutils.MakeAttributeDictionary(long_name='Lateral velocity component from CSAT, standard deviation',units='m/s')
-        qcutils.CreateSeries(ds,'Uy_Sd',Uy_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Uy_Sd',Uy_Sd,flag,attr)
     if 'Uz_Sd' in ds.series.keys() and 'UzUz' not in ds.series.keys():
         Uz_Sd,flag,attr = qcutils.GetSeriesasMA(ds,'Uz_Sd')
         UzUz = Uz_Sd*Uz_Sd
         attr = qcutils.MakeAttributeDictionary(long_name='Vertical velocity component from CSAT, variance',units='(m/s)2')
-        qcutils.CreateSeries(ds,'UzUz',UzUz,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'UzUz',UzUz,flag,attr)
     if 'UzUz' in ds.series.keys() and 'Uz_Sd' not in ds.series.keys():
         UzUz,flag,attr = qcutils.GetSeriesasMA(ds,'UzUz')
         Uz_Sd = numpy.ma.sqrt(UzUz)
         attr = qcutils.MakeAttributeDictionary(long_name='Vertical velocity component from CSAT, standard deviation',units='m/s')
-        qcutils.CreateSeries(ds,'Uz_Sd',Uz_Sd,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds,'Uz_Sd',Uz_Sd,flag,attr)
 
 def do_mergeseries(ds,target,srclist,mode="verbose"):
     if mode.lower()!="quiet":
@@ -1492,7 +1549,7 @@ def do_mergeseries(ds,target,srclist,mode="verbose"):
         else:
             logger.error(" MergeSeries: secondary input series "+label+" not found")
     attr["long_name"] = attr["long_name"]+", merged from " + SeriesNameString
-    qcutils.CreateSeries(ds,target,data,Flag=flag1,Attr=attr)
+    qcutils.CreateSeries(ds,target,data,flag1,attr)
 
 def do_solo(cf,ds4,Fc_in='Fc',Fe_in='Fe',Fh_in='Fh',Fc_out='Fc',Fe_out='Fe',Fh_out='Fh'):
     ''' duplicate gapfilled fluxes for graphing comparison'''
@@ -1513,22 +1570,22 @@ def do_solo(cf,ds4,Fc_in='Fc',Fe_in='Fe',Fh_in='Fh',Fc_out='Fc',Fe_out='Fe',Fh_o
     if Fe_in in ds4.series.keys():
         Fe,flag,attr = qcutils.GetSeriesasMA(ds4,Fe_in)
         attr = qcutils.MakeAttributeDictionary(long_name='ANN gapfilled Latent Heat Flux',units='W/m2',standard_name='surface_upward_latent_heat_flux')
-        qcutils.CreateSeries(ds4,Fe_out,Fe,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds4,Fe_out,Fe,flag,attr)
     if Fc_in in ds4.series.keys():
         Fc,flag,attr = qcutils.GetSeriesasMA(ds4,Fc_in)
         attr = qcutils.MakeAttributeDictionary(long_name='ANN gapfilled Carbon Flux',units='mg/m2/s')
-        qcutils.CreateSeries(ds4,Fc_out,Fc,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds4,Fc_out,Fc,flag,attr)
     if Fh_in in ds4.series.keys():
         Fh,flag,attr = qcutils.GetSeriesasMA(ds4,Fh_in)
         attr = qcutils.MakeAttributeDictionary(long_name='ANN gapfilled Sensible Heat Flux',units='W/m2',standard_name='surface_upward_sensible_heat_flux')
-        qcutils.CreateSeries(ds4,Fh_out,Fh,Flag=flag,Attr=attr)
+        qcutils.CreateSeries(ds4,Fh_out,Fh,flag,attr)
 
 def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta',Ah_in='Ah',Cc_in='CO2',ps_in='ps'):
     """
         Apply Webb, Pearman and Leuning correction to carbon flux.  This
         correction is necessary to account for flux effects on density
         measurements.  Original formulation: Campbell Scientific
-        
+
         Usage qcts.Fc_WPL(ds,Fc_wpl_out,Fc_raw_in,Fh_in,Fe_raw_in,Ta_in,Ah_in,Cc_in,ps_in)
         ds: data structure
         Fc_wpl_out: output corrected carbon flux variable to ds.  Example: 'Fc'
@@ -1539,13 +1596,13 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
         Ah_in: input absolute humidity in ds.  Example: 'Ah'
         Cc_in: input co2 density in ds.  Example: 'Cc'
         ps_in: input atmospheric pressure in ds.  Example: 'ps'
-        
+
         Used for fluxes that are raw or rotated.
-        
+
         Pre-requisite: CalculateFluxes, CalculateFluxes_Unrotated or CalculateFluxesRM
         Pre-requisite: FhvtoFh
         Pre-requisite: Fe_WPL
-        
+
         Accepts meteorological constants or variables
         """
     if 'DisableFcWPL' in cf['Options'] and cf['Options'].as_bool('DisableFcWPL'):
@@ -1597,17 +1654,17 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
     Fc_wpl_flag[index] = numpy.int32(14)
     attr = qcutils.MakeAttributeDictionary(long_name='WPL corrected Fc',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
-    qcutils.CreateSeries(ds,Fc_wpl_out,Fc_wpl_data,Flag=Fc_wpl_flag,Attr=attr)
+    qcutils.CreateSeries(ds,Fc_wpl_out,Fc_wpl_data,Fc_wpl_flag,attr)
     # save the WPL correction terms
     attr = qcutils.MakeAttributeDictionary(long_name='WPL correction to Fc due to Fe',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
     flag = numpy.where(numpy.ma.getmaskarray(co2_wpl_Fe)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'co2_wpl_Fe',co2_wpl_Fe,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,'co2_wpl_Fe',co2_wpl_Fe,flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='WPL correction to Fc due to Fh',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
     flag = numpy.where(numpy.ma.getmaskarray(co2_wpl_Fh)==True,ones,zeros)
-    qcutils.CreateSeries(ds,'co2_wpl_Fh',co2_wpl_Fh,Flag=flag,Attr=attr)
-    
+    qcutils.CreateSeries(ds,'co2_wpl_Fh',co2_wpl_Fh,flag,attr)
+
     return
 
 def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah',ps_in='ps'):
@@ -1615,7 +1672,7 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
         Apply Webb, Pearman and Leuning correction to vapour flux.  This
         correction is necessary to account for flux effects on density
         measurements.  Original formulation: Campbell Scientific
-        
+
         Usage qcts.Fe_WPL(ds,Fe_wpl_out,Fe_raw_in,Fh_in,Ta_in,Ah_in,ps_in)
         ds: data structure
         Fe_wpl_out: output corrected water vapour flux variable to ds.  Example: 'Fe'
@@ -1624,12 +1681,12 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
         Ta_in: input air temperature in ds.  Example: 'Ta'
         Ah_in: input absolute humidity in ds.  Example: 'Ah'
         ps_in: input atmospheric pressure in ds.  Example: 'ps'
-        
+
         Used for fluxes that are raw or rotated.
-        
+
         Pre-requisite: CalculateFluxes, CalculateFluxes_Unrotated or CalculateFluxesRM
         Pre-requisite: FhvtoFh
-        
+
         Accepts meteorological constants or variables
         """
     if 'DisableFeWPL' in cf['Options'] and cf['Options'].as_bool('DisableFeWPL'):
@@ -1671,10 +1728,10 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
                                            standard_name='surface_upward_latent_heat_flux',
                                            units='W/m2')
     if "height" in Fe_raw_attr: attr["height"] = Fe_raw_attr["height"]
-    qcutils.CreateSeries(ds,Fe_wpl_out,Fe_wpl_data,Flag=Fe_wpl_flag,Attr=attr)
+    qcutils.CreateSeries(ds,Fe_wpl_out,Fe_wpl_data,Fe_wpl_flag,attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Fe (uncorrected for WPL)',units='W/m2')
     if "height" in Fe_raw_attr: attr["height"] = Fe_raw_attr["height"]
-    qcutils.CreateSeries(ds,'Fe_raw',Fe_raw,Flag=Fe_raw_flag,Attr=attr)
+    qcutils.CreateSeries(ds,'Fe_raw',Fe_raw,Fe_raw_flag,attr)
     if qcutils.cfoptionskeylogical(cf,Key='RelaxFeWPL'):
         ReplaceWhereMissing(ds.series['Fe'],ds.series['Fe'],ds.series['Fe_raw'],FlagValue=20)
         if 'RelaxFeWPL' not in ds.globalattributes['Functions']:
@@ -1699,6 +1756,9 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='w
       Fh_out   - label of sensible heat flux, default is 'Fh'
     '''
     logger.info(' Converting virtual Fh to Fh')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     # deal with sonic temperature aliases
     if Tv_in not in ds.series.keys():
         if "Tv_CSAT" in ds.series.keys():
@@ -1725,7 +1785,8 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='w
     attr = qcutils.MakeAttributeDictionary(long_name='Sensible heat flux from virtual heat flux',
                                            units='W/m2',standard_name='surface_upward_sensible_heat_flux')
     if "height" in wT_a: attr["height"] = wT_a["height"]
-    qcutils.CreateSeries(ds,Fh_out,Fh,FList=[Fhv_in,Tv_in,wA_in,q_in,wT_in],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(Fh)==True,ones,zeros)
+    qcutils.CreateSeries(ds,Fh_out,Fh,flag,attr)
     if 'FhvtoFh' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', FhvtoFh'
     if qcutils.cfoptionskeylogical(cf,Key='RelaxFhvtoFh'):
@@ -1741,7 +1802,7 @@ def FilterUstar(cf,ds,ustar_in='ustar',ustar_out='ustar_filtered'):
     the ustar is greater than the threshold, no action is taken.  Filtering is not
     done "in place", a new series is created with the label given in the control file.
     The QC flag is set to 18 to indicate the missing low ustar values.
-    
+
     Usage: qcts.FilterUstar(cf,ds)
     cf: control file object
     ds: data structure object
@@ -1757,7 +1818,7 @@ def FilterUstar(cf,ds,ustar_in='ustar',ustar_out='ustar_filtered'):
         descr = 'ustar filtered for low turbulence conditions (<'+str(ustar_threshold)+')'
         units = qcutils.GetUnitsFromds(ds, ustar_in)
         attr = qcutils.MakeAttributeDictionary(long_name=descr,units=units)
-        qcutils.CreateSeries(ds,ustar_out,ustar,Flag=ustar_flag,Attr=attr)
+        qcutils.CreateSeries(ds,ustar_out,ustar,ustar_flag,attr)
     else:
         logger.error(' ustar threshold (ustar_threshold) not found in '+ustar_out+' section of control file')
 
@@ -1766,7 +1827,7 @@ def get_averages(Data):
         Get daily averages on days when no 30-min observations are missing.
         Days with missing observations return a value of c.missing_value
         Values returned are sample size (Num) and average (Av)
-        
+
         Usage qcts.get_averages(Data)
         Data: 1-day dataset
         """
@@ -1785,7 +1846,7 @@ def get_averages(Data):
             for i in range(len(Data)):
                 if Data.mask[i] == True:
                     x = x + 1
-        
+
         if x == 0:
             Av = numpy.ma.mean(Data[li])
         else:
@@ -1817,7 +1878,7 @@ def get_minmax(Data):
         Get daily minima and maxima on days when no 30-min observations are missing.
         Days with missing observations return a value of c.missing_value
         Values returned are sample size (Num), minimum (Min) and maximum (Max)
-        
+
         Usage qcts.get_minmax(Data)
         Data: 1-day dataset
         """
@@ -1838,7 +1899,7 @@ def get_minmax(Data):
             for i in range(len(Data)):
                 if Data.mask[i] == True:
                     x = x + 1
-        
+
         if x == 0:
             Min = numpy.ma.min(Data[li])
             Max = numpy.ma.max(Data[li])
@@ -1852,7 +1913,7 @@ def get_nightsums(Data):
         Get nightly sums and averages on nights when no 30-min observations are missing.
         Nights with missing observations return a value of c.missing_value
         Values returned are sample size (Num), sums (Sum) and average (Av)
-        
+
         Usage qcts.get_nightsums(Data)
         Data: 1-day dataset
         """
@@ -1866,14 +1927,14 @@ def get_nightsums(Data):
         for i in range(len(Data)):
             if Data.mask[i] == True:
                 x = x + 1
-        
+
         if x == 0:
             Sum = numpy.ma.sum(Data[li])
             Av = numpy.ma.mean(Data[li])
         else:
             Sum = c.missing_value
             Av = c.missing_value
-    
+
     return Num, Sum, Av
 
 def get_soilaverages(Data):
@@ -1881,7 +1942,7 @@ def get_soilaverages(Data):
         Get daily averages of soil water content on days when 15 or fewer 30-min observations are missing.
         Days with 16 or more missing observations return a value of c.missing_value
         Values returned are sample size (Num) and average (Av)
-        
+
         Usage qcts.get_soilaverages(Data)
         Data: 1-day dataset
         """
@@ -1898,7 +1959,7 @@ def get_subsums(Data):
         Get separate daily sums of positive and negative fluxes when no 30-min observations are missing.
         Days with missing observations return a value of c.missing_value
         Values returned are positive and negative sample sizes (PosNum and NegNum) and sums (SumPos and SumNeg)
-        
+
         Usage qcts.get_subsums(Data)
         Data: 1-day dataset
         """
@@ -1931,7 +1992,7 @@ def get_sums(Data):
         Get daily sums when no 30-min observations are missing.
         Days with missing observations return a value of c.missing_value
         Values returned are sample size (Num) and sum (Sum)
-        
+
         Usage qcts.get_sums(Data)
         Data: 1-day dataset
         """
@@ -1950,7 +2011,7 @@ def get_sums(Data):
             for i in range(len(Data)):
                 if Data.mask[i] == True:
                     x = x + 1
-        
+
         if x == 0:
             Sum = numpy.ma.sum(Data[li])
         else:
@@ -1961,7 +2022,7 @@ def get_qcflag(ds):
     """
         Set up flags during ingest of L1 data.
         Identifies missing observations as c.missing_value and sets flag value 1
-        
+
         Usage qcts.get_qcflag(ds)
         ds: data structure
         """
@@ -1999,11 +2060,11 @@ def get_synthetic_fsd(ds):
     # add the synthetic downwelling shortwave radiation to the data structure
     attr = qcutils.MakeAttributeDictionary(long_name='Synthetic downwelling shortwave radiation',units='W/m2',
                                            standard_name='surface_downwelling_shortwave_flux_in_air')
-    qcutils.CreateSeries(ds,"Fsd_syn",Fsd_syn,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"Fsd_syn",Fsd_syn,flag,attr)
     # add the solar altitude to the data structure
     attr = qcutils.MakeAttributeDictionary(long_name='Solar altitude',units='deg',
                                            standard_name='not defined')
-    qcutils.CreateSeries(ds,"solar_altitude",alt_solar,Flag=flag,Attr=attr)
+    qcutils.CreateSeries(ds,"solar_altitude",alt_solar,flag,attr)
 
 def InvertSign(ds,ThisOne):
     logger.info(' Inverting sign of '+ThisOne)
@@ -2074,7 +2135,7 @@ def InterpolateOverMissing(ds,series='',maxlen=0):
             flag_int[start:stop] = flag_org[start:stop]
     # put data_int back into the data structure
     attr_int = dict(attr_org)
-    qcutils.CreateSeries(ds,series,data_int,Flag=flag_int,Attr=attr_int)
+    qcutils.CreateSeries(ds,series,data_int,flag_int,attr_int)
     if 'InterpolateOverMissing2' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', InterpolateOverMissing2'
 
@@ -2106,6 +2167,9 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
         #wA_out = MOut[7]
         #wC_out = MOut[8]
     logger.info(' Correcting for flux loss from spectral attenuation')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     zmd = float(cf['Massman']['zmd'])             # z-d for site
     if ("angle" in cf["Massman"] and
         "CSATarm" in cf["Massman"] and
@@ -2167,13 +2231,13 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
     tau_irga_bw = 0.016
     tau_irga_lat = (lLat / (1.1 * u))
     tau_irga_lon = (lLong / (1.05 * u))
-    
+
     tao_eMom = numpy.ma.sqrt(((c.lwVert / (5.7 * u)) ** 2) + ((c.lwHor / (2.8 * u)) ** 2))
     tao_ewT = numpy.ma.sqrt((tau_sonic_law_4scalar ** 2) + (tau_sonic_laT_4scalar ** 2))
-    
+
     tao_ewIRGA = numpy.ma.sqrt((tau_sonic_law_4scalar ** 2) +
                                (tau_irga_la ** 2) +
-                               (tau_irga_va ** 2) + 
+                               (tau_irga_va ** 2) +
                                (tau_irga_bw ** 2) +
                                (tau_irga_lat ** 2) +
                                (tau_irga_lon ** 2))
@@ -2222,28 +2286,34 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
     LM = mf.molen(Ta, Ah, ps, ustarM, wTM, fluxtype='kinematic')
     # write the 2nd pass Massman corrected covariances to the data structure
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true ustar',units='m/s')
-    qcutils.CreateSeries(ds,ustar_out,ustarM,FList=['uw','vw'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(ustarM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,ustar_out,ustarM,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true Obukhov Length',units='m')
-    qcutils.CreateSeries(ds,L_out,LM,FList=[Ta_in,Ah_in,ps_in,'wT'],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(LM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,L_out,LM,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true Cov(uw)',units='m2/s2')
-    qcutils.CreateSeries(ds,uw_out,uwM,FList=['uw',L_out],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(uwM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,uw_out,uwM,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true Cov(vw)',units='m2/s2')
-    qcutils.CreateSeries(ds,vw_out,vwM,FList=['vw',L_out],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(vwM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,vw_out,vwM,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true Cov(wT)',units='mC/s')
-    qcutils.CreateSeries(ds,wT_out,wTM,FList=['wT',L_out],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(wTM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,wT_out,wTM,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true Cov(wA)',units='g/m2/s')
-    qcutils.CreateSeries(ds,wA_out,wAM,FList=['wA',L_out],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(wAM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,wA_out,wAM,flag,attr)
+
     attr = qcutils.MakeAttributeDictionary(long_name='Massman true Cov(wC)',units='mg/m2/s')
-    qcutils.CreateSeries(ds,wC_out,wCM,FList=['wC',L_out],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(wCM)==True,ones,zeros)
+    qcutils.CreateSeries(ds,wC_out,wCM,flag,attr)
     # *** Massman_2ndpass ends here ***
-    
-    if qcutils.cfkeycheck(cf,Base='General',ThisOne='MassmanFlag') and cf['General']['MassmanFlag'] == 'True':
-        keys = [ustar_out,L_out,uw_out,vw_out,wT_out,wA_out,wC_out]
-        for ThisOne in keys:
-            testseries,f,a = qcutils.GetSeriesasMA(ds,ThisOne)
-            mask = numpy.ma.getmask(testseries)
-            index = numpy.where(mask.astype(int)==1)
-            ds.series[ThisOne]['Flag'][index] = numpy.int32(12)
+    return
 
 def MergeSeriesUsingDict(ds,merge_order=""):
     """ Merge series as defined in the ds.merge dictionary."""
@@ -2281,7 +2351,7 @@ def MergeSeriesUsingDict(ds,merge_order=""):
             else:
                 logger.error(" MergeSeries: secondary input series "+label+" not found")
         attr["long_name"] = attr["long_name"]+", merged from " + SeriesNameString
-        qcutils.CreateSeries(ds,target,data,Flag=flag1,Attr=attr)
+        qcutils.CreateSeries(ds,target,data,flag1,attr)
     del ds.merge[merge_order]
 
 def MergeHumidities(cf,ds,convert_units=False):
@@ -2341,7 +2411,7 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False,s
         mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,primary_series)
         if (primary_series==series) and save_originals:
             tmp_label = primary_series+"_b4merge"
-            qcutils.CreateSeries(ds,tmp_label,mdata,Flag=mflag,Attr=mattr)
+            qcutils.CreateSeries(ds,tmp_label,mdata,mflag,mattr)
         SeriesNameString = primary_series
     else:
         logger.info(' Merging '+str(srclist)+'==>'+series)
@@ -2352,7 +2422,7 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False,s
         mdata,mflag,mattr = qcutils.GetSeriesasMA(ds,primary_series)
         if (primary_series==series) and save_originals:
             tmp_label = primary_series+"_b4merge"
-            qcutils.CreateSeries(ds,tmp_label,mdata,Flag=mflag,Attr=mattr)
+            qcutils.CreateSeries(ds,tmp_label,mdata,mflag,mattr)
         SeriesNameString = primary_series
         srclist.remove(primary_series)
         for secondary_series in srclist:
@@ -2360,7 +2430,7 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False,s
                 ndata,nflag,nattr = qcutils.GetSeriesasMA(ds,secondary_series)
                 if (secondary_series==series) and save_originals:
                     tmp_label = secondary_series+"_b4merge"
-                    qcutils.CreateSeries(ds,tmp_label,ndata,Flag=nflag,Attr=nattr)
+                    qcutils.CreateSeries(ds,tmp_label,ndata,nflag,nattr)
                 if nattr["units"]!=mattr["units"]:
                     msg = " "+secondary_series+" units don't match "+primary_series+" units"
                     logger.warning(msg)
@@ -2387,15 +2457,19 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False,s
                 logger.warning("  MergeSeries: secondary input series "+secondary_series+" not found")
     ds.mergeserieslist.append(series)
     mattr["long_name"] = mattr["long_name"]+", merged from " + SeriesNameString
-    qcutils.CreateSeries(ds,series,mdata,Flag=mflag,Attr=mattr)
+    qcutils.CreateSeries(ds,series,mdata,mflag,mattr)
 
 def PT100(ds,T_out,R_in,m):
     logger.info(' Calculating temperature from PT100 resistance')
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
     R,f,a = qcutils.GetSeriesasMA(ds,R_in)
     R = m*R
     T = (-c.PT100_alpha+numpy.sqrt(c.PT100_alpha**2-4*c.PT100_beta*(-R/100+1)))/(2*c.PT100_beta)
     attr = qcutils.MakeAttributeDictionary(long_name='Calculated PT100 temperature using '+str(R_in),units='degC')
-    qcutils.CreateSeries(ds,T_out,T,FList=[R_in],Attr=attr)
+    flag = numpy.where(numpy.ma.getmaskarray(T)==True,ones,zeros)
+    qcutils.CreateSeries(ds,T_out,T,flag,attr)
 
 def ReplaceRotatedCovariance(cf,ds,rot_cov_label,non_cov_label):
     logger.info(' Replacing missing '+rot_cov_label+' when '+non_cov_label+' is good')
@@ -2597,7 +2671,7 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
     index = numpy.where(mask.astype(numpy.int32)==1)
     Ta_flag[index] = 15
     attr = qcutils.MakeAttributeDictionary(long_name='Ta calculated from Tv using '+Tv_in,units='C',standard_name='air_temperature')
-    qcutils.CreateSeries(ds,Ta_out,Ta_data,Flag=Ta_flag,Attr=attr)
+    qcutils.CreateSeries(ds,Ta_out,Ta_data,Ta_flag,attr)
 
 def TransformAlternate(TList,DateTime,Series,ts=30):
     # Apply polynomial transform to data series being used as replacement data for gap filling
