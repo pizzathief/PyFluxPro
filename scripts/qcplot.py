@@ -398,7 +398,7 @@ def plottimeseries(cf,nFig,dsa,dsb,si,ei):
             ymin = hist*0
             delta = 0.01*(numpy.max(hist)-numpy.min(hist))
             bar_ax = fig.add_axes([p['hr2_XAxOrg'],p['YAxOrg'],p['bar_XAxLen'],p['ts_YAxLen']])
-            bar_ax.set_ylim(0,numpy.max(hist))
+            bar_ax.set_ylim(0,numpy.max([1,numpy.max(hist)]))
             bar_ax.vlines(ind,ymin,hist)
             for i,j in zip(ind,hist):
                 if j>0.05*numpy.max(hist): bar_ax.text(i,j+delta,str(int(i)),ha='center',size='small')

@@ -206,51 +206,56 @@ def ConvertCO2Units(cf, ds, CO2='CO2'):
     else:
         logger.info(" CO2 concentration already in requested units")
 
-def ConvertFcUnits(cf,ds,Fc='Fc',Fc_storage='Fc_storage'):
-    if 'Options' not in cf: return
-    if 'FcUnits' not in cf['Options']: return
-    # the user may want to change the units of Fc and Fc_storage
-    Fc_units_out = str(cf['Options']['FcUnits'])
-    # convert units of Fc if required
-    if Fc in ds.series.keys():
-        Fc_units_in = ds.series[Fc]['Attr']['units']
-        if Fc_units_out!=Fc_units_in:
-            logger.info(' Converting CO2 flux from '+Fc_units_in+' to '+Fc_units_out)
-            if Fc_units_out=="umol/m2/s" and Fc_units_in=="mg/m2/s":
-                Fc_mgpm2ps,flag,attr = GetSeriesasMA(ds,Fc)
-                Fc_umolpm2ps = mf.Fc_umolpm2psfrommgpm2ps(Fc_mgpm2ps)
-                attr["long_name"] = attr["long_name"]+", converted to umol/m2/s"
-                attr["units"] = Fc_units_out
-                attr["standard_name"] = "surface_upward_mole_flux_of_carbon_dioxide"
-                CreateSeries(ds,Fc,Fc_umolpm2ps,flag,attr)
-            elif Fc_units_out=="mg/m2/s" and Fc_units_in=="umol/m2/s":
-                Fc_umolpm2ps,f,a = GetSeriesasMA(ds,Fc)
-                Fc_mgpm2ps = mf.Fc_mgpm2psfromumolpm2ps(Fc_umolpm2ps)
-                attr["long_name"] = attr["long_name"]+', converted to mg/m2/s'
-                attr["units"] = Fc_units_out
-                attr["standard_name"] = "not defined"
-                CreateSeries(ds,Fc,Fc_mgpm2ps,flag,attr)
-            else:
-                logger.info('  ConvertFcUnits: input or output units for Fc unrecognised')
-    # convert units of Fc_storage if required, just go with boiler plate for now
-    if Fc_storage in ds.series.keys():
-        Fc_storage_units_in = ds.series[Fc_storage]['Attr']['units']
-        if Fc_units_out!=Fc_storage_units_in:
-            logger.info(' Converting CO2 storage flux from '+Fc_storage_units_in+' to '+Fc_units_out)
-            if Fc_units_out=="umol/m2/s" and Fc_storage_units_in=="mg/m2/s":
-                Fc_storage_mgpm2ps,flag,attr = GetSeriesasMA(ds,Fc_storage)
-                Fc_storage_umolpm2ps = mf.Fc_umolpm2psfrommgpm2ps(Fc_storage_mgpm2ps)
-                attr["long_name"] = attr["long_name"]+", converted to umol/m2/s"
-                attr["units"] = Fc_units_out
-                CreateSeries(ds,Fc_storage,Fc_storage_umolpm2ps,flag,attr)
-            elif Fc_units_out=="mg/m2/s" and Fc_storage_units_in=="umol/m2/s":
-                Fc_storage_umolpm2ps,f,a = GetSeriesasMA(ds,Fc_storage)
-                Fc_storage_mgpm2ps = mf.Fc_mgpm2psfromumolpm2ps(Fc_storage_umolpm2ps)
-                attr["long_name"] = attr["long_name"]+", converted to mg/m2/s"
-                attr["units"] = Fc_units_out
-                CreateSeries(ds,Fc_storage,Fc_storage_mgpm2ps,flag,attr)
-            else:
-                logger.info('  ConvertFcUnits: input or output units for Fc_storage unrecognised')
+def ConvertFcUnits(cf, ds):
+    """
+    Purpose:
+     Convert CO2 flux units as required.
+    Usage:
+    Side effects:
+     The units of any CO2 flux in the data structure are converted to the units specified
+     in the [Options] section of the control file.
+    Author: PRI
+    Date: Back in the day
+    """
+    if 'Options' not in cf:
+        return
+    if 'FcUnits' not in cf['Options']:
+        return
+    # get the Fc units requested by the user
+    Fc_units_out = get_keyvaluefromcf(cf, ['Options'], "FcUnits", default="umol/m2/s")
+    # get a list of Fc series
+    Fc_list = [label for label in ds.series.keys() if label[0:2] == "Fc"]
+    # convert units of Fc as required
+    units_list = ["mg/m2/s", "umol/m2/s"]
+    for label in Fc_list:
+        # get the Fc variable
+        Fc = GetVariable(ds, label)
+        # check the units, we only operate on what we know (LBYL)
+        if Fc["Attr"]["units"] not in units_list:
+            Fc_list.remove(label)
+            continue
+        Fc_units_in = Fc["Attr"]["units"]
+        # check to see if we need to convert units
+        if Fc_units_in == Fc_units_out:
+            # nothing to see here, folks
+            continue
+        # if we get here, we need to convert units
+        logger.info(" Converting "+label+" from "+Fc_units_in+" to "+Fc_units_out)
+        if Fc_units_out == "umol/m2/s" and Fc_units_in == "mg/m2/s":
+            Fc["Data"] = mf.Fc_umolpm2psfrommgpm2ps(Fc["Data"])
+            Fc["Attr"]["long_name"] = Fc["Attr"]["long_name"]+", converted to umol/m2/s"
+            Fc["Attr"]["units"] = Fc_units_out
+            #attr["standard_name"] = "surface_upward_mole_flux_of_carbon_dioxide"
+            CreateVariable(ds, Fc)
+        elif Fc_units_out == "mg/m2/s" and Fc_units_in == "umol/m2/s":
+            Fc["Data"] = mf.Fc_mgpm2psfromumolpm2ps(Fc["Data"])
+            Fc["Attr"]["long_name"] = Fc["Attr"]["long_name"]+", converted to mg/m2/s"
+            Fc["Attr"]["units"] = Fc_units_out
+            #attr["standard_name"] = "not defined"
+            CreateVariable(ds, Fc)
+        else:
+            logger.info('  ConvertFcUnits: input or output units for Fc unrecognised')
+    return
 
 def convert_units_func(ds,old_data,old_units,new_units,mode="quiet"):
     """
@@ -575,7 +580,7 @@ def create_empty_variable(label, nrecs):
     variable = {"Label":label, "Data":data, "Flag":flag, "Attr":attr}
     return variable
 
-def CreateVariableFromDictionary(ds,variable):
+def CreateVariable(ds,variable):
     """
     Purpose:
      Create a variable in the data structure.
@@ -585,11 +590,11 @@ def CreateVariableFromDictionary(ds,variable):
      it implements a consistent method for creating series in the data structure.  Direct
      writes to the contents of the data structure are discouraged (unless PRI wrote the code:=P).
     Usage:
-     Fsd = qcutils.GetVariableAsDict(ds,"Fsd")
+     Fsd = qcutils.GetVariable(ds,"Fsd")
       ... do something to Fsd here ...
       ... and don't forget to update the QC flag ...
       ... and the attributes ...
-     qcutils.CreateVariableFromDict(ds,Fsd)
+     qcutils.CreateVariable(ds,Fsd)
     Author: PRI
     Date: September 2016
     """

@@ -384,6 +384,11 @@ def do_dependencycheck(cf, ds, section, series, code=23, mode="quiet"):
         logger.info(msg)
     # get the precursor source list from the control file
     source_list = ast.literal_eval(cf[section][series]["DependencyCheck"]["Source"])
+    # check to see if the "ignore_missing" flag is set
+    opt = qcutils.get_keyvaluefromcf(cf, [section,series,"DependencyCheck"], "ignore_missing", default="no")
+    ignore_missing = False
+    if opt.lower() in ["yes","y","true","t"]:
+        ignore_missing = True
     # get the data
     dependent_data,dependent_flag,dependent_attr = qcutils.GetSeries(ds, series)
     # loop over the precursor source list
@@ -395,6 +400,16 @@ def do_dependencycheck(cf, ds, section, series, code=23, mode="quiet"):
             continue
         # get the precursor data
         precursor_data,precursor_flag,precursor_attr = qcutils.GetSeries(ds,item)
+        # check if the user wants to ignore missing precursor data
+        if ignore_missing:
+            # they do, so make an array of missing values
+            nRecs = int(ds.globalattributes["nc_nrecs"])
+            missing_array = numpy.ones(nRecs)*float(c.missing_value)
+            # and find the indicies of elements equal to the missing value
+            bool_array = numpy.isclose(precursor_data, missing_array)
+            idx = numpy.where(bool_array == True)[0]
+            # and set these flags to 0 so missing data is ignored
+            precursor_flag[idx] = numpy.int32(0)
         # mask the dependent data where the precursor flag shows data not OK
         dependent_data = numpy.ma.masked_where(numpy.mod(precursor_flag, 10)!=0, dependent_data)
         # get an index where the precursor flag shows data not OK
@@ -478,6 +493,32 @@ def do_EC155check(cf,ds):
             logger.warning(' do_EC155check: series '+str(ThisOne)+' in EC155 list not found in data structure')
     if 'EC155Check' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+',EC155Check'
+
+def do_EPQCFlagCheck(cf,ds,section,series,code=9):
+    """
+    Purpose:
+     Mask data according to the value of an EddyPro QC flag.
+    Usage:
+    Author: PRI
+    Date: August 2017
+    """
+    if 'EPQCFlagCheck' not in cf[section][series].keys(): return
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    flag = numpy.zeros(nRecs, dtype=numpy.int32)
+    source_list = ast.literal_eval(cf[section][series]['EPQCFlagCheck']["Source"])
+    reject_list = ast.literal_eval(cf[section][series]['EPQCFlagCheck']["Reject"])
+    variable = qcutils.GetVariable(ds, series)
+    for source in source_list:
+        epflag = qcutils.GetVariable(ds, source)
+        for value in reject_list:
+            bool_array = numpy.isclose(epflag["Data"], float(value))
+            idx = numpy.where(bool_array == True)[0]
+            flag[idx] = numpy.int32(1)
+    idx = numpy.where(flag == 1)[0]
+    variable["Data"][idx] = numpy.float(c.missing_value)
+    variable["Flag"][idx] = numpy.int32(9)
+    qcutils.CreateVariable(ds, variable)
+    return
 
 def do_excludedates(cf,ds,section,series,code=6):
     if 'ExcludeDates' not in cf[section][series].keys(): return
@@ -709,11 +750,6 @@ def do_rangecheck(cf, ds, section, series, code=2):
         msg = "RangeCheck: key not found in control file for "+series+", skipping ..."
         logger.warning(msg)
         return
-    # check the QC flag reset switch
-    opt = qcutils.get_keyvaluefromcf(cf, [section, series, "RangeCheck"], "reset_qcflag", default="no")
-    reset_qcflag = False
-    if opt.lower() in ["yes", "y", "true"]:
-        reset_qcflag = True
     # get the upper and lower limits
     upr = numpy.array(eval(cf[section][series]['RangeCheck']['Upper']))
     valid_upper = numpy.min(upr)
@@ -725,14 +761,6 @@ def do_rangecheck(cf, ds, section, series, code=2):
     data, flag, attr = qcutils.GetSeriesasMA(ds, series)
     # convert the data from a masked array to an ndarray so the range check works
     data = numpy.ma.filled(data, fill_value=c.missing_value)
-    # do we need to reset the QC flag for elements inside the range?
-    # this allows us to include the missing data value (c.missing_value) in the
-    # range of acceptable data values and have the missing data QC flag code (1)
-    # reset to OK data (0) for these elements
-    if reset_qcflag:
-        # get the indices of values within the acceptable range
-        idx = numpy.where((data>=lwr)&(data<=upr))[0]
-        flag[idx] = numpy.int32(0)
     # get the indices of elements outside this range
     idx = numpy.where((data<lwr)|(data>upr))[0]
     # set elements outside range to missing and set the QC flag
@@ -798,6 +826,8 @@ def do_qcchecks_oneseries(cf,ds,section,series):
     do_uppercheck(cf,ds,section,series,code=2)
     # do the diurnal check
     do_diurnalcheck(cf,ds,section,series,code=5)
+    # do the EP QC flag check
+    do_EPQCFlagCheck(cf,ds,section,series,code=9)
     # do exclude dates
     do_excludedates(cf,ds,section,series,code=6)
     # do exclude hours

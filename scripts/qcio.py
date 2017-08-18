@@ -349,22 +349,22 @@ def read_eddypro_full(csvname):
     variable["Data"] = numpy.array(us_data_list,dtype=numpy.float64)
     variable["Flag"] = numpy.array(us_flag_list,dtype=numpy.int32)
     variable["Attr"] = qcutils.MakeAttributeDictionary()
-    qcutils.CreateVariableFromDictionary(ds, variable)
+    qcutils.CreateVariable(ds, variable)
     variable = {"Label":"Fh"}
     variable["Data"] = numpy.array(Fh_data_list,dtype=numpy.float64)
     variable["Flag"] = numpy.array(Fh_flag_list,dtype=numpy.int32)
     variable["Attr"] = qcutils.MakeAttributeDictionary()
-    qcutils.CreateVariableFromDictionary(ds, variable)
+    qcutils.CreateVariable(ds, variable)
     variable = {"Label":"Fe"}
     variable["Data"] = numpy.array(Fe_data_list,dtype=numpy.float64)
     variable["Flag"] = numpy.array(Fe_flag_list,dtype=numpy.int32)
     variable["Attr"] = qcutils.MakeAttributeDictionary()
-    qcutils.CreateVariableFromDictionary(ds, variable)
+    qcutils.CreateVariable(ds, variable)
     variable = {"Label":"Fc"}
     variable["Data"] = numpy.array(Fc_data_list,dtype=numpy.float64)
     variable["Flag"] = numpy.array(Fc_flag_list,dtype=numpy.int32)
     variable["Attr"] = qcutils.MakeAttributeDictionary()
-    qcutils.CreateVariableFromDictionary(ds, variable)
+    qcutils.CreateVariable(ds, variable)
 
     return ds
 

@@ -127,10 +127,10 @@ def cleanup_ustar_dict(ldt,ustar_dict):
     ustar_years = ustar_dict.keys()
     ustar_list = ustar_dict[ustar_years[0]]
     for year in data_years:
-            if str(year) not in ustar_years:
-                ustar_dict[str(year)] = {}
-                for item in ustar_list:
-                    ustar_dict[str(year)][item] = float(c.missing_value)
+        if str(year) not in ustar_years:
+            ustar_dict[str(year)] = {}
+            for item in ustar_list:
+                ustar_dict[str(year)][item] = float(c.missing_value)
     # loop over the list of ustar thresholds
     year_list = ustar_dict.keys()
     year_list.sort()
@@ -840,17 +840,6 @@ def get_ustar_thresholds(cf,ldt):
         logger.warning(msg)
         ustar_dict = get_ustarthreshold_from_cf(cf,ldt)
     cleanup_ustar_dict(ldt,ustar_dict)
-    return ustar_dict
-
-def get_ustar_thresholds2(cf,ldt):
-    ustar_dict = get_ustarthreshold_from_cpdresults(cf)
-
-    msg = " CPD results filename not in control file"
-    logger.warning(msg)
-    ustar_dict = get_ustarthreshold_from_cf(cf,ldt)
-
-    cleanup_ustar_dict(ldt,ustar_dict)
-
     return ustar_dict
 
 def get_daynight_indicator(cf,Fsd,Fsd_syn,sa):

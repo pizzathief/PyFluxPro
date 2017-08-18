@@ -1,22 +1,26 @@
-import sys
+# standard
 import ast
-import constants as c
+import copy
 import datetime
 import inspect
-from matplotlib.dates import date2num
-import meteorologicalfunctions as mf
-import numpy
+import logging
 import os
+import sys
+import time
+# 3d party
+import numpy
+from matplotlib.dates import date2num
+from matplotlib.mlab import griddata
+from scipy import interpolate, signal
+import xlrd
+import xlwt
+# PFP
+import constants as c
+import meteorologicalfunctions as mf
 import qcck
 import qcfunc
 import qcio
 import qcutils
-from scipy import interpolate, signal
-import time
-import xlrd
-from matplotlib.mlab import griddata
-import xlwt
-import logging
 import pysolar
 
 logger = logging.getLogger("pfp_log")
@@ -1006,12 +1010,12 @@ def CalculateComponentsFromWsWd(ds):
     qcutils.CreateSeries(ds,"U",u,Wd_flag,u_attr)
     qcutils.CreateSeries(ds,"V",v,Wd_flag,v_attr)
 
-def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
+def CalculateFcStorageSinglePoint(cf,ds,Fc_out='Fc_single',CO2_in='CO2'):
     """
     Calculate CO2 flux storage term in the air column beneath the CO2 instrument.  This
     routine assumes the air column between the sensor and the surface is well mixed.
 
-    Usage qcts.CalculateFcStorage(cf,ds,Fc_out,CO2_in)
+    Usage qcts.CalculateFcStorageSinglePoint(cf,ds,Fc_out,CO2_in)
     cf: control file object
     ds: data structure
     Fc_out: series label of the CO2 flux storage term
@@ -1020,7 +1024,7 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
     Parameters loaded from control file:
         zms: measurement height from surface, m
     """
-    if 'Fc_storage' not in ds.series.keys():
+    if 'Fc_single' not in ds.series.keys():
         if qcutils.cfkeycheck(cf,Base='General',ThisOne='zms'):
             logger.info(' Calculating Fc storage (single height)')
             nRecs = int(ds.globalattributes['nc_nrecs'])
@@ -1042,14 +1046,14 @@ def CalculateFcStorage(cf,ds,Fc_out='Fc_storage',CO2_in='CO2'):
             # calculate the time step in seconds
             dt=86400*numpy.ediff1d(ds.series['xlDateTime']['Data'],to_begin=float(ts)/1440)    # time step in seconds from the Excel datetime values
             # calculate the CO2 flux based on storage below the measurement height
-            Fc_storage = zms*dc/dt
-            Fc_storage_units = 'mg/m2/s'
-            descr = 'Fc infered from CO2 storage using single point CO2 measurement'
+            Fc_single = zms*dc/dt
+            Fc_single_units = 'mg/m2/s'
+            descr = 'Fc storage component calcuated using single point CO2 measurement'
             # make the output series attribute dictionary
-            attr_out = qcutils.MakeAttributeDictionary(long_name=descr,units=Fc_storage_units)
+            attr_out = qcutils.MakeAttributeDictionary(long_name=descr,units=Fc_single_units)
             # put the storage flux in the data structure
-            flag = numpy.where(numpy.ma.getmaskarray(Fc_storage)==True,ones,zeros)
-            qcutils.CreateSeries(ds,Fc_out,Fc_storage,flag,attr_out)
+            flag = numpy.where(numpy.ma.getmaskarray(Fc_single)==True,ones,zeros)
+            qcutils.CreateSeries(ds,Fc_out,Fc_single,flag,attr_out)
         else:
             logger.error('CalculateFcStorage: zms expected in General section of control file but not found')
     else:
@@ -1067,33 +1071,87 @@ def CorrectFcForStorage(cf,ds,Fc_out='Fc',Fc_in='Fc',Fc_storage_in='Fc_storage')
     Fc_storage: series label of the CO2 flux storage term
 
     """
-    if not qcutils.cfoptionskeylogical(cf,Key="ApplyFcStorage"): return
-    if (Fc_in not in ds.series.keys()) or (Fc_storage_in not in ds.series.keys()):
-        msg = "CorrectFcForStorage: Fc or Fc_storage not found, skipping ..."
-        logger.warning(msg)
-        return
-    logger.info(" ***!!! Applying Fc storage term !!!***")
     nRecs = int(ds.globalattributes["nc_nrecs"])
     zeros = numpy.zeros(nRecs,dtype=numpy.int32)
     ones = numpy.ones(nRecs,dtype=numpy.int32)
-    Fc_raw,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,Fc_in)
-    Fc_storage,Fc_storage_flag,Fc_storage_attr = qcutils.GetSeriesasMA(ds,Fc_storage_in)
-    if Fc_attr["units"]!=Fc_storage_attr["units"]:
-        logger.error("CorrectFcForStorage: units of Fc do not match those of storage term, storage not applied")
-        return
-    logger.info(" Applying storage correction to Fc")
-    Fc = Fc_raw + Fc_storage
-    if qcutils.cfoptionskeylogical(cf,Key="RelaxFcStorage"):
-        idx=numpy.where(numpy.ma.getmaskarray(Fc)==True)[0]
-        Fc[idx]=Fc_raw[idx]
-        logger.info(" Replaced corrected Fc with "+str(len(idx))+" raw values")
-    Fc_attr["long_name"] = Fc_attr["long_name"] + ", uncorrected"
-    qcutils.CreateSeries(ds,"Fc_raw",Fc_raw,Fc_flag,Fc_attr)
-    Fc_attr["long_name"] = Fc_attr["long_name"].replace(", uncorrected",", corrected for storage using supplied storage term")
-    flag = numpy.where(numpy.ma.getmaskarray(Fc)==True,ones,zeros)
-    qcutils.CreateSeries(ds,Fc_out,Fc,flag,Fc_attr)
-    if "CorrectFcForStorage" not in ds.globalattributes["Functions"]:
-        ds.globalattributes["Functions"] = ds.globalattributes["Functions"]+", CorrectFcForStorage"
+    # check to see if applying the Fc storage term has been requested for any
+    # individual variables
+    apply_storage = {}
+    for label in cf["Variables"].keys():
+        if "ApplyFcStorage" in cf["Variables"][label]:
+            source = ast.literal_eval(cf["Variables"][label]["ApplyFcStorage"]["Source"])
+            apply_storage[label] = source[0]
+    # if no individual series have been specified, do the default
+    if len(apply_storage.keys()) == 0:
+        # check to see if correction for storage has been requested in [Options]
+        if not qcutils.cfoptionskeylogical(cf,Key="ApplyFcStorage"):
+            return
+        # check to see if we have the required data series
+        if (Fc_in not in ds.series.keys()) or (Fc_storage_in not in ds.series.keys()):
+            msg = "CorrectFcForStorage: Fc or Fc_storage not found, skipping ..."
+            logger.warning(msg)
+            return
+        logger.info(" ***!!! Applying Fc storage term !!!***")
+        Fc_raw,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,Fc_in)
+        Fc_storage,Fc_storage_flag,Fc_storage_attr = qcutils.GetSeriesasMA(ds,Fc_storage_in)
+        if Fc_attr["units"]!=Fc_storage_attr["units"]:
+            logger.error("CorrectFcForStorage: units of Fc do not match those of storage term, storage not applied")
+            return
+        Fc = Fc_raw + Fc_storage
+        if qcutils.cfoptionskeylogical(cf,Key="RelaxFcStorage"):
+            idx=numpy.where(numpy.ma.getmaskarray(Fc)==True)[0]
+            Fc[idx]=Fc_raw[idx]
+            logger.info(" Replaced corrected Fc with "+str(len(idx))+" raw values")
+        Fc_attr["long_name"] = Fc_attr["long_name"] + ", uncorrected"
+        qcutils.CreateSeries(ds,"Fc_raw",Fc_raw,Fc_flag,Fc_attr)
+        Fc_attr["long_name"] = Fc_attr["long_name"].replace(", uncorrected",", corrected for storage using supplied storage term")
+        flag = numpy.where(numpy.ma.getmaskarray(Fc)==True,ones,zeros)
+        qcutils.CreateSeries(ds,Fc_out,Fc,flag,Fc_attr)
+    else:
+        # loop over the series for which apply Fc storage was requested
+        for label in apply_storage.keys():
+            # check to make sure the requested series is in the data structure
+            if label not in ds.series.keys():
+                # skip if it isn't
+                msg = " Requested series "+label+" not found in data structure"
+                logger.error(msg)
+                continue
+            # get the storage flux label
+            source = apply_storage[label]
+            if source not in ds.series.keys():
+                msg = " Requested series "+source+" not found in data structure"
+                logger.error(msg)
+                continue
+            # get the data
+            Fc_un = qcutils.GetVariable(ds, label)
+            Sc = qcutils.GetVariable(ds, source)
+            # check the units
+            if Fc_un["Attr"]["units"] != Sc["Attr"]["units"]:
+                msg = " Units for "+label+" and "+source+" don't match"
+                logger.error(msg)
+                return
+            msg = " *** Applying storage term "+source+" to "+label+" ***"
+            logger.info(msg)
+            # Make a copy of the uncorrected Fc
+            Fc = copy.deepcopy(Fc_un)
+            # update the label, the long name and write the uncorrected data to the data structure
+            Fc_un["Label"] = Fc_un["Label"]+"_raw"
+            Fc_un["Attr"]["long_name"] = Fc_un["Attr"]["long_name"] + ", uncorrected"
+            qcutils.CreateVariable(ds, Fc_un)
+            # correct Fc by adding the storage
+            Fc["Data"] = Fc_un["Data"] + Sc["Data"]
+            # check to see if the user wants to relax the correct
+            if qcutils.cfoptionskeylogical(cf,Key="RelaxFcStorage"):
+                # if so, replace missing corrected Fc with uncorrected Fc
+                idx = numpy.where(numpy.ma.getmaskarray(Fc["Data"])==True)[0]
+                Fc[idx] = Fc_un[idx]
+                logger.info(" Replaced corrected Fc with "+str(len(idx))+" uncorrected values")
+            Fc["Flag"] = numpy.where(numpy.ma.getmaskarray(Fc["Data"])==True, ones, zeros)
+            Fc["Attr"] = copy.deepcopy(Fc_un["Attr"])
+            Fc["Attr"]["long_name"] = Fc["Attr"]["long_name"].replace(", uncorrected",
+                                                                      ", corrected for storage using supplied storage term")
+            qcutils.CreateVariable(ds, Fc)
+    return
 
 def CorrectIndividualFgForStorage(cf,ds):
     if qcutils.cfkeycheck(cf,Base='FunctionArgs',ThisOne='CFgArgs'):
@@ -1654,7 +1712,8 @@ def Fc_WPL(cf,ds,Fc_wpl_out='Fc',Fc_raw_in='Fc',Fh_in='Fh',Fe_in='Fe',Ta_in='Ta'
     Fc_wpl_flag[index] = numpy.int32(14)
     attr = qcutils.MakeAttributeDictionary(long_name='WPL corrected Fc',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
-    qcutils.CreateSeries(ds,Fc_wpl_out,Fc_wpl_data,Fc_wpl_flag,attr)
+    qcutils.CreateSeries(ds, Fc_wpl_out, Fc_wpl_data, Fc_wpl_flag, attr)
+    qcutils.CreateSeries(ds, "Fc_PFP", Fc_wpl_data, Fc_wpl_flag, attr)
     # save the WPL correction terms
     attr = qcutils.MakeAttributeDictionary(long_name='WPL correction to Fc due to Fe',units='mg/m2/s')
     if "height" in Fc_raw_attr: attr["height"] = Fc_raw_attr["height"]
@@ -1728,7 +1787,8 @@ def Fe_WPL(cf,ds,Fe_wpl_out='Fe',Fe_raw_in='Fe',Fh_in='Fh',Ta_in='Ta',Ah_in='Ah'
                                            standard_name='surface_upward_latent_heat_flux',
                                            units='W/m2')
     if "height" in Fe_raw_attr: attr["height"] = Fe_raw_attr["height"]
-    qcutils.CreateSeries(ds,Fe_wpl_out,Fe_wpl_data,Fe_wpl_flag,attr)
+    qcutils.CreateSeries(ds, Fe_wpl_out, Fe_wpl_data, Fe_wpl_flag, attr)
+    qcutils.CreateSeries(ds, "Fe_PFP", Fe_wpl_data, Fe_wpl_flag, attr)
     attr = qcutils.MakeAttributeDictionary(long_name='Fe (uncorrected for WPL)',units='W/m2')
     if "height" in Fe_raw_attr: attr["height"] = Fe_raw_attr["height"]
     qcutils.CreateSeries(ds,'Fe_raw',Fe_raw,Fe_raw_flag,attr)
@@ -2148,7 +2208,7 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
     #if not qcutils.cfoptionskeylogical(cf,Key='Massman'):
         #return
     if 'Massman' not in cf:
-        logger.info(' Massman section not found in control file, no corrections applied')
+        logger.info(" Massman section not in control file, skipping correction ...")
         return
     #if qcutils.cfkeycheck(cf,Base='FunctionArgs',ThisOne='MassmanVars'):
         #MArgs = ast.literal_eval(cf['FunctionArgs']['MassmanVars'])
@@ -2385,7 +2445,7 @@ def MergeSeries(cf,ds,series,okflags=[0,10,20,30,40,50,60],convert_units=False,s
     Author: PRI
     Date: Back in the day
     History:
-     16/7/201 - made okflags optional, implemented save_originals
+     16/7/2017 - made okflags optional, implemented save_originals
     """
     # check to see if the series is specified in the control file
     section = qcutils.get_cfsection(cf,series=series)

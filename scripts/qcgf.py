@@ -2440,7 +2440,11 @@ def gfSOLO_createdict(cf,ds,series):
     for output in output_list:
         # create the dictionary keys for this series
         ds.solo[output] = {}
-        ds.solo[output]["label_tower"] = series
+        # get the target
+        if "target" in cf[section][series]["GapFillUsingSOLO"][output]:
+            ds.solo[output]["label_tower"] = cf[section][series]["GapFillUsingSOLO"][output]["target"]
+        else:
+            ds.solo[output]["label_tower"] = series
         # site name
         ds.solo[output]["site_name"] = ds.globalattributes["site_name"]
         # list of SOLO settings
@@ -2565,7 +2569,7 @@ def gfSOLO_main(dsa,dsb,solo_info,output_list=[]):
         variable = qcutils.GetVariable(dsb, series)
         qcck.UpdateVariableAttributes_QC(cf, variable)
         qcck.ApplyQCChecks(variable)
-        qcutils.CreateVariableFromDictionary(dsb, variable)
+        qcutils.CreateVariable(dsb, variable)
         # check to see if we are gap filling L5 or L4
         if dsb.globalattributes["nc_level"].lower()=="l4":
             for driver in dsb.solo[output]["drivers"]:

@@ -75,7 +75,7 @@ def l2qc(cf,ds1):
         Perform initial QA/QC on flux data
         Generates L2 from L1 data
         * check parameters specified in control file
-        
+
         Functions performed:
             qcck.do_rangecheck*
             qcck.do_CSATcheck
@@ -87,7 +87,7 @@ def l2qc(cf,ds1):
         """
     # make a copy of the L1 data
     ds2 = copy.deepcopy(ds1)
-    # set some attributes for this level    
+    # set some attributes for this level
     qcutils.UpdateGlobalAttributes(cf,ds2,"L2")
     ds2.globalattributes['Functions'] = ''
     # put the control file name into the global attributes
@@ -109,7 +109,7 @@ def l2qc(cf,ds1):
     qcio.get_seriesstats(cf,ds2)
     # write the percentage of good data as a variable attribute
     qcutils.get_coverage_individual(ds2)
-    
+
     return ds2
 
 def l3qc(cf,ds2):
@@ -117,7 +117,7 @@ def l3qc(cf,ds2):
     """
     # make a copy of the L2 data
     ds3 = copy.deepcopy(ds2)
-    # set some attributes for this level    
+    # set some attributes for this level
     qcutils.UpdateGlobalAttributes(cf,ds3,"L3")
     # put the control file name into the global attributes
     ds3.globalattributes['controlfile_name'] = cf['controlfile_name']
@@ -148,14 +148,14 @@ def l3qc(cf,ds2):
         logger.error(msg)
         return
     qcts.MergeSeries(cf, ds3, CO2, convert_units=True)
-    # PRI - disable CO2 units conversion from whatever to mg/m3
-    #     - this step is, as far as I can see, redundant, see qcts.Fc_WPL()
-    #qcutils.CheckUnits(ds3,"Cc","mg/m3",convert_units=True)
-    # add relevant meteorological values to L3 data
+    # Update meteorological variables
     qcts.CalculateMeteorologicalVariables(ds3)
+    # *************************************************
+    # *** Calculate fluxes from covariances section ***
+    # *************************************************
     # check to see if the user wants to use the fluxes in the L2 file
     if not qcutils.cfoptionskeylogical(cf, Key="UseL2Fluxes", default=False):
-        # check the covariancve units and change if necessary
+        # check the covariance units and change if necessary
         qcts.CheckCovarianceUnits(ds3)
         # do the 2D coordinate rotation
         qcts.CoordRotation2D(cf, ds3)
@@ -168,26 +168,39 @@ def l3qc(cf,ds2):
         # correct the H2O & CO2 flux due to effects of flux on density measurements
         qcts.Fe_WPL(cf, ds3)
         qcts.Fc_WPL(cf, ds3)
+    # **************************
+    # *** CO2 and Fc section ***
+    # **************************
     # convert CO2 units if required
     qcutils.ConvertCO2Units(cf, ds3, CO2=CO2)
     # calculate Fc storage term - single height only at present
-    qcts.CalculateFcStorage(cf, ds3)
+    qcts.CalculateFcStorageSinglePoint(cf, ds3, Fc_out='Fc_single', CO2_in=CO2)
     # convert Fc and Fc_storage units if required
-    qcutils.ConvertFcUnits(cf,ds3,Fc='Fc',Fc_storage='Fc_storage')
+    qcutils.ConvertFcUnits(cf, ds3)
     # merge Fc and Fc_storage series if required
-    qcts.MergeSeries(cf, ds3, 'Fc',save_originals=True)
-    qcts.MergeSeries(cf, ds3, 'Fc_storage',save_originals=True)
+    merge_list = [label for label in cf["Variables"].keys() if label[0:2]=="Fc" and "MergeSeries" in cf["Variables"][label].keys()]
+    for label in merge_list:
+        qcts.MergeSeries(cf, ds3, label, save_originals=True)
     # correct Fc for storage term - only recommended if storage calculated from profile available
     qcts.CorrectFcForStorage(cf, ds3)
+    # *************************
+    # *** Radiation section ***
+    # *************************
     # merge the incoming shortwave radiation
     qcts.MergeSeries(cf, ds3, 'Fsd')
     # calculate the net radiation from the Kipp and Zonen CNR1
     qcts.CalculateNetRadiation(cf,ds3,Fn_out='Fn_KZ',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
     qcts.MergeSeries(cf,ds3,'Fn')
+    # ****************************************
+    # *** Wind speed and direction section ***
+    # ****************************************
     # combine wind speed from the Wind Sentry and the SONIC
     qcts.MergeSeries(cf,ds3,'Ws')
     # combine wind direction from the Wind Sentry and the SONIC
     qcts.MergeSeries(cf,ds3,'Wd')
+    # ********************
+    # *** Soil section ***
+    # ********************
     # correct soil heat flux for storage
     #    ... either average the raw ground heat flux, soil temperature and moisture
     #        and then do the correction (OzFlux "standard")
@@ -240,7 +253,7 @@ def l4qc(cf,ds3):
     # ds4 will be empty (logical false) if an error occurs in copy_datastructure
     # return from this routine if this is the case
     if not ds4: return ds4
-    # set some attributes for this level    
+    # set some attributes for this level
     qcutils.UpdateGlobalAttributes(cf,ds4,"L4")
     ds4.cf = cf
     ## calculate the available energy

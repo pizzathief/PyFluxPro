@@ -72,7 +72,7 @@ class qcgui(tk.Tk):
     def option_not_implemented(self):
         self.do_progress(text='Option not implemented yet ...')
         logger.info(' Option not implemented yet ...')
-    
+
     def initialise(self):
         self.org_frame = tk.Frame(self)
         self.org_frame.grid()
@@ -177,16 +177,16 @@ class qcgui(tk.Tk):
         menubar.add_cascade(label="Plot",menu=plotmenu)
         # and the "Utilities" menu
         utilsmenu = tk.Menu(menubar,tearoff=0)
+        # climatology menu
         climatologymenu = tk.Menu(menubar,tearoff=0)
         climatologymenu.add_command(label="Standard",command=lambda:self.do_climatology(mode="standard"))
         climatologymenu.add_command(label="Custom",command=lambda:self.do_climatology(mode="custom"))
         utilsmenu.add_cascade(label="Climatology",menu=climatologymenu)
-        utilsmenu.add_command(label="Compare Ah",command=self.option_not_implemented)
-        utilsmenu.add_command(label="Compare EP",command=self.do_compare_eddypro)
-        ustarmenu = tk.Menu(menubar,tearoff=0)
-        ustarmenu.add_command(label="Reichstein",command=self.option_not_implemented)
-        ustarmenu.add_command(label="Change Point Detection",command=self.do_cpd)
-        utilsmenu.add_cascade(label="u* threshold",menu=ustarmenu)
+        # CPD menu
+        cpdmenu = tk.Menu(menubar,tearoff=0)
+        cpdmenu.add_command(label="Standard",command=lambda:self.do_cpd(mode="standard"))
+        cpdmenu.add_command(label="Custom",command=lambda:self.do_cpd(mode="custom"))
+        utilsmenu.add_cascade(label="u* threshold (CPD)",menu=cpdmenu)
         menubar.add_cascade(label="Utilities",menu=utilsmenu)
         # and the "Help" menu
         helpmenu = tk.Menu(menubar,tearoff=0)
@@ -208,13 +208,15 @@ class qcgui(tk.Tk):
                 cf = qcio.get_controlfilecontents(stdname)
                 self.do_progress(text='Opening input file ...')
                 filename = qcio.get_filename_dialog(path='../Sites',title='Choose a netCDF file')
-                if len(filename)==0:
+                if not os.path.exists(filename):
                     logger.info( " Climatology: no input file chosen")
                     self.do_progress(text='Waiting for input ...')
                     return
                 if "Files" not in dir(cf): cf["Files"] = {}
                 cf["Files"]["file_path"] = ntpath.split(filename)[0]+"/"
-                cf["Files"]["in_filename"] = ntpath.split(filename)[1]
+                in_filename = ntpath.split(filename)[1]
+                cf["Files"]["in_filename"] = in_filename
+                cf["Files"]["out_filename"] = in_filename.replace(".nc","_Climatology.xls")
             else:
                 self.do_progress(text='Loading control file ...')
                 cf = qcio.load_controlfile(path='controlfiles')
@@ -253,34 +255,52 @@ class qcgui(tk.Tk):
         self.do_progress(text='Finished comparing EddyPro and OzFlux')
         logger.info(' Finished comparing EddyPro and OzFlux')
 
-    def do_cpd(self):
+    def do_cpd(self,mode="standard"):
         """
         Calls qccpd.cpd_main
         Compares the results OzFluxQC (L3) with those from EddyPro (full output).
         """
         logger.info(' Starting estimation u* threshold using CPD')
         self.do_progress(text='Estimating u* threshold using CPD ...')
-        stdname = "controlfiles/standard/cpd.txt"
-        if os.path.exists(stdname):
-            cf = qcio.get_controlfilecontents(stdname)
-            filename = qcio.get_filename_dialog(path='../Sites',title='Choose an input nc file')
-            if len(filename)==0: self.do_progress(text='Waiting for input ...'); return
-            if "Files" not in dir(cf): cf["Files"] = {}
-            cf["Files"]["file_path"] = ntpath.split(filename)[0]+"/"
-            cf["Files"]["in_filename"] = ntpath.split(filename)[1]
+        if mode=="standard":
+            stdname = "controlfiles/standard/cpd.txt"
+            if os.path.exists(stdname):
+                cf = qcio.get_controlfilecontents(stdname)
+                self.do_progress(text='Opening input file ...')
+                filename = qcio.get_filename_dialog(path='../Sites',title='Choose a netCDF file')
+                if not os.path.exists(filename):
+                    logger.info( " CPD: no input file chosen")
+                    self.do_progress(text='Waiting for input ...')
+                    return
+                if "Files" not in dir(cf): cf["Files"] = {}
+                cf["Files"]["file_path"] = ntpath.split(filename)[0]+"/"
+                in_filename = ntpath.split(filename)[1]
+                cf["Files"]["in_filename"] = in_filename
+                cf["Files"]["out_filename"] = in_filename.replace(".nc","_CPD.xls")
+            else:
+                self.do_progress(text='Loading control file ...')
+                cf = qcio.load_controlfile(path='controlfiles')
+                if len(cf)==0:
+                    self.do_progress(text='Waiting for input ...')
+                    return
         else:
+            self.do_progress(text='Loading control file ...')
             cf = qcio.load_controlfile(path='controlfiles')
-        if len(cf)==0: self.do_progress(text='Waiting for input ...'); return
-        if "Options" not in cf: cf["Options"]={}
+            if len(cf)==0:
+                self.do_progress(text='Waiting for input ...')
+                return
+        self.do_progress(text='Doing the u* threshold (CPD)')
+        if "Options" not in cf:
+            cf["Options"]={}
         cf["Options"]["call_mode"] = "interactive"
         qccpd.cpd_main(cf)
         self.do_progress(text='Finished estimating u* threshold')
         logger.info(' Finished estimating u* threshold')
-        logger.info("") 
+        logger.info("")
 
     def do_helpcontents(self):
         tkMessageBox.showinfo("Obi Wan says ...","Read the source, Luke!")
-    
+
     def do_l1qc(self):
         """
         Calls qcls.l1qc
@@ -310,12 +330,12 @@ class qcgui(tk.Tk):
             Call qcls.l2qc function
             Performs L2 QA/QC processing on raw data
             Outputs L2 netCDF file to ncData folder
-            
+
             ControlFiles:
                 L2_year.txt
                 or
                 L2.txt
-            
+
             ControlFile contents (see ControlFile/Templates/L2.txt for example):
                 [General]:
                     Enter list of functions to be performed
@@ -356,7 +376,7 @@ class qcgui(tk.Tk):
         qcio.nc_write_series(ncFile,self.ds2)                                  # save the L2 data
         self.do_progress(text='Finished saving L2 QC data')              # tdo_progressell the user we are done
         logger.info(' Finished saving L2 QC data')
-        logger.info("") 
+        logger.info("")
 
     def do_l3qc(self):
         """
@@ -364,7 +384,7 @@ class qcgui(tk.Tk):
             Performs L3 Corrections and QA/QC processing on L2 data
             Outputs L3 netCDF file to ncData folder
             Outputs L3 netCDF file to OzFlux folder
-            
+
             Available corrections:
             * corrections requiring ancillary measurements or samples
               marked with an asterisk
@@ -380,12 +400,12 @@ class qcgui(tk.Tk):
                 Correction of soil moisture content to empirical calibration
                     curve*
                 Addition of soil heat storage to ground ground heat flux*
-            
+
             ControlFiles:
                 L3_year.txt
                 or
                 L3a.txt
-            
+
             ControlFile contents (see ControlFile/Templates/L3.txt for example):
                 [General]:
                     Python control parameters
@@ -406,7 +426,7 @@ class qcgui(tk.Tk):
                             mid-path, m
                 [Soil]:
                     Constants used in correcting Fg for storage and in empirical
-                    corrections of soil water content 
+                    corrections of soil water content
                         FgDepth: Heat flux plate depth, m
                         BulkDensity: Soil bulk density, kg/m3
                         OrganicContent: Soil organic content, fraction
@@ -431,7 +451,7 @@ class qcgui(tk.Tk):
         logger.info(" Starting L3 processing ...")
         self.cf = qcio.load_controlfile(path='controlfiles')
         if len(self.cf)==0:
-            logger.info( " L3: no control file chosen")            
+            logger.info( " L3: no control file chosen")
             self.do_progress(text='Waiting for input ...')
             return
         infilename = qcio.get_infilenamefromcf(self.cf)
@@ -454,7 +474,7 @@ class qcgui(tk.Tk):
         qcio.nc_write_series(ncFile,self.ds3,outputlist=outputlist)             # save the L3 data
         self.do_progress(text='Finished saving L3 QC & Corrected NetCDF data')  # tell the user we are done
         logger.info(' Finished saving L3 QC & Corrected NetCDF data')
-        logger.info("") 
+        logger.info("")
 
     def do_l4qc(self):
         """
@@ -465,12 +485,12 @@ class qcgui(tk.Tk):
                 omputes daily sums
             Outputs L4 netCDF file to ncData folder
             Outputs L4 netCDF file to OzFlux folder
-            
+
             ControlFiles:
                 L4_year.txt
                 or
                 L4b.txt
-            
+
             ControlFile contents (see ControlFile/Templates/L4.txt and
             ControlFile/Templates/L4b.txt for examples):
                 [General]:
@@ -515,7 +535,7 @@ class qcgui(tk.Tk):
             qcio.nc_write_series(ncFile,ds4,outputlist=outputlist)         # save the L4 data
             self.do_progress(text='Finished saving L4 gap filled data')    # tell the user we are done
             logger.info(' Finished saving L4 gap filled data')
-        logger.info("")        
+        logger.info("")
 
     def do_l5qc(self):
         """
@@ -753,7 +773,7 @@ class qcgui(tk.Tk):
     def do_plotL1L2(self):
         """
             Plot L1 (raw) and L2 (QA/QC) data in blue and red, respectively
-            
+
             Control File for do_l2qc function used.
             If L2 Control File not loaded, requires control file selection.
             """
@@ -794,7 +814,7 @@ class qcgui(tk.Tk):
     def do_plotL3L3(self):
         """
             Plot L3 (QA/QC and Corrected) data
-            
+
             Control File for do_l3qc function used.
             If L3 Control File not loaded, requires control file selection.
             """
@@ -833,7 +853,7 @@ class qcgui(tk.Tk):
         """
             Plot L3 (QA/QC and Corrected) and L4 (Gap Filled) data in blue and
                 red, respectively
-            
+
             Control File for do_l4qc function used.
             If L4 Control File not loaded, requires control file selection.
             """
@@ -886,7 +906,7 @@ class qcgui(tk.Tk):
         self.update_startenddate(str(ds6.series['DateTime']['Data'][0]),
                                  str(ds6.series['DateTime']['Data'][-1]))
         self.do_progress(text='Plotting L6 summary ...')
-        qcgf.ImportSeries(cf,ds6)        
+        qcgf.ImportSeries(cf,ds6)
         qcrp.L6_summary(cf,ds6)
         self.do_progress(text='Finished plotting L6 summary')
         logger.info(' Finished plotting L6 summary, check the GUI')
@@ -915,7 +935,7 @@ class qcgui(tk.Tk):
         """
             Call nc2xl function
             Exports excel data from NetCDF file
-            
+
             Outputs L2 Excel file containing Data and Flag worksheets
             """
         self.do_progress(text='Exporting L2 NetCDF -> Xcel ...')                     # put up the progress message
@@ -931,7 +951,7 @@ class qcgui(tk.Tk):
         """
             Call nc2xl function
             Exports excel data from NetCDF file
-            
+
             Outputs L3 Excel file containing Data and Flag worksheets
             """
         self.do_progress(text='Exporting L3 NetCDF -> Xcel ...')                     # put up the progress message
@@ -970,7 +990,7 @@ class qcgui(tk.Tk):
         self.fileendValue = tk.Label(self.org_frame,text=endstr)
         self.fileendValue.grid(row=3,column=3,columnspan=3)
         self.update()
-    
+
 if __name__ == "__main__":
     qcGUI = qcgui(None)
     main_title = cfg.version_name+' Main GUI '+cfg.version_number
