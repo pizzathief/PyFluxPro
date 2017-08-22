@@ -292,28 +292,29 @@ def rpFFNET_createdict(cf,ds,series):
         if numpy.ma.count_masked(data)!=0:
             logger.error("ERUsingFFNET: driver "+label+" contains missing data, skipping target "+target)
             return
-    # create the ffnet directory in the data structure
-    if "ffnet" not in dir(ds): ds.ffnet = {}
     # create the dictionary keys for this series
-    ds.ffnet[series] = {}
+    ffnet_info = {}
     # site name
-    ds.ffnet[series]["site_name"] = ds.globalattributes["site_name"]
+    ffnet_info["site_name"] = ds.globalattributes["site_name"]
+    # source series for ER
+    opt = qcutils.get_keyvaluefromcf(cf, [section,series,"ERUsingFFNET"], "source", default="Fc")
+    ffnet_info["source"] = opt
     # target series name
-    ds.ffnet[series]["target"] = cf[section][series]["ERUsingFFNET"]["target"]
+    ffnet_info["target"] = cf[section][series]["ERUsingFFNET"]["target"]
     # list of drivers
-    ds.ffnet[series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingFFNET"]["drivers"])
+    ffnet_info["drivers"] = ast.literal_eval(cf[section][series]["ERUsingFFNET"]["drivers"])
     # name of ffnet output series in ds
-    ds.ffnet[series]["output"] = cf[section][series]["ERUsingFFNET"]["output"]
+    ffnet_info["output"] = cf[section][series]["ERUsingFFNET"]["output"]
     # results of best fit for plotting later on
-    ds.ffnet[series]["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
-                                  "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
-                                  "Avg (obs)":[],"Avg (FFNET)":[],
-                                  "Var (obs)":[],"Var (FFNET)":[],"Var ratio":[],
-                                  "m_ols":[],"b_ols":[]}
+    ffnet_info["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
+                             "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
+                             "Avg (obs)":[],"Avg (FFNET)":[],
+                             "Var (obs)":[],"Var (FFNET)":[],"Var ratio":[],
+                             "m_ols":[],"b_ols":[]}
     # create an empty series in ds if the SOLO output series doesn't exist yet
-    if ds.ffnet[series]["output"] not in ds.series.keys():
-        data,flag,attr = qcutils.MakeEmptySeries(ds,ds.ffnet[series]["output"])
-        qcutils.CreateSeries(ds,ds.ffnet[series]["output"],data,flag,attr)
+    if ffnet_info["output"] not in ds.series.keys():
+        data,flag,attr = qcutils.MakeEmptySeries(ds,ffnet_info["output"])
+        qcutils.CreateSeries(ds,ffnet_info["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -327,11 +328,11 @@ def rpFFNET_createdict(cf,ds,series):
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
         qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
+    return ffnet_info
 
 def rpFFNET_done(ds,FFNET_gui,rpFFNET_info):
     # destroy the FFNET GUI
     FFNET_gui.destroy()
-    if "ffnet" in dir(ds): del ds.ffnet
 
 def rpFFNET_initplot(**kwargs):
     # set the margins, heights, widths etc
@@ -346,7 +347,7 @@ def rpFFNET_initplot(**kwargs):
     pd["ts_height"] = (1.0 - pd["margin_top"] - pd["ts_bottom"])/float(pd["nDrivers"]+1)
     return pd
 
-def rpFFNET_main(ds,rpFFNET_info):
+def rpFFNET_main(ds, rpFFNET_info):
     """
     This is the main routine for running FFNET, an artifical neural network for estimating ER.
     """
@@ -357,14 +358,14 @@ def rpFFNET_main(ds,rpFFNET_info):
     # be changed with the FFNET GUI still displayed
     cfname = ds.globalattributes["controlfile_name"]
     cf = qcio.get_controlfilecontents(cfname,mode="quiet")
-    ffnet_series = ds.ffnet.keys()
+    ffnet_series = rpFFNET_info["er"].keys()
     for series in ffnet_series:
         section = qcutils.get_cfsection(cf,series=series,mode="quiet")
         if len(section)==0: continue
         if series not in ds.series.keys(): continue
-        ds.ffnet[series]["target"] = cf[section][series]["ERUsingFFNET"]["target"]
-        ds.ffnet[series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingFFNET"]["drivers"])
-        ds.ffnet[series]["output"] = cf[section][series]["ERUsingFFNET"]["output"]
+        rpFFNET_info["er"][series]["target"] = cf[section][series]["ERUsingFFNET"]["target"]
+        rpFFNET_info["er"][series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingFFNET"]["drivers"])
+        rpFFNET_info["er"][series]["output"] = cf[section][series]["ERUsingFFNET"]["output"]
     # get some useful things
     site_name = ds.globalattributes["site_name"]
     # get the time step and a local pointer to the datetime series
@@ -394,22 +395,22 @@ def rpFFNET_main(ds,rpFFNET_info):
         fig_num = plt.get_fignums()[-1]
     # loop over the series to be gap filled using ffnet
     for series in ffnet_series:
-        ds.ffnet[series]["results"]["startdate"].append(xldt[si])
-        ds.ffnet[series]["results"]["enddate"].append(xldt[ei])
-        target = ds.ffnet[series]["target"]
+        rpFFNET_info["er"][series]["results"]["startdate"].append(xldt[si])
+        rpFFNET_info["er"][series]["results"]["enddate"].append(xldt[ei])
+        target = rpFFNET_info["er"][series]["target"]
         d,f,a = qcutils.GetSeriesasMA(ds,target,si=si,ei=ei)
         if numpy.ma.count(d)<rpFFNET_info["min_points"]:
             logger.error("rpFFNET: Less than "+str(rpFFNET_info["min_points"])+" points available for series "+series+" ...")
-            ds.ffnet[series]["results"]["No. points"].append(float(0))
-            results_list = ds.ffnet[series]["results"].keys()
+            rpFFNET_info["er"][series]["results"]["No. points"].append(float(0))
+            results_list = rpFFNET_info["er"][series]["results"].keys()
             for item in ["startdate","enddate","No. points"]:
                 if item in results_list: results_list.remove(item)
             for item in results_list:
-                ds.ffnet[series]["results"][item].append(float(c.missing_value))
+                rpFFNET_info["er"][series]["results"][item].append(float(c.missing_value))
             continue
-        drivers = ds.ffnet[series]["drivers"]
+        drivers = rpFFNET_info["er"][series]["drivers"]
         ndrivers = len(drivers)
-        output = ds.ffnet[series]["output"]
+        output = rpFFNET_info["er"][series]["output"]
         # prepare the input and target data for training
         ER,f,a = qcutils.GetSeriesasMA(ds,target,si=si,ei=ei)
         mask = numpy.ma.getmask(ER)
@@ -545,11 +546,11 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
     numfilled = numpy.ma.count(mod)-numpy.ma.count(obs)
     diff = mod - obs
     bias = numpy.ma.average(diff)
-    ds.ffnet[series]["results"]["Bias"].append(bias)
+    rpFFNET_info["er"][series]["results"]["Bias"].append(bias)
     rmse = numpy.ma.sqrt(numpy.ma.mean((obs-mod)*(obs-mod)))
     plt.figtext(0.65,0.225,'No. points')
     plt.figtext(0.75,0.225,str(numpoints))
-    ds.ffnet[series]["results"]["No. points"].append(numpoints)
+    rpFFNET_info["er"][series]["results"]["No. points"].append(numpoints)
     plt.figtext(0.65,0.200,'Hidden nodes')
     plt.figtext(0.75,0.200,str(rpFFNET_info["hidden"]))
     plt.figtext(0.65,0.175,'Training')
@@ -564,23 +565,23 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
     plt.figtext(0.915,0.225,str(numfilled))
     plt.figtext(0.815,0.200,'Slope')
     plt.figtext(0.915,0.200,str(qcutils.round2sig(coefs[0],sig=4)))
-    ds.ffnet[series]["results"]["m_ols"].append(coefs[0])
+    rpFFNET_info["er"][series]["results"]["m_ols"].append(coefs[0])
     plt.figtext(0.815,0.175,'Offset')
     plt.figtext(0.915,0.175,str(qcutils.round2sig(coefs[1],sig=4)))
-    ds.ffnet[series]["results"]["b_ols"].append(coefs[1])
+    rpFFNET_info["er"][series]["results"]["b_ols"].append(coefs[1])
     plt.figtext(0.815,0.150,'r')
     plt.figtext(0.915,0.150,str(qcutils.round2sig(r[0][1],sig=4)))
-    ds.ffnet[series]["results"]["r"].append(r[0][1])
+    rpFFNET_info["er"][series]["results"]["r"].append(r[0][1])
     plt.figtext(0.815,0.125,'RMSE')
     plt.figtext(0.915,0.125,str(qcutils.round2sig(rmse,sig=4)))
-    ds.ffnet[series]["results"]["RMSE"].append(rmse)
+    rpFFNET_info["er"][series]["results"]["RMSE"].append(rmse)
     var_obs = numpy.ma.var(obs)
-    ds.ffnet[series]["results"]["Var (obs)"].append(var_obs)
+    rpFFNET_info["er"][series]["results"]["Var (obs)"].append(var_obs)
     var_mod = numpy.ma.var(mod)
-    ds.ffnet[series]["results"]["Var (FFNET)"].append(var_mod)
-    ds.ffnet[series]["results"]["Var ratio"].append(var_obs/var_mod)
-    ds.ffnet[series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    ds.ffnet[series]["results"]["Avg (FFNET)"].append(numpy.ma.average(mod))
+    rpFFNET_info["er"][series]["results"]["Var (FFNET)"].append(var_mod)
+    rpFFNET_info["er"][series]["results"]["Var ratio"].append(var_obs/var_mod)
+    rpFFNET_info["er"][series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
+    rpFFNET_info["er"][series]["results"]["Avg (FFNET)"].append(numpy.ma.average(mod))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]
@@ -847,28 +848,29 @@ def rpSOLO_createdict(cf,ds,series):
         if numpy.ma.count_masked(data)!=0:
             logger.error("ERUsingSOLO: driver "+label+" contains missing data, skipping target "+target)
             return
-    # create the solo directory in the data structure
-    if "solo" not in dir(ds): ds.solo = {}
     # create the dictionary keys for this series
-    ds.solo[series] = {}
+    solo_info = {}
     # site name
-    ds.solo[series]["site_name"] = ds.globalattributes["site_name"]
+    solo_info["site_name"] = ds.globalattributes["site_name"]
+    # source series for ER
+    opt = qcutils.get_keyvaluefromcf(cf, [section,series,"ERUsingSOLO"], "source", default="Fc")
+    solo_info["source"] = opt
     # target series name
-    ds.solo[series]["target"] = cf[section][series]["ERUsingSOLO"]["target"]
+    solo_info["target"] = cf[section][series]["ERUsingSOLO"]["target"]
     # list of drivers
-    ds.solo[series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingSOLO"]["drivers"])
+    solo_info["drivers"] = ast.literal_eval(cf[section][series]["ERUsingSOLO"]["drivers"])
     # name of SOLO output series in ds
-    ds.solo[series]["output"] = cf[section][series]["ERUsingSOLO"]["output"]
+    solo_info["output"] = cf[section][series]["ERUsingSOLO"]["output"]
     # results of best fit for plotting later on
-    ds.solo[series]["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
-                                  "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
-                                  "Avg (obs)":[],"Avg (SOLO)":[],
-                                  "Var (obs)":[],"Var (SOLO)":[],"Var ratio":[],
-                                  "m_ols":[],"b_ols":[]}
+    solo_info["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
+                            "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
+                            "Avg (obs)":[],"Avg (SOLO)":[],
+                            "Var (obs)":[],"Var (SOLO)":[],"Var ratio":[],
+                            "m_ols":[],"b_ols":[]}
     # create an empty series in ds if the SOLO output series doesn't exist yet
-    if ds.solo[series]["output"] not in ds.series.keys():
-        data,flag,attr = qcutils.MakeEmptySeries(ds,ds.solo[series]["output"])
-        qcutils.CreateSeries(ds,ds.solo[series]["output"],data,flag,attr)
+    if solo_info["output"] not in ds.series.keys():
+        data,flag,attr = qcutils.MakeEmptySeries(ds,solo_info["output"])
+        qcutils.CreateSeries(ds,solo_info["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -882,11 +884,11 @@ def rpSOLO_createdict(cf,ds,series):
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
         qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
+    return solo_info
 
 def rpSOLO_done(ds,SOLO_gui,solo_info):
     # destroy the SOLO GUI
     SOLO_gui.destroy()
-    if "solo" in dir(ds): del ds.solo
 
 def rpSOLO_initplot(**kwargs):
     # set the margins, heights, widths etc
@@ -912,14 +914,14 @@ def rpSOLO_main(ds,solo_info,SOLO_gui=None):
     # be changed with the SOLO GUI still displayed
     cfname = ds.globalattributes["controlfile_name"]
     cf = qcio.get_controlfilecontents(cfname,mode="quiet")
-    solo_series = ds.solo.keys()
+    solo_series = solo_info["er"].keys()
     for series in solo_series:
         section = qcutils.get_cfsection(cf,series=series,mode="quiet")
         if len(section)==0: continue
         if series not in ds.series.keys(): continue
-        ds.solo[series]["target"] = cf[section][series]["ERUsingSOLO"]["target"]
-        ds.solo[series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingSOLO"]["drivers"])
-        ds.solo[series]["output"] = cf[section][series]["ERUsingSOLO"]["output"]
+        solo_info["er"][series]["target"] = cf[section][series]["ERUsingSOLO"]["target"]
+        solo_info["er"][series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingSOLO"]["drivers"])
+        solo_info["er"][series]["output"] = cf[section][series]["ERUsingSOLO"]["output"]
     # get some useful things
     site_name = ds.globalattributes["site_name"]
     # get the time step and a local pointer to the datetime series
@@ -949,21 +951,21 @@ def rpSOLO_main(ds,solo_info,SOLO_gui=None):
         fig_num = plt.get_fignums()[-1]
     # loop over the series to be gap filled using solo
     for series in solo_series:
-        ds.solo[series]["results"]["startdate"].append(xldt[si])
-        ds.solo[series]["results"]["enddate"].append(xldt[ei])
-        target = ds.solo[series]["target"]
+        solo_info["er"][series]["results"]["startdate"].append(xldt[si])
+        solo_info["er"][series]["results"]["enddate"].append(xldt[ei])
+        target = solo_info["er"][series]["target"]
         d,f,a = qcutils.GetSeriesasMA(ds,target,si=si,ei=ei)
         if numpy.ma.count(d)<solo_info["min_points"]:
             logger.error("rpSOLO: Less than "+str(solo_info["min_points"])+" points available for series "+target+" ...")
-            ds.solo[series]["results"]["No. points"].append(float(0))
-            results_list = ds.solo[series]["results"].keys()
+            solo_info["er"][series]["results"]["No. points"].append(float(0))
+            results_list = solo_info["er"][series]["results"].keys()
             for item in ["startdate","enddate","No. points"]:
                 if item in results_list: results_list.remove(item)
             for item in results_list:
-                ds.solo[series]["results"][item].append(float(c.missing_value))
+                solo_info["er"][series]["results"][item].append(float(c.missing_value))
             continue
-        drivers = ds.solo[series]["drivers"]
-        output = ds.solo[series]["output"]
+        drivers = solo_info["er"][series]["drivers"]
+        output = solo_info["er"][series]["output"]
         # set the number of nodes for the inf files
         if solo_info["call_mode"].lower()=="interactive":
             nodesAuto = rpSOLO_setnodesEntry(SOLO_gui,drivers,default=10)
@@ -1050,11 +1052,11 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
     numfilled = numpy.ma.count(mod)-numpy.ma.count(obs)
     diff = mod - obs
     bias = numpy.ma.average(diff)
-    ds.solo[series]["results"]["Bias"].append(bias)
+    solo_info["er"][series]["results"]["Bias"].append(bias)
     rmse = numpy.ma.sqrt(numpy.ma.mean((obs-mod)*(obs-mod)))
     plt.figtext(0.65,0.225,'No. points')
     plt.figtext(0.75,0.225,str(numpoints))
-    ds.solo[series]["results"]["No. points"].append(numpoints)
+    solo_info["er"][series]["results"]["No. points"].append(numpoints)
     plt.figtext(0.65,0.200,'Nodes')
     plt.figtext(0.75,0.200,str(solo_info["nodes"]))
     plt.figtext(0.65,0.175,'Training')
@@ -1069,23 +1071,23 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
     plt.figtext(0.915,0.225,str(numfilled))
     plt.figtext(0.815,0.200,'Slope')
     plt.figtext(0.915,0.200,str(qcutils.round2sig(coefs[0],sig=4)))
-    ds.solo[series]["results"]["m_ols"].append(coefs[0])
+    solo_info["er"][series]["results"]["m_ols"].append(coefs[0])
     plt.figtext(0.815,0.175,'Offset')
     plt.figtext(0.915,0.175,str(qcutils.round2sig(coefs[1],sig=4)))
-    ds.solo[series]["results"]["b_ols"].append(coefs[1])
+    solo_info["er"][series]["results"]["b_ols"].append(coefs[1])
     plt.figtext(0.815,0.150,'r')
     plt.figtext(0.915,0.150,str(qcutils.round2sig(r[0][1],sig=4)))
-    ds.solo[series]["results"]["r"].append(r[0][1])
+    solo_info["er"][series]["results"]["r"].append(r[0][1])
     plt.figtext(0.815,0.125,'RMSE')
     plt.figtext(0.915,0.125,str(qcutils.round2sig(rmse,sig=4)))
-    ds.solo[series]["results"]["RMSE"].append(rmse)
+    solo_info["er"][series]["results"]["RMSE"].append(rmse)
     var_obs = numpy.ma.var(obs)
-    ds.solo[series]["results"]["Var (obs)"].append(var_obs)
+    solo_info["er"][series]["results"]["Var (obs)"].append(var_obs)
     var_mod = numpy.ma.var(mod)
-    ds.solo[series]["results"]["Var (SOLO)"].append(var_mod)
-    ds.solo[series]["results"]["Var ratio"].append(var_obs/var_mod)
-    ds.solo[series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    ds.solo[series]["results"]["Avg (SOLO)"].append(numpy.ma.average(mod))
+    solo_info["er"][series]["results"]["Var (SOLO)"].append(var_mod)
+    solo_info["er"][series]["results"]["Var ratio"].append(var_obs/var_mod)
+    solo_info["er"][series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
+    solo_info["er"][series]["results"]["Avg (SOLO)"].append(numpy.ma.average(mod))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]
@@ -1297,11 +1299,7 @@ def rpSOLO_run_nogui(cf,ds,solo_info):
     solo_info["nperhr"] = int(float(60)/solo_info["time_step"]+0.5)
     solo_info["nperday"] = int(float(24)*solo_info["nperhr"]+0.5)
     solo_info["maxlags"] = int(float(12)*solo_info["nperhr"]+0.5)
-    solo_info["series"] = ds.solo.keys()
-    #solo_info["tower"] = {}
-    #solo_info["alternate"] = {}
-    #series_list = [ds.solo[item]["label_tower"] for item in ds.solo.keys()]
-    #log.info(" Gap filling "+str(series_list)+" using SOLO")
+    solo_info["series"] = solo_info["er"].keys()
     if solo_info["peropt"]==1:
         rpSOLO_main(ds,solo_info)
         logger.info(" Finished manual run ...")

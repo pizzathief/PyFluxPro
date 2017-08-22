@@ -369,30 +369,31 @@ def rpLT_createdict(cf,ds,series):
         if numpy.ma.count_masked(data)!=0:
             logger.error("ERUsingLloydTaylor: driver "+label+" contains missing data, skipping target "+target)
             return
-    # create the solo directory in the data structure
-    if "rpLT" not in dir(ds): ds.rpLT = {}
     # create the dictionary keys for this series
-    ds.rpLT[series] = {}
+    rpLT_info = {}
     # site name
-    ds.rpLT[series]["site_name"] = ds.globalattributes["site_name"]
+    rpLT_info["site_name"] = ds.globalattributes["site_name"]
+    # source series for ER
+    opt = qcutils.get_keyvaluefromcf(cf, [section,series,"ERUsingLloydTaylor"], "source", default="Fc")
+    rpLT_info["source"] = opt
     # target series name
-    ds.rpLT[series]["target"] = cf[section][series]["ERUsingLloydTaylor"]["target"]
+    rpLT_info["target"] = cf[section][series]["ERUsingLloydTaylor"]["target"]
     # list of drivers
-    ds.rpLT[series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingLloydTaylor"]["drivers"])
+    rpLT_info["drivers"] = ast.literal_eval(cf[section][series]["ERUsingLloydTaylor"]["drivers"])
     # name of SOLO output series in ds
-    ds.rpLT[series]["output"] = cf[section][series]["ERUsingLloydTaylor"]["output"]
+    rpLT_info["output"] = cf[section][series]["ERUsingLloydTaylor"]["output"]
     # results of best fit for plotting later on
-    ds.rpLT[series]["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
-                                  "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
-                                  "Avg (obs)":[],"Avg (LT)":[],
-                                  "Var (obs)":[],"Var (LT)":[],"Var ratio":[],
-                                  "m_ols":[],"b_ols":[]}
+    rpLT_info["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
+                            "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
+                            "Avg (obs)":[],"Avg (LT)":[],
+                            "Var (obs)":[],"Var (LT)":[],"Var ratio":[],
+                            "m_ols":[],"b_ols":[]}
     # create the configuration dictionary
-    ds.rpLT[series]["configs_dict"] = get_configs_dict(cf,ds)
+    rpLT_info["configs_dict"] = get_configs_dict(cf,ds)
     # create an empty series in ds if the output series doesn't exist yet
-    if ds.rpLT[series]["output"] not in ds.series.keys():
-        data,flag,attr = qcutils.MakeEmptySeries(ds,ds.rpLT[series]["output"])
-        qcutils.CreateSeries(ds,ds.rpLT[series]["output"],data,flag,attr)
+    if rpLT_info["output"] not in ds.series.keys():
+        data,flag,attr = qcutils.MakeEmptySeries(ds,rpLT_info["output"])
+        qcutils.CreateSeries(ds,rpLT_info["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -406,6 +407,7 @@ def rpLT_createdict(cf,ds,series):
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
         qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
+    return rpLT_info
 
 def rpLT_initplot(**kwargs):
     # set the margins, heights, widths etc
@@ -481,32 +483,32 @@ def rpLT_plot(pd,ds,series,driverlist,targetlabel,outputlabel,LT_info,si=0,ei=-1
     numfilled = numpy.ma.count(mod)-numpy.ma.count(obs)
     diff = mod - obs
     bias = numpy.ma.average(diff)
-    ds.rpLT[series]["results"]["Bias"].append(bias)
+    LT_info["er"][series]["results"]["Bias"].append(bias)
     rmse = numpy.ma.sqrt(numpy.ma.mean((obs-mod)*(obs-mod)))
     plt.figtext(0.725,0.225,'No. points')
     plt.figtext(0.825,0.225,str(numpoints))
-    ds.rpLT[series]["results"]["No. points"].append(numpoints)
+    LT_info["er"][series]["results"]["No. points"].append(numpoints)
     plt.figtext(0.725,0.200,'No. filled')
     plt.figtext(0.825,0.200,str(numfilled))
     plt.figtext(0.725,0.175,'Slope')
     plt.figtext(0.825,0.175,str(qcutils.round2sig(coefs[0],sig=4)))
-    ds.rpLT[series]["results"]["m_ols"].append(coefs[0])
+    LT_info["er"][series]["results"]["m_ols"].append(coefs[0])
     plt.figtext(0.725,0.150,'Offset')
     plt.figtext(0.825,0.150,str(qcutils.round2sig(coefs[1],sig=4)))
-    ds.rpLT[series]["results"]["b_ols"].append(coefs[1])
+    LT_info["er"][series]["results"]["b_ols"].append(coefs[1])
     plt.figtext(0.725,0.125,'r')
     plt.figtext(0.825,0.125,str(qcutils.round2sig(r[0][1],sig=4)))
-    ds.rpLT[series]["results"]["r"].append(r[0][1])
+    LT_info["er"][series]["results"]["r"].append(r[0][1])
     plt.figtext(0.725,0.100,'RMSE')
     plt.figtext(0.825,0.100,str(qcutils.round2sig(rmse,sig=4)))
-    ds.rpLT[series]["results"]["RMSE"].append(rmse)
+    LT_info["er"][series]["results"]["RMSE"].append(rmse)
     var_obs = numpy.ma.var(obs)
-    ds.rpLT[series]["results"]["Var (obs)"].append(var_obs)
+    LT_info["er"][series]["results"]["Var (obs)"].append(var_obs)
     var_mod = numpy.ma.var(mod)
-    ds.rpLT[series]["results"]["Var (LT)"].append(var_mod)
-    ds.rpLT[series]["results"]["Var ratio"].append(var_obs/var_mod)
-    ds.rpLT[series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    ds.rpLT[series]["results"]["Avg (LT)"].append(numpy.ma.average(mod))
+    LT_info["er"][series]["results"]["Var (LT)"].append(var_mod)
+    LT_info["er"][series]["results"]["Var ratio"].append(var_obs/var_mod)
+    LT_info["er"][series]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
+    LT_info["er"][series]["results"]["Avg (LT)"].append(numpy.ma.average(mod))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]

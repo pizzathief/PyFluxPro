@@ -356,37 +356,35 @@ def l6qc(cf,ds5):
     # return from this routine if this is the case
     if not ds6: return ds6
     # set some attributes for this level
-    qcutils.UpdateGlobalAttributes(cf,ds6,"L6")
+    qcutils.UpdateGlobalAttributes(cf, ds6, "L6")
     # parse the control file
-    qcrp.ParseL6ControlFile(cf,ds6)
+    l6_info = qcrp.ParseL6ControlFile(cf, ds6)
     # check to see if we have any imports
-    qcgf.ImportSeries(cf,ds6)
+    qcgf.ImportSeries(cf, ds6)
     # check units
-    qcutils.CheckUnits(ds6,"Fc","umol/m2/s",convert_units=True)
-    ## filter Fc for night time and ustar threshold, write to ds as "ER"
-    #result = qcrp.GetERFromFc(cf,ds6)
-    #if result==0: return
-    # apply the turbulence filter (if requested)
-    qcck.ApplyTurbulenceFilter(cf,ds6)
-    qcrp.GetERFromFc2(cf,ds6)
+    qcutils.CheckUnits(ds6, "Fc","umol/m2/s", convert_units=True)
+    ## apply the turbulence filter (if requested)
+    #qcck.ApplyTurbulenceFilter(cf,ds6)
+    # get ER from the observed Fc
+    qcrp.GetERFromFc(cf, ds6, l6_info)
     # estimate ER using SOLO
-    qcrp.ERUsingSOLO(cf,ds6)
+    qcrp.ERUsingSOLO(cf, ds6, l6_info)
     # estimate ER using FFNET
-    qcrp.ERUsingFFNET(cf,ds6)
+    qcrp.ERUsingFFNET(cf, ds6, l6_info)
     # estimate ER using Lloyd-Taylor
-    qcrp.ERUsingLloydTaylor(cf,ds6)
+    qcrp.ERUsingLloydTaylor(cf, ds6, l6_info)
     # estimate ER using Lasslop et al
-    qcrp.ERUsingLasslop(cf,ds6)
+    qcrp.ERUsingLasslop(cf, ds6, l6_info)
     # merge the estimates of ER with the observations
     qcts.MergeSeriesUsingDict(ds6,merge_order="standard")
     # calculate NEE from Fc and ER
-    qcrp.CalculateNEE(cf,ds6)
+    qcrp.CalculateNEE(cf, ds6, l6_info)
     # calculate NEP from NEE
-    qcrp.CalculateNEP(cf,ds6)
+    qcrp.CalculateNEP(cf, ds6)
     # calculate ET from Fe
     qcrp.CalculateET(ds6)
     # partition NEE into GPP and ER
-    qcrp.PartitionNEE(cf,ds6)
+    qcrp.PartitionNEE(cf, ds6, l6_info)
     # write the percentage of good data as a variable attribute
     qcutils.get_coverage_individual(ds6)
     # write the percentage of good data for groups

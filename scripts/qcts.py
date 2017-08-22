@@ -357,10 +357,12 @@ def CalculateFluxes(cf,ds):
             attr["units"] = "kg/m/s2"
             flag = numpy.where(numpy.ma.getmaskarray(Fm)==True,ones,zeros)
             qcutils.CreateSeries(ds,"Fm",Fm,flag,attr)
+            qcutils.CreateSeries(ds,"Fm_PFP",Fm,flag,attr)
             attr["long_name"] = "Friction velocity, rotated to natural wind coordinates"+long_name
             attr["units"] = "m/s"
             flag = numpy.where(numpy.ma.getmaskarray(us)==True,ones,zeros)
             qcutils.CreateSeries(ds,"ustar",us,flag,attr)
+            qcutils.CreateSeries(ds,"ustar_PFP",us,flag,attr)
         else:
             logger.error("  CalculateFluxes: vw not found, Fm and ustar not calculated")
     else:
@@ -1847,6 +1849,7 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='w
     if "height" in wT_a: attr["height"] = wT_a["height"]
     flag = numpy.where(numpy.ma.getmaskarray(Fh)==True,ones,zeros)
     qcutils.CreateSeries(ds,Fh_out,Fh,flag,attr)
+    qcutils.CreateSeries(ds,"Fh_PFP",Fh,flag,attr)
     if 'FhvtoFh' not in ds.globalattributes['Functions']:
         ds.globalattributes['Functions'] = ds.globalattributes['Functions']+', FhvtoFh'
     if qcutils.cfoptionskeylogical(cf,Key='RelaxFhvtoFh'):

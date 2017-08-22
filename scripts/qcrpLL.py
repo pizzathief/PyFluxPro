@@ -332,32 +332,33 @@ def rpLL_createdict(cf,ds,series):
         if numpy.ma.count_masked(data)!=0:
             logger.error("ERUsingLasslop: driver "+label+" contains missing data, skipping target "+target)
             return
-    # create the solo directory in the data structure
-    if "rpLL" not in dir(ds): ds.rpLL = {}
     # create the dictionary keys for this series
-    ds.rpLL[series] = {}
+    rpLL_info = {}
     # site name
-    ds.rpLL[series]["site_name"] = ds.globalattributes["site_name"]
+    rpLL_info["site_name"] = ds.globalattributes["site_name"]
+    # source series for ER
+    opt = qcutils.get_keyvaluefromcf(cf, [section,series,"ERUsingLasslop"], "source", default="Fc")
+    rpLL_info["source"] = opt
     # target series name
-    ds.rpLL[series]["target"] = cf[section][series]["ERUsingLasslop"]["target"]
+    rpLL_info["target"] = cf[section][series]["ERUsingLasslop"]["target"]
     # list of drivers
-    ds.rpLL[series]["drivers"] = ast.literal_eval(cf[section][series]["ERUsingLasslop"]["drivers"])
+    rpLL_info["drivers"] = ast.literal_eval(cf[section][series]["ERUsingLasslop"]["drivers"])
     # name of output series in ds
-    ds.rpLL[series]["output"] = cf[section][series]["ERUsingLasslop"]["output"]
+    rpLL_info["output"] = cf[section][series]["ERUsingLasslop"]["output"]
     # results of best fit for plotting later on
-    ds.rpLL[series]["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
-                                  "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
-                                  "Avg (obs)":[],"Avg (LT)":[],
-                                  "Var (obs)":[],"Var (LT)":[],"Var ratio":[],
-                                  "m_ols":[],"b_ols":[]}
+    rpLL_info["results"] = {"startdate":[],"enddate":[],"No. points":[],"r":[],
+                            "Bias":[],"RMSE":[],"Frac Bias":[],"NMSE":[],
+                            "Avg (obs)":[],"Avg (LT)":[],
+                            "Var (obs)":[],"Var (LT)":[],"Var ratio":[],
+                            "m_ols":[],"b_ols":[]}
     # step size
-    ds.rpLL[series]["step_size_days"] = int(cf[section][series]["ERUsingLasslop"]["step_size_days"])
+    rpLL_info["step_size_days"] = int(cf[section][series]["ERUsingLasslop"]["step_size_days"])
     # window size
-    ds.rpLL[series]["window_size_days"] = int(cf[section][series]["ERUsingLasslop"]["window_size_days"])
+    rpLL_info["window_size_days"] = int(cf[section][series]["ERUsingLasslop"]["window_size_days"])
     # create an empty series in ds if the output series doesn't exist yet
-    if ds.rpLL[series]["output"] not in ds.series.keys():
-        data,flag,attr = qcutils.MakeEmptySeries(ds,ds.rpLL[series]["output"])
-        qcutils.CreateSeries(ds,ds.rpLL[series]["output"],data,flag,attr)
+    if rpLL_info["output"] not in ds.series.keys():
+        data,flag,attr = qcutils.MakeEmptySeries(ds,rpLL_info["output"])
+        qcutils.CreateSeries(ds,rpLL_info["output"],data,flag,attr)
     # create the merge directory in the data structure
     if "merge" not in dir(ds): ds.merge = {}
     if "standard" not in ds.merge.keys(): ds.merge["standard"] = {}
@@ -371,3 +372,4 @@ def rpLL_createdict(cf,ds,series):
     if ds.merge["standard"][series]["output"] not in ds.series.keys():
         data,flag,attr = qcutils.MakeEmptySeries(ds,ds.merge["standard"][series]["output"])
         qcutils.CreateSeries(ds,ds.merge["standard"][series]["output"],data,flag,attr)
+    return rpLL_info

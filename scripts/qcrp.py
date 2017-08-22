@@ -43,11 +43,11 @@ def CalculateET(ds):
     attr["units"] = "mm"
     qcutils.CreateSeries(ds,"ET",ET,flag,attr)
 
-def CalculateNEE(cf,ds):
+def CalculateNEE(cf, ds, info):
     """
     Purpose:
      Calculate NEE from observed Fc and observed/modeled ER.
-     Input and output names are held in ds.nee.
+     Input and output names are held in info["nee"].
     Usage:
      qcrp.CalculateNEE(cf,ds)
       where cf is a conbtrol file object
@@ -57,7 +57,7 @@ def CalculateNEE(cf,ds):
     Author: PRI
     Date: August 2014
     """
-    if "nee" not in dir(ds): return
+    if "nee" not in info: return
     # get the Fsd and ustar thresholds
     Fsd_threshold = float(qcutils.get_keyvaluefromcf(cf,["Params"],"Fsd_threshold",default=10))
     # get the incoming shortwave radiation and friction velocity
@@ -68,11 +68,11 @@ def CalculateNEE(cf,ds):
         #index = numpy.ma.where(numpy.ma.getmaskarray(Fsd)==True)[0]
         Fsd[index] = Fsd_syn[index]
     ustar,ustar_flag,ustar_attr = qcutils.GetSeriesasMA(ds,"ustar")
-    for label in ds.nee.keys():
-        if "Fc" not in ds.nee[label] and "ER" not in ds.nee[label]: continue
-        Fc_label = ds.nee[label]["Fc"]
-        ER_label = ds.nee[label]["ER"]
-        output_label = ds.nee[label]["output"]
+    for label in info["nee"].keys():
+        if "Fc" not in info["nee"][label] and "ER" not in info["nee"][label]: continue
+        Fc_label = info["nee"][label]["Fc"]
+        ER_label = info["nee"][label]["ER"]
+        output_label = info["nee"][label]["output"]
         Fc,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,Fc_label)
         ER,ER_flag,ER_attr = qcutils.GetSeriesasMA(ds,ER_label)
         # put the day time Fc into the NEE series
@@ -89,9 +89,9 @@ def CalculateNEE(cf,ds):
         attr["long_name"] = "Net Ecosystem Exchange calculated from "+Fc_label+" (Fc)"
         attr["long_name"] = attr["long_name"]+" and "+ER_label+" (ER)"
         attr["comment1"] = "Fsd threshold used was "+str(Fsd_threshold)
-    del ds.nee
+    return
 
-def CalculateNEP(cf,ds):
+def CalculateNEP(cf, ds):
     """
     Purpose:
      Calculate NEP from NEE
@@ -146,7 +146,7 @@ def cleanup_ustar_dict(ldt,ustar_dict):
         if ustar_dict[year]["ustar_mean"]==float(c.missing_value):
             ustar_dict[year]["ustar_mean"] = ustar_threshold_mean
 
-def ERUsingFFNET(cf,ds):
+def ERUsingFFNET(cf, ds, info):
     """
     Purpose:
      Estimate ecosystem respiration using the ffnet neural network.
@@ -157,7 +157,7 @@ def ERUsingFFNET(cf,ds):
     Author: PRI
     Date: August 2014
     """
-    if "ffnet" not in dir(ds): return
+    if "ffnet" not in info["er"]: return
     if "ffnet" not in sys.modules.keys():
         logger.error("ERUsingFFNET: I don't think ffnet is installed ...")
         return
@@ -166,8 +166,9 @@ def ERUsingFFNET(cf,ds):
     startdate = ldt[0]
     enddate = ldt[-1]
     FFNET_info = {"file_startdate":startdate.strftime("%Y-%m-%d %H:%M"),
-                    "file_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
-                    "plot_path":cf["Files"]["plot_path"]}
+                  "file_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
+                  "plot_path":cf["Files"]["plot_path"],
+                  "er":info["er"]["ffnet"]}
     # check to see if this is a batch or an interactive run
     call_mode = qcutils.get_keyvaluefromcf(cf,["Options"],"call_mode",default="interactive")
     FFNET_info["call_mode"]= call_mode
@@ -180,13 +181,20 @@ def ERUsingFFNET(cf,ds):
             if "FFNET" in cf["GUI"]:
                 qcrpNN.rpFFNET_run_nogui(cf,ds,FFNET_info)
 
-def ERUsingLasslop(cf,ds):
-    if "rpLL" not in dir(ds): return
+def ERUsingLasslop(cf, ds, info):
+    """
+    Purpose:
+    Usage:
+    Side effects:
+    Author: IMcH, PRI
+    Date: Back in the day
+    """
+    if "rpLL" not in info["er"]: return
     logger.info("Estimating ER using Lasslop")
     # these should be read from the control file
-    series = ds.rpLL.keys()
-    info = {"window_length":int(ds.rpLL[series[0]]["window_size_days"]),
-            "window_offset":int(ds.rpLL[series[0]]["step_size_days"]),
+    series = info["er"]["rpLL"].keys()
+    info = {"window_length":int(info["er"]["rpLL"][series[0]]["window_size_days"]),
+            "window_offset":int(info["er"]["rpLL"][series[0]]["step_size_days"]),
             "fsd_threshold":10}
     ldt = ds.series["DateTime"]["Data"]
     ts = int(ds.globalattributes["time_step"])
@@ -334,7 +342,7 @@ def ERUsingLasslop(cf,ds):
     attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
     qcutils.CreateSeries(ds,"NEE_LL_all",NEE_LL,flag,attr)
 
-def ERUsingLloydTaylor(cf,ds):
+def ERUsingLloydTaylor(cf, ds, info):
     """
     Purpose:
      Estimate ecosystem respiration using Lloyd-Taylor.
@@ -344,7 +352,7 @@ def ERUsingLloydTaylor(cf,ds):
     Author: IMcH, PRI
     Date: October 2015
     """
-    if "rpLT" not in dir(ds): return
+    if "rpLT" not in info["er"]: return
     logger.info("Estimating ER using Lloyd-Taylor")
     long_name = "Ecosystem respiration modelled by Lloyd-Taylor"
     ER_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units="umol/m2/s")
@@ -358,7 +366,8 @@ def ERUsingLloydTaylor(cf,ds):
     LT_info = {"file_startdate":startdate.strftime("%Y-%m-%d %H:%M"),
                "file_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
                "plot_path":cf["Files"]["plot_path"],
-               "show_plots":False,"time_step":ts,"nperday":nperday}
+               "show_plots":False,"time_step":ts,"nperday":nperday,
+               "er":info["er"]["rpLT"]}
     call_mode = qcutils.get_keyvaluefromcf(cf,["Options"],"call_mode",default="interactive")
     LT_info["call_mode"]= call_mode
     if call_mode.lower()=="interactive": LT_info["show_plots"] = True
@@ -375,7 +384,8 @@ def ERUsingLloydTaylor(cf,ds):
         logger.error("ERUsingLloydTaylor: error opening Excel file "+xl_name)
         return
     # loop over the series
-    for series in ds.rpLT.keys():
+    series_list = LT_info["er"].keys()
+    for series in series_list:
         # create dictionaries for the results
         E0_results = {}
         E0_raw_results = {}
@@ -383,7 +393,7 @@ def ERUsingLloydTaylor(cf,ds):
         # add a sheet for this series
         xl_sheet = xl_file.add_sheet(series)
         # get a local copy of the config dictionary
-        configs_dict = ds.rpLT[series]["configs_dict"]
+        configs_dict = LT_info["er"][series]["configs_dict"]
         configs_dict["measurement_interval"] = float(ts)/60.0
         data_dict = qcrpLT.get_data_dict(ds,configs_dict)
         # *** start of code taken from Ian McHugh's Partition_NEE.main ***
@@ -526,9 +536,9 @@ def ERUsingLloydTaylor(cf,ds):
         ER_LT_flag = numpy.empty(len(ER_LT),dtype=numpy.int32)
         ER_LT_flag.fill(30)
         #ER_LT = qcrpLT.ER_LloydTaylor(T,E0,rb)
-        target = str(ds.rpLT[series]["target"])
+        target = str(LT_info["er"][series]["target"])
         #drivers = str(configs_dict["drivers"])
-        drivers = ds.rpLT[series]["drivers"]
+        drivers = LT_info["er"][series]["drivers"]
         output = str(configs_dict["output_label"])
         ER_attr["comment1"] = "Drivers were "+str(drivers)
         qcutils.CreateSeries(ds,output,ER_LT,ER_LT_flag,ER_attr)
@@ -537,20 +547,32 @@ def ERUsingLloydTaylor(cf,ds):
         title = site_name+" : "+series+" estimated using Lloyd-Taylor"
         pd = qcrpLT.rpLT_initplot(site_name=site_name,label=target,fig_num=fig_num,title=title,
                              nDrivers=len(drivers),startdate=str(startdate),enddate=str(enddate))
-        qcrpLT.rpLT_plot(pd,ds,series,drivers,target,output,LT_info)
+        qcrpLT.rpLT_plot(pd, ds, series, drivers, target, output, LT_info)
     # close the Excel workbook
     xl_file.save(xl_name)
 
-def ERUsingSOLO(cf,ds):
-    """ Estimate ER using SOLO. """
-    if "solo" not in dir(ds): return
+def ERUsingSOLO(cf, ds, info):
+    """
+    Purpose:
+     Estimate ER using SOLO.
+    Usage:
+    Side effects:
+    Author: PRI
+    Date: Back in the day
+    Mods:
+     21/8/2017 - moved GetERFromFc from qcls.l6qc() to individual
+                 ER estimation routines to allow for multiple sources
+                 of ER.
+    """
+    if "solo" not in info["er"]: return
     # local pointer to the datetime series
     ldt = ds.series["DateTime"]["Data"]
     startdate = ldt[0]
     enddate = ldt[-1]
     solo_info = {"file_startdate":startdate.strftime("%Y-%m-%d %H:%M"),
-                   "file_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
-                   "plot_path":cf["Files"]["plot_path"]}
+                 "file_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
+                 "plot_path":cf["Files"]["plot_path"],
+                 "er":info["er"]["solo"]}
     # check to see if this is a batch or an interactive run
     call_mode = qcutils.get_keyvaluefromcf(cf,["Options"],"call_mode",default="interactive")
     solo_info["call_mode"]= call_mode
@@ -563,215 +585,7 @@ def ERUsingSOLO(cf,ds):
             if "SOLO" in cf["GUI"]:
                 qcrpNN.rpSOLO_run_nogui(cf,ds,solo_info)
 
-#def GetERFromFc(cf,ds):
-    #"""
-    #Purpose:
-     #Get the observed ecosystem respiration from measurements of Fc by
-     #filtering out daytime periods and periods when ustar is less than
-     #a threshold value.
-     #The Fsd threshold for determining day time and night time and the
-     #ustar threshold are set in the [Params] section of the L5 control
-     #file.
-    #Usage:
-     #qcrp.GetERFromFc(cf,ds)
-     #where cf is a control file object
-           #ds is a data structure
-    #Side effects:
-     #A new series called "ER" is created in the data structure.
-    #Author: PRI
-    #Date: August 2014
-    #"""
-    ## needs a fecking good refactor
-    #ts = int(ds.globalattributes["time_step"])
-    #ldt = ds.series['DateTime']['Data']
-    ## get the Fsd threshold
-    #if "Options" in cf.keys():
-        #if "Fsd_threshold" in cf["Options"].keys():
-            #Fsd_threshold = float(cf["Options"]["Fsd_threshold"])
-        #else:
-            #log.warning(" No Fsd threshold in [Options] section of control file")
-            #log.warning(" ... using default value of 10 W/m2")
-            #Fsd_threshold = float(10)
-    #else:
-        #log.warning(" No [Options] section of control file for Fsd threshold")
-        #log.warning(" ... using default value of 10 W/m2")
-        #Fsd_threshold = float(10)
-    ## get the ustar thresholds
-    #if "cpd_filename" in cf["Files"]:
-        #ustar_dict = get_ustarthreshold_from_cpdresults(cf)
-    #else:
-        #msg = " CPD results filename not in control file"
-        #log.warning(msg)
-        #ustar_dict = get_ustarthreshold_from_cf(cf,ldt)
-    ## make sure we have an entry in ustar_dict for all years
-    #start_year = ldt[0].year
-    #end_year = ldt[-1].year
-    #data_years = range(start_year,end_year+1)
-    #ustar_years = ustar_dict.keys()
-    #ustar_list = ustar_dict[ustar_years[0]]
-    #for year in data_years:
-        #if str(year) not in ustar_years:
-            #ustar_dict[str(year)] = {}
-            #for item in ustar_list:
-                #ustar_dict[str(year)][item] = float(c.missing_value)
-
-    ## get the data
-    #Fsd,Fsd_flag,Fsd_attr = qcutils.GetSeriesasMA(ds,"Fsd")
-    #if "solar_altitude" not in ds.series.keys(): qcts.get_synthetic_fsd(ds)
-    #sa,flag,attr = qcutils.GetSeriesasMA(ds,"solar_altitude")
-    #ustar,ustar_flag,attr = qcutils.GetSeriesasMA(ds,"ustar")
-    #Fc,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,"Fc")
-    ## get a copy of the Fc flag
-    #ER_flag = numpy.array(Fc_flag)
-
-    ## only accept Fc and ustar data when both have a QC flag value of 0
-    #ustar = numpy.ma.masked_where((ustar_flag!=0)|(Fc_flag!=0),ustar)
-    #Fc = numpy.ma.masked_where((ustar_flag!=0)|(Fc_flag!=0),Fc)
-    #index_notok = numpy.where((ustar_flag!=0)|(Fc_flag!=0))[0]
-    ##ustar_flag[index_notok] = numpy.int32(61)
-    #ER_flag[index_notok] = numpy.int32(61)
-    ## check for any missing data
-    #for item,label in zip([Fsd],["Fsd"]):
-        #index = numpy.where(numpy.ma.getmaskarray(item)==True)[0]
-        #if len(index)!=0:
-            #log.error(" GetERFromFc: missing data in series "+label)
-            #raise Exception("GetERFromFc: missing data in series "+label)
-
-    ## apply the day/night filter
-    ## get the day/night filter type from the control file
-    #daynightfilter_type = qcutils.get_keyvaluefromcf(cf,["Options"],"DayNightFilter",default="Fsd")
-    ## trap any types not implemented and set to Fsd
-    #if daynightfilter_type not in ["Fsd","sa"]: daynightfilter_type = "Fsd"
-    ## make the attribute dictionary first so we can add the ustar thresholds to it
-    #ER_attr = qcutils.MakeAttributeDictionary(long_name='Ecosystem respiration (observed)',units=Fc_attr["units"])
-
-    ## apply the day/night filter
-    #if daynightfilter_type=="Fsd":
-        ## we are using Fsd and possibly Fsd_syn to define day/night
-        #ER_attr["Fsd_threshold"] = str(Fsd_threshold)
-        ## we are only using Fsd
-        #ER1 = numpy.ma.masked_where(Fsd>Fsd_threshold,Fc,copy=True)
-        #index_daynight = numpy.ma.where(Fsd>Fsd_threshold)[0]
-        #ER_flag[index_daynight] = numpy.int32(62)
-    #else:
-        #sa_threshold = int(qcutils.get_keyvaluefromcf(cf,["Options"],"sa_threshold",default="-5"))
-        #ER_attr["sa_threshold"] = str(sa_threshold)
-        #ER1 = numpy.ma.masked_where(sa>sa_threshold,Fc,copy=True)
-        #index_daynight = numpy.ma.where(sa>sa_threshold)[0]
-        #ER_flag[index_daynight] = numpy.int32(63)
-    ## get a copy of the day/night filtered data
-    #ER2 = numpy.ma.array(ER1)
-
-    ## loop over the list of ustar thresholds
-    #year_list = ustar_dict.keys()
-    #year_list.sort()
-    ## get the average of good ustar threshold values
-    #good_values = []
-    #for year in year_list:
-        #ustar_threshold = float(ustar_dict[year]["ustar_mean"])
-        #if ustar_threshold!=float(c.missing_value):
-            #good_values.append(ustar_threshold)
-    #ustar_threshold_mean = numpy.sum(numpy.array(good_values))/len(good_values)
-    ## now loop over the years in the data to apply the ustar threshold
-    #for year in year_list:
-        #start_date = str(year)+"-01-01 00:30"
-        #if ts==60: start_date = str(year)+"-01-01 01:00"
-        #end_date = str(int(year)+1)+"-01-01 00:00"
-        ## get the ustar threshold
-        #ustar_threshold = float(ustar_dict[year]["ustar_mean"])
-        #if ustar_threshold==float(c.missing_value): ustar_threshold = ustar_threshold_mean
-        #ER_attr["ustar_threshold_"+str(year)] = str(ustar_threshold)
-        ## get the start and end datetime indices
-        #si = qcutils.GetDateIndex(ldt,start_date,ts=ts,default=0,match='exact')
-        #ei = qcutils.GetDateIndex(ldt,end_date,ts=ts,default=len(ldt),match='exact')
-        ## filter out the low ustar conditions
-        #ER2[si:ei] = numpy.ma.masked_where(ustar[si:ei]<ustar_threshold,ER1[si:ei])
-        ## set the QC flag
-        #index_lowustar = numpy.ma.where(ustar[si:ei]<ustar_threshold)[0]
-        #ER_flag[si:ei][index_lowustar] = numpy.int32(64)
-
-    ## apply quantile filter
-    #if qcutils.cfoptionskeylogical(cf,Key='UseQuantileFilter',default=False):
-        #ER_attr["long_name"] = ER_attr["long_name"]+", quantile filter not used"
-        #qcutils.CreateSeries(ds,"ER_nqf",ER2,ER_flag,ER_attr)
-        #quantile_lower = float(qcutils.get_keyvaluefromcf(cf,["Options"],"QuantileValue",default="2.5"))
-        #quantile_upper = float(100) - quantile_lower
-        #q = numpy.percentile(numpy.ma.compressed(ER2),[quantile_lower,quantile_upper])
-        #ER2 = numpy.ma.masked_where((ER2<q[0])|(ER2>q[1]),ER2)
-        #index_qf = numpy.ma.where((ER2<q[0])|(ER2>q[1]))[0]
-        #ER_flag[index_qf] = numpy.int32(65)
-        #ER_attr["long_name"].replace(", quantile filter not used",", quantile filter used")
-        #ER_attr["ER_quantile"] = str(quantile_lower)+","+str(quantile_upper)
-
-    ## put the nocturnal, filtered Fc data into the data structure
-    #qcutils.CreateSeries(ds,"ER",ER2,ER_flag,ER_attr)
-    #return
-
-#def GetERFromFc(cf,ds):
-    #"""
-    #Purpose:
-     #Get the observed ecosystem respiration from measurements of Fc by
-     #filtering out daytime periods and periods when ustar is less than
-     #a threshold value.
-     #The Fsd threshold for determining day time and night time and the
-     #ustar threshold are set in the [Params] section of the L5 control
-     #file.
-     #Re-write of the original penned in August 2014
-    #Usage:
-     #qcrp.GetERFromFc(cf,ds)
-     #where cf is a control file object
-           #ds is a data structure
-    #Side effects:
-     #A new series called "ER" is created in the data structure.
-    #Author: PRI
-    #Date: October 2015
-    #"""
-    #ldt = ds.series["DateTime"]["Data"]
-    #ts = int(ds.globalattributes["time_step"])
-    ## get the ustar thresholds
-    #ustar_dict = get_ustar_thresholds(cf,ldt)
-    ## get the data
-    #Fsd,Fsd_flag,Fsd_attr = qcutils.GetSeriesasMA(ds,"Fsd")
-    #if "solar_altitude" not in ds.series.keys(): qcts.get_synthetic_fsd(ds)
-    #Fsd_syn,flag,attr = qcutils.GetSeriesasMA(ds,"Fsd_syn")
-    #sa,flag,attr = qcutils.GetSeriesasMA(ds,"solar_altitude")
-    #ustar,ustar_flag,ustar_attr = qcutils.GetSeriesasMA(ds,"ustar")
-    #Fc,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,"Fc")
-    ## get the Monin-Obukhov length
-    #Ta,flag,attr = qcutils.GetSeriesasMA(ds,"Ta")
-    #Ah,flag,attr = qcutils.GetSeriesasMA(ds,"Ah")
-    #ps,flag,attr = qcutils.GetSeriesasMA(ds,"ps")
-    #Fh,flag,Fh_attr = qcutils.GetSeriesasMA(ds,"Fh")
-    #L = mf.molen(Ta,Ah,ps,ustar,Fh,fluxtype="sensible")
-    ## get a copy of the Fc flag and make the attribute dictionary
-    #ER_flag = numpy.array(Fc_flag)
-    #long_name = "Ecosystem respiration (observed)"
-    #units = Fc_attr["units"]
-    #ER_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    ## check for any missing data
-    #series_list = [Fsd,sa,ustar,Fc]
-    #label_list = ["Fsd","sa","ustar","Fc"]
-    #result = check_for_missing_data(series_list,label_list)
-    #if result!=1: return 0
-    ## only accept Fc and ustar data when both have a QC flag value of 0
-    #ustar = numpy.ma.masked_where((ustar_flag!=0)|(Fc_flag!=0),ustar)
-    #Fc = numpy.ma.masked_where((ustar_flag!=0)|(Fc_flag!=0),Fc)
-    #index_notok = numpy.where((ustar_flag!=0)|(Fc_flag!=0))[0]
-    #ER_flag[index_notok] = numpy.int32(61)
-    ## get the indicator series
-    #turbulence_indicator = get_turbulence_indicator(cf,ldt,ustar,L,ustar_dict,ts,ER_attr)
-    #idx = numpy.where(turbulence_indicator==0)[0]
-    #ER_flag[idx] = numpy.int32(64)
-    #daynight_indicator = get_daynight_indicator(cf,Fsd,Fsd_syn,sa,ER_attr)
-    #idx = numpy.where(daynight_indicator==0)[0]
-    #ER_flag[idx] = numpy.int32(63)
-    #er_indicator = turbulence_indicator*daynight_indicator
-    ## apply the filter to get ER from Fc
-    #ER = numpy.ma.masked_where(er_indicator==0,Fc,copy=True)
-    #qcutils.CreateSeries(ds,"ER",ER,ER_flag,ER_attr)
-    #return 1
-
-def GetERFromFc2(cf,ds):
+def GetERFromFc(cf, ds, info):
     """
     Purpose:
      Get the observed ecosystem respiration from measurements of Fc by
@@ -798,31 +612,35 @@ def GetERFromFc2(cf,ds):
     if "solar_altitude" not in ds.series.keys(): qcts.get_synthetic_fsd(ds)
     Fsd_syn,flag,attr = qcutils.GetSeriesasMA(ds,"Fsd_syn")
     sa,flag,attr = qcutils.GetSeriesasMA(ds,"solar_altitude")
-    Fc,Fc_flag,Fc_attr = qcutils.GetSeriesasMA(ds,"Fc")
-    # get a copy of the Fc flag and make the attribute dictionary
-    ER_flag = numpy.array(Fc_flag)
-    long_name = "Ecosystem respiration (observed)"
-    units = Fc_attr["units"]
-    ER_attr = qcutils.MakeAttributeDictionary(long_name=long_name,units=units)
-    ## check for any missing data
-    #series_list = [Fsd,sa,Fc]
-    #label_list = ["Fsd","sa","Fc"]
-    #result = check_for_missing_data(series_list,label_list)
-    #if result!=1: return 0
-    # only accept Fc with QC flag value of 0
-    Fc = numpy.ma.masked_where((Fc_flag!=0),Fc)
-    index_notok = numpy.where((Fc_flag!=0))[0]
-    ER_flag[index_notok] = numpy.int32(61)
-    # get the indicator series
-    daynight_indicator = get_daynight_indicator(cf,Fsd,Fsd_syn,sa)
-    idx = numpy.where(daynight_indicator["values"]==0)[0]
-    ER_flag[idx] = numpy.int32(63)
-    # apply the filter to get ER from Fc
-    ER = numpy.ma.masked_where(daynight_indicator["values"]==0,Fc,copy=True)
-    for item in daynight_indicator["attr"]:
-        ER_attr[item] = daynight_indicator["attr"][item]
-    qcutils.CreateSeries(ds,"ER",ER,ER_flag,ER_attr)
-    return 1
+
+    er_type_list = info["er"].keys()
+    for er_type in er_type_list:
+        label_list = info["er"][er_type].keys()
+        for label in label_list:
+            source = info["er"][er_type][label]["source"]
+            target = info["er"][er_type][label]["target"]
+            ER = {"Label":target}
+            Fc = qcutils.GetVariable(ds, source)
+            # get a copy of the Fc flag and make the attribute dictionary
+            ER["Flag"] = numpy.array(Fc["Flag"])
+            long_name = "Ecosystem respiration (observed) derived from "+source
+            units = Fc["Attr"]["units"]
+            ER["Attr"] = qcutils.MakeAttributeDictionary(long_name=long_name, units=units)
+            # only accept Fc with QC flag value of 0
+            Fc["Data"] = numpy.ma.masked_where((Fc["Flag"] != 0), Fc["Data"])
+            idx_notok = numpy.where((Fc["Flag"] != 0))[0]
+            ER["Flag"][idx_notok] = numpy.int32(61)
+            # get the indicator series
+            daynight_indicator = get_daynight_indicator(cf, Fsd, Fsd_syn, sa)
+            idx = numpy.where(daynight_indicator["values"] == 0)[0]
+            ER["Flag"][idx] = numpy.int32(63)
+            # apply the filter to get ER from Fc
+            ER["Data"] = numpy.ma.masked_where(daynight_indicator["values"] == 0, Fc["Data"], copy=True)
+            for item in daynight_indicator["attr"]:
+                ER["Attr"][item] = daynight_indicator["attr"][item]
+            qcutils.CreateVariable(ds, ER)
+
+    return
 
 def check_for_missing_data(series_list,label_list):
     for item,label in zip(series_list,label_list):
@@ -1768,33 +1586,56 @@ def L6_summary_cumulative(ds,series_dict):
     return cumulative_dict
 
 def ParseL6ControlFile(cf,ds):
-    """ Parse the L6 control file. """
+    """
+    Purpose:
+     Parse the L6 control file.
+    Usage:
+    Side effects:
+    Author: PRI
+    Date: Back in the day
+    """
     # start with the repiration section
     if "Respiration" in cf.keys() and "ER" not in cf.keys(): cf["ER"] = cf["Respiration"]
+    l6_info = {"er":{}}
     if "ER" in cf.keys():
         for ThisOne in cf["ER"].keys():
             if "ERUsingSOLO" in cf["ER"][ThisOne].keys():
-                qcrpNN.rpSOLO_createdict(cf,ds,ThisOne)      # create the SOLO dictionary in ds
+                # create the SOLO dictionary in ds
+                if "solo" not in l6_info["er"]:
+                    l6_info["er"]["solo"] = {}
+                l6_info["er"]["solo"][ThisOne] = qcrpNN.rpSOLO_createdict(cf,ds,ThisOne)
             if "ERUsingFFNET" in cf["ER"][ThisOne].keys():
-                qcrpNN.rpFFNET_createdict(cf,ds,ThisOne)     # create the FFNET dictionary in ds
+                # create the FFNET dictionary in ds
+                if "ffnet" not in l6_info["er"]:
+                    l6_info["er"]["ffnet"] = {}
+                l6_info["er"]["ffnet"][ThisOne] = qcrpNN.rpFFNET_createdict(cf,ds,ThisOne)
             if "ERUsingLloydTaylor" in cf["ER"][ThisOne].keys():
-                qcrpLT.rpLT_createdict(cf,ds,ThisOne)        # create the Lloyd-Taylor dictionary in ds
+                # create the Lloyd-Taylor dictionary in ds
+                if "rpLT" not in l6_info["er"]:
+                    l6_info["er"]["rpLT"] = {}
+                l6_info["er"]["rpLT"][ThisOne] = qcrpLT.rpLT_createdict(cf,ds,ThisOne)
             if "ERUsingLasslop" in cf["ER"][ThisOne].keys():
-                qcrpLL.rpLL_createdict(cf,ds,ThisOne)        # create the Lasslop dictionary in ds
+                # create the Lasslop dictionary in ds
+                if "rpLL" not in l6_info["er"]:
+                    l6_info["er"]["rpLL"] = {}
+                l6_info["er"]["rpLL"][ThisOne] = qcrpLL.rpLL_createdict(cf,ds,ThisOne)
     if "NEE" in cf.keys():
         for ThisOne in cf["NEE"].keys():
-            rpNEE_createdict(cf,ds,ThisOne)
+            if "nee" not in l6_info: l6_info["nee"] = {}
+            l6_info["nee"][ThisOne] = rpNEE_createdict(cf,ds,ThisOne)
     if "GPP" in cf.keys():
         for ThisOne in cf["GPP"].keys():
-            rpGPP_createdict(cf,ds,ThisOne)
+            if "gpp" not in l6_info: l6_info["gpp"] = {}
+            l6_info["gpp"][ThisOne] = rpGPP_createdict(cf,ds,ThisOne)
+    return l6_info
 
-def PartitionNEE(cf,ds):
+def PartitionNEE(cf, ds, info):
     """
     Purpose:
      Partition NEE into GPP and ER.
-     Input and output names are held in ds.nee.
+     Input and output names are held in info['gpp'].
     Usage:
-     qcrp.PartitionNEE(cf,ds)
+     qcrp.PartitionNEE(cf, ds, info)
       where cf is a conbtrol file object
             ds is a data structure
     Side effects:
@@ -1802,7 +1643,7 @@ def PartitionNEE(cf,ds):
     Author: PRI
     Date: August 2014
     """
-    if "gpp" not in dir(ds): return
+    if "gpp" not in info: return
     # get the Fsd threshold
     opt = qcutils.get_keyvaluefromcf(cf,["Options"],"Fsd_threshold",default=10)
     Fsd_threshold = float(opt)
@@ -1814,11 +1655,11 @@ def PartitionNEE(cf,ds):
         #index = numpy.ma.where(numpy.ma.getmaskarray(Fsd)==True)[0]
         Fsd[index] = Fsd_syn[index]
     # calculate GPP from NEE and ER
-    for label in ds.gpp.keys():
-        if "NEE" not in ds.gpp[label] and "ER" not in ds.gpp[label]: continue
-        NEE_label = ds.gpp[label]["NEE"]
-        ER_label = ds.gpp[label]["ER"]
-        output_label = ds.gpp[label]["output"]
+    for label in info["gpp"].keys():
+        if "NEE" not in info["gpp"][label] and "ER" not in info["gpp"][label]: continue
+        NEE_label = info["gpp"][label]["NEE"]
+        ER_label = info["gpp"][label]["ER"]
+        output_label = info["gpp"][label]["output"]
         NEE,NEE_flag,NEE_attr = qcutils.GetSeriesasMA(ds,NEE_label)
         ER,ER_flag,ER_attr = qcutils.GetSeriesasMA(ds,ER_label)
         # calculate GPP
@@ -1847,41 +1688,39 @@ def PartitionNEE(cf,ds):
 
 def rpGPP_createdict(cf,ds,series):
     """ Creates a dictionary in ds to hold information about calculating GPP."""
-    # create the ffnet directory in the data structure
-    if "gpp" not in dir(ds): ds.gpp = {}
     # create the dictionary keys for this series
-    ds.gpp[series] = {}
+    gpp_info = {}
     # output series name
-    ds.gpp[series]["output"] = series
+    gpp_info["output"] = series
     # CO2 flux
     if "NEE" in cf["GPP"][series].keys():
-        ds.gpp[series]["NEE"] = cf["GPP"][series]["NEE"]
+        gpp_info["NEE"] = cf["GPP"][series]["NEE"]
     # ecosystem respiration
     if "ER" in cf["GPP"][series].keys():
-        ds.gpp[series]["ER"] = cf["GPP"][series]["ER"]
+        gpp_info["ER"] = cf["GPP"][series]["ER"]
     # create an empty series in ds if the output series doesn't exist yet
-    if ds.gpp[series]["output"] not in ds.series.keys():
-        data,flag,attr = qcutils.MakeEmptySeries(ds,ds.gpp[series]["output"])
-        qcutils.CreateSeries(ds,ds.gpp[series]["output"],data,flag,attr)
+    if gpp_info["output"] not in ds.series.keys():
+        data,flag,attr = qcutils.MakeEmptySeries(ds,gpp_info["output"])
+        qcutils.CreateSeries(ds,gpp_info["output"],data,flag,attr)
+    return gpp_info
 
-def rpNEE_createdict(cf,ds,series):
+def rpNEE_createdict(cf, ds, series):
     """ Creates a dictionary in ds to hold information about calculating NEE."""
-    # create the ffnet directory in the data structure
-    if "nee" not in dir(ds): ds.nee = {}
     # create the dictionary keys for this series
-    ds.nee[series] = {}
+    nee_info = {}
     # output series name
-    ds.nee[series]["output"] = series
+    nee_info["output"] = series
     # CO2 flux
     if "Fc" in cf["NEE"][series].keys():
-        ds.nee[series]["Fc"] = cf["NEE"][series]["Fc"]
+        nee_info["Fc"] = cf["NEE"][series]["Fc"]
     # ecosystem respiration
     if "ER" in cf["NEE"][series].keys():
-        ds.nee[series]["ER"] = cf["NEE"][series]["ER"]
+        nee_info["ER"] = cf["NEE"][series]["ER"]
     # create an empty series in ds if the output series doesn't exist yet
-    if ds.nee[series]["output"] not in ds.series.keys():
-        data,flag,attr = qcutils.MakeEmptySeries(ds,ds.nee[series]["output"])
-        qcutils.CreateSeries(ds,ds.nee[series]["output"],data,flag,attr)
+    if nee_info["output"] not in ds.series.keys():
+        data,flag,attr = qcutils.MakeEmptySeries(ds,nee_info["output"])
+        qcutils.CreateSeries(ds,nee_info["output"],data,flag,attr)
+    return nee_info
 
 def rpMerge_createdict(cf,ds,series):
     """ Creates a dictionary in ds to hold information about the merging of gap filled
