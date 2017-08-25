@@ -350,8 +350,11 @@ def CPD_run(cf):
     # Set input file and output path and create directories for plots and results
     path_out = cf['Files']['file_path']
     file_in = os.path.join(cf['Files']['file_path'],cf['Files']['in_filename'])
-    #file_out = os.path.join(cf['Files']['file_path'],cf['Files']['in_filename'].replace(".nc","_CPD.xls"))
-    file_out = os.path.join(cf['Files']['file_path'],cf['Files']['out_filename'])
+    #
+    if "out_filename" in cf['Files']:
+        file_out = os.path.join(cf['Files']['file_path'],cf['Files']['out_filename'])
+    else:
+        file_out = os.path.join(cf['Files']['file_path'],cf['Files']['in_filename'].replace(".nc","_CPD.xls"))
     plot_path = "plots/"
     if "plot_path" in cf["Files"]: plot_path = os.path.join(cf["Files"]["plot_path"],"CPD/")
     if not os.path.isdir(plot_path): os.makedirs(plot_path)

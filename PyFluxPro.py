@@ -636,12 +636,11 @@ class qcgui(tk.Tk):
     def do_nc2reddyproc(self):
         """ Calls qcio.reddyproc_write_csv."""
         logger.info(' Starting conversion to REddyProc CSV file')
-        self.do_progress(text="Choosing netCDF file ...")
-        ncfilename = qcio.get_filename_dialog(path="../Sites",title="Choose a netCDF file")
-        if len(ncfilename)==0 or not os.path.exists(ncfilename):
-            self.do_progress(text="Waiting for input ..."); return
+        self.do_progress(text="Load control file ...")
+        cf = qcio.load_controlfile(path='controlfiles')
+        if len(cf)==0: self.do_progress(text='Waiting for input ...'); return
         self.do_progress(text='Converting nc to REddyProc CSV ...')
-        qcio.reddyproc_write_csv(ncfilename)
+        qcio.reddyproc_write_csv(cf)
         logger.info(' Finished conversion')
         self.do_progress(text='Finished conversion')
         logger.info("")

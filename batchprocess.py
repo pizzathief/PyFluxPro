@@ -86,6 +86,15 @@ for level in level_list:
             qcio.fn_write_csv(cf)
             logger.info('Finished FluxNet output with '+cfname)
             logger.info('')
+    elif level.lower()=="reddyproc":
+        # convert netCDF files to REddyProc CSV files
+        for i in cf_batch["Levels"][level].keys():
+            cfname = cf_batch["Levels"][level][i]
+            logger.info('Starting REddyProc output with '+cfname)
+            cf = qcio.get_controlfilecontents(cfname)
+            qcio.reddyproc_write_csv(cf)
+            logger.info('Finished REddyProc output with '+cfname)
+            logger.info('')
     elif level.lower()=="concatenate":
         # concatenate netCDF files
         for i in cf_batch["Levels"][level].keys():

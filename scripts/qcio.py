@@ -368,11 +368,19 @@ def read_eddypro_full(csvname):
 
     return ds
 
-def reddyproc_write_csv(ncFileName):
+def reddyproc_write_csv(cf):
     # this needs to be re-written!
     # get the file names
-    #ncFileName = get_infilenamefromcf(cf)
-    csvFileName = ncFileName.replace(".nc","_REddyProc.csv")
+    ncFileName = cf["Files"]["in_filename"]
+    if not os.path.exists(ncFileName):
+        file_name = os.path.split(ncFileName)
+        msg = " netCDF file "+file_name[1]+" not found"
+        logger.warning(msg)
+        return
+    csvFileName = cf["Files"]["out_filename"]
+    file_name = os.path.split(csvFileName)
+    if not os.path.exists(file_name[0]):
+        os.makedirs(file_name[0])
     # open the csv file
     csvfile = open(csvFileName,'wb')
     writer = csv.writer(csvfile,dialect='excel-tab')
@@ -392,16 +400,9 @@ def reddyproc_write_csv(ncFileName):
     Hhh,flag,attr = qcutils.GetSeries(ds,'Hdh',si=si,ei=ei)
     # get the data
     data = OrderedDict()
-    data["NEE"] = {"ncname":"Fc","format":"0.00"}
-    data["LE"] = {"ncname":"Fe","format":"0"}
-    data["H"] = {"ncname":"Fh","format":"0"}
-    data["Rg"] = {"ncname":"Fsd","format":"0"}
-    data["Tair"] = {"ncname":"Ta","format":"0.00"}
-    data["Tsoil"] = {"ncname":"Ts","format":"0.00"}
-    data["rH"] = {"ncname":"RH","format":"0"}
-    data["VPD"] = {"ncname":"VPD","format":"0.0"}
-    data["Ustar"] = {"ncname":"ustar","format":"0.00"}
-    #series_list = cf["Variables"].keys()
+    for label in cf["Variables"].keys():
+        data[label] = {"ncname":cf["Variables"][label]["ncname"],
+                       "format":cf["Variables"][label]["format"]}
     series_list = data.keys()
     for series in series_list:
         ncname = data[series]["ncname"]

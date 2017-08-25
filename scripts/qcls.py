@@ -125,15 +125,27 @@ def l3qc(cf,ds2):
     qcgf.ImportSeries(cf,ds3)
     # apply linear corrections to the data
     qcck.do_linear(cf,ds3)
+    # ************************
+    # *** Merge humidities ***
+    # ************************
     # merge whatever humidities are available
     qcts.MergeHumidities(cf,ds3,convert_units=True)
+    # **************************
+    # *** Merge temperatures ***
+    # **************************
     # get the air temperature from the CSAT virtual temperature
     qcts.TaFromTv(cf,ds3)
     # merge the HMP and corrected CSAT data
     qcts.MergeSeries(cf,ds3,"Ta",convert_units=True)
     qcutils.CheckUnits(ds3,"Ta","C",convert_units=True)
+    # ***************************
+    # *** Calcuate humidities ***
+    # ***************************
     # calculate humidities (absolute, specific and relative) from whatever is available
     qcts.CalculateHumidities(ds3)
+    # ********************************
+    # *** Merge CO2 concentrations ***
+    # ********************************
     # merge the 7500 CO2 concentration
     # PRI 09/08/2017 possibly the ugliest thing I have done yet
     # This needs to be abstracted to a general alias checking routine at the
@@ -148,6 +160,9 @@ def l3qc(cf,ds2):
         logger.error(msg)
         return
     qcts.MergeSeries(cf, ds3, CO2, convert_units=True)
+    # ******************************************
+    # *** Calculate meteorological variables ***
+    # ******************************************
     # Update meteorological variables
     qcts.CalculateMeteorologicalVariables(ds3)
     # *************************************************
