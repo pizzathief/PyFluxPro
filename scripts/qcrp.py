@@ -1275,9 +1275,9 @@ def L6_summary_createseriesdict(cf,ds):
     series_dict = {"daily":{},"annual":{},"cumulative":{},"lists":{}}
     # adjust units of NEE, NEP, GPP and ER
     sdl = series_dict["lists"]
-    sdl["nee"] = [item for item in cf["NEE"].keys() if "NEE" in item and item in ds.series.keys()]
-    sdl["gpp"] = [item for item in cf["GPP"].keys() if "GPP" in item and item in ds.series.keys()]
-    sdl["fre"] = [item for item in cf["ER"].keys() if "ER" in item and item in ds.series.keys()]
+    sdl["nee"] = [item for item in cf["NEE"].keys() if "NEE" in item[0:3] and item in ds.series.keys()]
+    sdl["gpp"] = [item for item in cf["GPP"].keys() if "GPP" in item[0:3] and item in ds.series.keys()]
+    sdl["fre"] = [item for item in cf["ER"].keys() if "ER" in item[0:2] and item in ds.series.keys()]
     sdl["nep"] = [item.replace("NEE","NEP") for item in sdl["nee"]]
     sdl["nep"] = [item for item in sdl["nep"] if item in ds.series.keys()]
     sdl["co2"] = sdl["nee"]+sdl["nep"]+sdl["gpp"]+sdl["fre"]
@@ -1288,8 +1288,8 @@ def L6_summary_createseriesdict(cf,ds):
         series_dict["daily"][item]["format"] = "0.00"
         series_dict["cumulative"][item]["operator"] = "sum"
         series_dict["cumulative"][item]["format"] = "0.00"
-    sdl["ET"] = [item for item in ds.series.keys() if "ET" in item]
-    sdl["Precip"] = [item for item in ds.series.keys() if "Precip" in item]
+    sdl["ET"] = [item for item in ds.series.keys() if "ET" in item[0:2]]
+    sdl["Precip"] = [item for item in ds.series.keys() if "Precip" in item[0:6]]
     sdl["h2o"] = sdl["ET"]+sdl["Precip"]
     for item in sdl["h2o"]:
         series_dict["daily"][item] = {"operator":"sum","format":"0.00"}
