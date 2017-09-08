@@ -153,6 +153,7 @@ class qcgui(tk.Tk):
         runmenu.add_command(label="Do L4 gap fill (drivers)",command=self.do_l4qc)
         runmenu.add_command(label="Do L5 gap fill (fluxes)",command=self.do_l5qc)
         runmenu.add_command(label="Do L6 partitioning",command=self.do_l6qc)
+        #runmenu.add_command(label="Batch processing",command=self.do_batch)
         menubar.add_cascade(label="Run",menu=runmenu)
         # then the "Plot" menu
         plotmenu = tk.Menu(menubar,tearoff=0)

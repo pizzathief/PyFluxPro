@@ -620,6 +620,7 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
         plt.draw()
         plt.ioff()
     else:
+        plt.close(fig)
         plt.ion()
 
 def rpFFNET_progress(FFNET_gui,text):
@@ -1126,6 +1127,7 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
         plt.draw()
         plt.ioff()
     else:
+        plt.close(fig)
         plt.ion()
 
 def rpSOLO_progress(SOLO_gui,text):
@@ -1302,7 +1304,7 @@ def rpSOLO_run_nogui(cf,ds,solo_info):
     solo_info["series"] = solo_info["er"].keys()
     if solo_info["peropt"]==1:
         rpSOLO_main(ds,solo_info)
-        logger.info(" Finished manual run ...")
+        #logger.info(" Finished manual run ...")
     elif solo_info["peropt"]==2:
         # get the start datetime entered in the SOLO GUI
         startdate = dateutil.parser.parse(solo_info["startdate"])

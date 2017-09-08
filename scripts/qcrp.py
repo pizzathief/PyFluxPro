@@ -32,16 +32,14 @@ def CalculateET(ds):
     Date: June 2015
     """
     ts = int(ds.globalattributes["time_step"])
-    #series_list = ds.series.keys()
-    #Fe_list = [item for item in series_list if "Fe" in item]
-    #for label in Fe_list:
-        #suffix = label[len("Fe")+label.find("Fe"):]
-        #print label, suffix
-    Fe,flag,attr = qcutils.GetSeriesasMA(ds,"Fe")
-    ET = Fe*ts*60/c.Lv
-    attr["long_name"] = "Evapo-transpiration calculated from latent heat flux"
-    attr["units"] = "mm"
-    qcutils.CreateSeries(ds,"ET",ET,flag,attr)
+    series_list = ds.series.keys()
+    Fe_list = [item for item in series_list if "Fe" in item[0:2]]
+    for label in Fe_list:
+        Fe,flag,attr = qcutils.GetSeriesasMA(ds,label)
+        ET = Fe*ts*60/c.Lv
+        attr["long_name"] = "Evapo-transpiration calculated from latent heat flux"
+        attr["units"] = "mm"
+        qcutils.CreateSeries(ds,label.replace("Fe","ET"),ET,flag,attr)
 
 def CalculateNEE(cf, ds, info):
     """
@@ -1151,6 +1149,7 @@ def L6_summary_plotdaily(cf,ds,daily_dict):
             plt.draw()
             plt.ioff()
         else:
+            plt.close(fig)
             plt.ion()
     # plot time series of Fn,Fg,Fh,Fe
     if cf["Options"]["call_mode"].lower()=="interactive":
@@ -1180,6 +1179,7 @@ def L6_summary_plotdaily(cf,ds,daily_dict):
         plt.draw()
         plt.ioff()
     else:
+        plt.close(fig)
         plt.ion()
 
 def L6_summary_plotcumulative(cf,ds,cumulative_dict):
@@ -1256,6 +1256,7 @@ def L6_summary_plotcumulative(cf,ds,cumulative_dict):
             plt.draw()
             plt.ioff()
         else:
+            plt.close(fig)
             plt.ion()
 
 def L6_summary_createseriesdict(cf,ds):

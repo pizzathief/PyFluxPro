@@ -229,10 +229,15 @@ def csv_read_series(cf):
                 opt = opt.replace("*","star")
             if opt in header:
                 csv_varnames[item] = str(opt)
-        elif "xl" in cf["Variables"][item].keys():
-            opt = qcutils.get_keyvaluefromcf(cf,["Variables",item,"xl"],"name",default="")
-            if csv_varname in header:
-                csv_varnames[item] = str(opt)
+            else:
+                msg = "  "+str(opt)+" not found in CSV file, skipping ..."
+                logger.error(msg)
+                continue
+        # 2017-09-07 - deprecate use of "xl" sectiuon names for CSV files
+        #elif "xl" in cf["Variables"][item].keys():
+            #opt = qcutils.get_keyvaluefromcf(cf,["Variables",item,"xl"],"name",default="")
+            #if csv_varname in header:
+                #csv_varnames[item] = str(opt)
         elif "Function" not in cf["Variables"][item].keys():
             msg = " No csv, xl or Function section in control file for "+item
             logger.info(msg)
@@ -240,7 +245,8 @@ def csv_read_series(cf):
     csv_list = [csv_varnames[x] for x in var_list]
     col_list = [header.index(item) for item in csv_list]
     # read the csv file using numpy's genfromtxt
-    logger.info(" Reading from "+csv_filename)
+    file_name = os.path.split(csv_filename)
+    logger.info(" Reading "+file_name[1])
     skip = first_data_row-1
     # define the missing values and the value with which to fill them
     missing_values = {}

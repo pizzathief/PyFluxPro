@@ -534,8 +534,6 @@ def rpLT_plot(pd,ds,series,driverlist,targetlabel,outputlabel,LT_info,si=0,ei=-1
         plt.setp(ts_axes[i].get_xticklabels(),visible=False)
         TextStr = ThisOne+'('+ds.series[ThisOne]['Attr']['units']+')'
         ts_axes[i].text(0.05,0.85,TextStr,color='b',horizontalalignment='left',transform=ts_axes[i].transAxes)
-    # let the plot update
-    plt.pause(1)
     # save a hard copy of the plot
     sdt = xdt[0].strftime("%Y%m%d")
     edt = xdt[-1].strftime("%Y%m%d")
@@ -547,8 +545,10 @@ def rpLT_plot(pd,ds,series,driverlist,targetlabel,outputlabel,LT_info,si=0,ei=-1
     # draw the plot on the screen
     if LT_info["show_plots"]:
         plt.draw()
+        plt.pause(1)
         plt.ioff()
     else:
+        plt.close(fig)
         plt.ion()
 
 def subset_window(data_dict, index_list):
