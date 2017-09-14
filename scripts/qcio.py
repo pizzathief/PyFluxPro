@@ -1220,14 +1220,6 @@ def nc_concatenate(cf):
             logger.warning(msg)
     # fill the variables
     for ThisOne in ds_n.series.keys():
-        if ThisOne=="Fc":
-            Fc,flag,attr = qcutils.GetSeriesasMA(ds_n, ThisOne)
-            if attr['units']=='mg/m2/s':
-                logger.info("Converting Fc to umol/m2/s")
-                Fc = mf.Fc_umolpm2psfrommgpm2ps(Fc)
-                attr['units'] = 'umol/m2/s'
-                attr['standard_name'] = 'surface_upward_mole_flux_of_carbon_dioxide'
-                qcutils.CreateSeries(ds_n,ThisOne,Fc,flag,attr)
         ds.series[ThisOne] = {}
         ds.series[ThisOne]['Data'] = ds_n.series[ThisOne]['Data']
         ds.series[ThisOne]['Flag'] = ds_n.series[ThisOne]['Flag']
