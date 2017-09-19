@@ -1151,7 +1151,7 @@ def nc_concatenate(cf):
     InFile_list = cf['Files']['In'].keys()
     # read in the first file
     baseFileName = cf['Files']['In'][InFile_list[0]]
-    logger.info(' Reading data from '+baseFileName)
+    logger.info(' Reading data from '+os.path.split(baseFileName)[1])
     fixtimestepmethod = qcutils.get_keyvaluefromcf(cf,["Options"],"FixTimeStepMethod",default="round")
     ds_n = nc_read_series(baseFileName,fixtimestepmethod=fixtimestepmethod)
     if len(ds_n.series.keys())==0:
@@ -1230,11 +1230,12 @@ def nc_concatenate(cf):
     # loop over the remaining files given in the control file
     for n in InFile_list[1:]:
         ncFileName = cf['Files']['In'][InFile_list[int(n)]]
-        logger.info(' Reading data from '+ncFileName)
+        nc_file_name = os.path.split(ncFileName)
+        logger.info(' Reading data from '+nc_file_name[1])
         #print 'ncconcat: reading data from '+ncFileName
         ds_n = nc_read_series(ncFileName,fixtimestepmethod=fixtimestepmethod)
         if len(ds.series.keys())==0:
-            logger.error(' An error occurred reading the netCDF file: '+ncFileName)
+            logger.error(' An error occurred reading the netCDF file: '+nc_file_name[1])
             return
         dt_n = ds_n.series['DateTime']['Data']
         dt = ds.series['DateTime']['Data']
@@ -1370,6 +1371,9 @@ def nc_concatenate(cf):
     qcts.CalculateHumidities(ds)
     # and make sure we have all of the meteorological variables
     qcts.CalculateMeteorologicalVariables(ds)
+    # check units of Fc and convert if necessary
+    Fc_list = [label for label in ds.series.keys() if label[0:2] == "Fc"]
+    qcutils.CheckUnits(ds, Fc_list, "umol/m2/s", convert_units=True)
     # re-calculate the synthetic Fsd
     #qcts.get_synthetic_fsd(ds)
     # re-apply the quality control checks (range, diurnal and rules)
@@ -1387,7 +1391,7 @@ def nc_concatenate(cf):
     qcutils.get_coverage_groups(ds)
     # write the netCDF file
     outFileName = qcutils.get_keyvaluefromcf(cf,["Files","Out"],"ncFileName",default="out.nc")
-    logger.info(' Writing data to '+outFileName)
+    logger.info(' Writing data to '+os.path.split(outFileName)[1])
     # check to see if the base and concatenated file names are the same
     # IE the user wants to overwrite the base file
     if outFileName==baseFileName:

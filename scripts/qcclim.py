@@ -32,46 +32,46 @@ def do_2dinterpolation(array_2d):
      Checked by comparing the Fci(day) values from the original code and from this version.  The
      values were the same so this version pushed to GitHub on 11/5/2015.
     """
-    
+
     WasMA = False
     if numpy.ma.isMA(array_2d):
         WasMA = True
         array_2d = numpy.ma.filled(array_2d, float(c.missing_value))
-    
+
     # Tile the 2d array into a 3 by 3 array
     data_2d_tiled = numpy.tile(array_2d,(3,3))
-    
+
     # Get the dimensions of the tiled array and create coordinates and grid
     num_x = numpy.shape(data_2d_tiled)[1]
     array_x = numpy.arange(0, num_x)
     num_y = numpy.shape(data_2d_tiled)[0]
     array_y = numpy.arange(0, num_y)
     coords_x, coords_y = numpy.meshgrid(array_x, array_y)
-    
+
     # Make a flat array of the tiled data
     data_1d = data_2d_tiled.flatten()
-    
+
     # Make a 2d array of the coordinates
-    data_coords = numpy.column_stack([coords_x.flatten(), 
+    data_coords = numpy.column_stack([coords_x.flatten(),
                                    coords_y.flatten()])
-    
+
     # Define an index that will return all valid data for the array
-    index = numpy.where(data_1d!= c.missing_value)    
-    
+    index = numpy.where(data_1d!= c.missing_value)
+
     # Do the interpolation
-    grid_z = griddata(data_coords[index], data_1d[index], 
+    grid_z = griddata(data_coords[index], data_1d[index],
                       (coords_x, coords_y), method = 'linear')
-    
+
     # Retrieve the central tile
     array_2d_filled = grid_z[num_y / 3: num_y / 3 * 2, num_x / 3: num_x / 3 * 2]
-    
+
     # Check something...
     if WasMA:
         array_2d_filled = numpy.ma.masked_where(abs(array_2d_filled - numpy.float64(c.missing_value)) < c.eps, array_2d_filled)
         array_2d = numpy.ma.masked_where(abs(array_2d - numpy.float64(c.missing_value)) < c.eps, array_2d)
-    
+
     # Return the filled array
-    return array_2d_filled   
+    return array_2d_filled
 
 def write_data_1columnpermonth(xlSheet, data, ts, format_string=''):
     xlCol = 0
@@ -233,7 +233,7 @@ def climatology(cf):
     # get the number of time steps in a day and the number of days in the data
     ntsInDay = int(24.0*60.0/float(ts))
     nDays = int(len(ldt))/ntsInDay
-    
+
     for ThisOne in cf['Variables'].keys():
         if "AltVarName" in cf['Variables'][ThisOne].keys(): ThisOne = cf['Variables'][ThisOne]["AltVarName"]
         if ThisOne in ds.series.keys():
@@ -375,27 +375,27 @@ def climatology(cf):
         else:
             logger.warning(" Requested variable "+ThisOne+" not in data structure")
             continue
-    logger.info(" Saving Excel file "+xl_filename)
+    logger.info(" Saving Excel file "+os.path.split(xl_filename)[1])
     xlFile.save(xl_filename)
 
 def compare_eddypro():
     epname = qcio.get_filename_dialog(title='Choose an EddyPro full output file')
     ofname = qcio.get_filename_dialog(title='Choose an L3 output file')
-    
+
     ds_ep = qcio.read_eddypro_full(epname)
     ds_of = qcio.nc_read_series(ofname)
-    
+
     dt_ep = ds_ep.series['DateTime']['Data']
     dt_of = ds_of.series['DateTime']['Data']
-    
+
     start_datetime = max([dt_ep[0],dt_of[0]])
     end_datetime = min([dt_ep[-1],dt_of[-1]])
-    
+
     si_of = qcutils.GetDateIndex(dt_of, str(start_datetime), ts=30, default=0, match='exact')
     ei_of = qcutils.GetDateIndex(dt_of, str(end_datetime), ts=30, default=len(dt_of), match='exact')
     si_ep = qcutils.GetDateIndex(dt_ep, str(start_datetime), ts=30, default=0, match='exact')
     ei_ep = qcutils.GetDateIndex(dt_ep, str(end_datetime), ts=30, default=len(dt_ep), match='exact')
-    
+
     us_of = qcutils.GetVariable(ds_of,'ustar',si=si_of,ei=ei_of)
     us_ep = qcutils.GetVariable(ds_ep,'ustar',si=si_ep,ei=ei_ep)
     Fh_of = qcutils.GetVariable(ds_of,'Fh',si=si_of,ei=ei_of)
