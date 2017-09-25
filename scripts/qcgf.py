@@ -1571,12 +1571,14 @@ def gfalternate_main(ds_tower,ds_alt,alternate_info,label_tower_list=[]):
             else:
                 continue
         # plot the gap filled data
+        #logger.info(" Gap fill with alternate: Plotting ...")
         pd = gfalternate_initplot(data_dict,alternate_info)
         diel_avg = gfalternate_getdielaverage(data_dict,alternate_info)
         # reserve figure number 0 for the coverage lines/progress plot
         fig_num = fig_num+1
         gfalternate_plotcomposite(fig_num,data_dict,stat_dict,diel_avg,alternate_info,pd)
         # reset the logicals in alternate_info
+        #logger.info(" Gap fill with alternate: Finished plotting")
     # make sure this processing step gets written to the global attribute "Functions"
     if "GapFillFromalternate" not in ds_tower.globalattributes["Functions"]:
         ds_tower.globalattributes["Functions"] = ds_tower.globalattributes["Functions"]+", GapFillFromalternate"

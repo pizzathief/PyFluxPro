@@ -620,7 +620,8 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
         plt.draw()
         plt.ioff()
     else:
-        plt.close(fig)
+        print "calling plt.close() in rpFFNET_plot"
+#        plt.close(fig)
         plt.ion()
 
 def rpFFNET_progress(FFNET_gui,text):
@@ -1127,7 +1128,8 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
         plt.draw()
         plt.ioff()
     else:
-        plt.close(fig)
+        print "calling plt.close() in rpSOLO_plot"
+#        plt.close(fig)
         plt.ion()
 
 def rpSOLO_progress(SOLO_gui,text):
