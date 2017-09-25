@@ -552,7 +552,6 @@ def rpLT_plot(pd,ds,series,driverlist,targetlabel,outputlabel,LT_info,si=0,ei=-1
         plt.ion()
 
 def subset_window(data_dict, index_list):
-
     # Subset the arrays on basis of index list
     sub_dict = {}
     for i in data_dict.keys():
@@ -561,7 +560,6 @@ def subset_window(data_dict, index_list):
     return sub_dict
 
 def subset_daynight(data_dict, noct_flag):
-
     # Turn dictionary into an array
     temp_array = numpy.empty([len(data_dict['NEE']), len(data_dict)])
     for i, var in enumerate(data_dict.keys()):

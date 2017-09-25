@@ -142,22 +142,24 @@ def CheckUnits(ds, label, units, convert_units=False):
     elif isinstance(label, list):
         label_list = label
     else:
-        msg = " Input label "+label+" must be a string or a list"
+        msg = " CheckUnits: input label "+label+" must be a string or a list"
         logger.error(msg)
         return
     for label in label_list:
-        variable = GetVariable(ds, label)
-        if variable["Attr"]["units"] == units:
-            # current units same as requested units, nothing to do
+        if label not in ds.series.keys():
+            msg = "CheckUnits: requested series "+label+" not found"
+            logger.error(msg)
             continue
-        if convert_units:
+        variable = GetVariable(ds, label)
+        if variable["Attr"]["units"] != units and convert_units:
             msg = " Units for "+label+" converted from "+variable["Attr"]["units"]+" to "+units
             logger.info(msg)
-            convert_units_func(ds, label, units)
+            variable = convert_units_func(ds, variable, units)
+            CreateVariable(ds, variable)
         else:
-            msg = " Units mismatch but conversion disabled"
-            logger.warning(msg)
-            continue
+            if not convert_units:
+                msg = " Units mismatch but conversion disabled"
+                logger.warning(msg)
     return
 
 def contiguous_regions(condition):
@@ -267,7 +269,7 @@ def ConvertFcUnits(cf, ds):
             logger.info('  ConvertFcUnits: input or output units for Fc unrecognised')
     return
 
-def convert_units_func(ds, label, new_units, mode="quiet"):
+def convert_units_func(ds, variable, new_units, mode="quiet"):
     """
     Purpose:
      Generic routine for changing units.
@@ -281,11 +283,6 @@ def convert_units_func(ds, label, new_units, mode="quiet"):
     Author: PRI
     Date: July 2015
     """
-    if label not in ds.series.keys():
-        msg = "Requested series "+label+" not found (convert_units_func)"
-        logger.error(msg)
-        return
-    variable = GetVariable(ds, label)
     old_units = variable["Attr"]["units"]
     if old_units == new_units:
         # old units same as new units, nothing to do ...
@@ -305,19 +302,19 @@ def convert_units_func(ds, label, new_units, mode="quiet"):
         logger.error(msg)
     elif new_units in co2_list:
         if old_units in co2_list:
-            convert_units_co2(ds, label, new_units)
+            variable = convert_units_co2(ds, variable, new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
             logger.error(msg)
     elif new_units in h2o_list:
         if old_units in h2o_list:
-            convert_units_h2o(ds, label, new_units)
+            variable = convert_units_h2o(ds, variable, new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
             logger.error(msg)
     elif new_units in t_list:
         if old_units in t_list:
-            convert_units_t(ds, label, new_units)
+            variable = convert_units_t(ds, variable, new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
             logger.error(msg)
@@ -325,9 +322,9 @@ def convert_units_func(ds, label, new_units, mode="quiet"):
         msg = "Unrecognised units combination "+old_units+" and "+new_units
         logger.error(msg)
 
-    return
+    return variable
 
-def convert_units_co2(ds, label, new_units):
+def convert_units_co2(ds, variable, new_units):
     """
     Purpose:
      General purpose routine to convert from one set of CO2 concentration units
@@ -341,18 +338,16 @@ def convert_units_co2(ds, label, new_units):
       mg/m2/s to umol/m2/s
       mgCO2/m2/s to umol/m2/s
     Usage:
-     new_data = qcutils.convert_units_co2(ds,old_data,old_units,new_units)
+     new_data = qcutils.convert_units_co2(ds, variable, new_units)
       where ds is a data structure
-            label (string) is the label of the series to be converted
+            variable (dictionary) is a variable dictionary
             new_units (string) is the new units
     Author: PRI
     Date: January 2016
     """
-    # get the variable
-    variable = GetVariable(ds, label)
+    # get the current units and the timestep
     old_units = variable["Attr"]["units"]
-    # get the timestep
-    ts = int(ds.globalattributes["time_step"])
+    ts = variable["time_step"]
     # default values for the valid_range minimum and maximum
     valid_range_minimum = -1E35
     valid_range_maximum = 1E35
@@ -427,7 +422,7 @@ def convert_units_co2(ds, label, new_units):
                 for m, item in enumerate(limit_list):
                     month = m + 1
                     # get an index of the months
-                    idx = numpy.where(variable["Month"]==month)[0]
+                    idx = numpy.where(ds.series["Month"]==month)[0]
                     # move on to next month if this one not in data
                     if len(idx) == 0:
                         continue
@@ -482,7 +477,7 @@ def convert_units_co2(ds, label, new_units):
                 for m, item in enumerate(limit_list):
                     month = m + 1
                     # get an index of the months
-                    idx = numpy.where(variable["Month"]==month)[0]
+                    idx = numpy.where(ds.series["Month"]==month)[0]
                     # move on to next month if this one not in data
                     if len(idx) == 0:
                         continue
@@ -546,12 +541,10 @@ def convert_units_co2(ds, label, new_units):
     else:
         msg = " Unrecognised conversion from "+old_units+" to "+new_units
         logger.error(msg)
-    # put the converted data back into the data structure
-    CreateVariable(ds, variable)
 
-    return
+    return variable
 
-def convert_units_h2o(ds,old_data,old_units,new_units):
+def convert_units_h2o(ds, variable, new_units):
     """
     Purpose:
      General purpose routine to convert from one set of H2O concentration units
@@ -560,10 +553,9 @@ def convert_units_h2o(ds,old_data,old_units,new_units):
       g/m3 to mmol/mol
       mmol/mol to g/m3
     Usage:
-     new_data = qcutils.convert_units_h2o(ds,old_data,old_units,new_units)
+     new_data = qcutils.convert_units_h2o(ds, variable, new_units)
       where ds is a data structure
-            old_data (numpy array) is the data to be converted
-            old_units (string) is the old units
+            variable (dictionary) is a variable dictionary
             new_units (string) is the new units
     Author: PRI
     Date: January 2016

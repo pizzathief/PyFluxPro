@@ -1,20 +1,23 @@
+# standard modules
 import ast
 import calendar
-import constants as c
 import datetime
 import logging
-#from matplotlib.mlab import griddata
+import os
+import sys
+import time
+# 3rd party modules
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 import numpy
-import time
+import xlwt
+# PFP modules
+import constants as c
 import qcck
 import qcio
 import qcplot
 import qcts
 import qcutils
-import sys
-import xlwt
 
 logger = logging.getLogger("pfp_log")
 

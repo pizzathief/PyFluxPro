@@ -377,7 +377,7 @@ def l6qc(cf,ds5):
     # check to see if we have any imports
     qcgf.ImportSeries(cf, ds6)
     # check units of Fc
-    Fc_list = [label for label in ds.series.keys() if label[0:2] == "Fc"]
+    Fc_list = [label for label in ds6.series.keys() if label[0:2] == "Fc"]
     qcutils.CheckUnits(ds6, Fc_list, "umol/m2/s", convert_units=True)
     ## apply the turbulence filter (if requested)
     #qcck.ApplyTurbulenceFilter(cf,ds6)

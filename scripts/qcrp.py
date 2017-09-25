@@ -1145,7 +1145,7 @@ def L6_summary_plotdaily(cf,ds,daily_dict):
         figname = plot_path+site_name.replace(" ","")+"_CarbonBudget"+item
         figname = figname+"_"+sdt+"_"+edt+'.png'
         fig.savefig(figname,format='png')
-        if cf["Options"]["call_mode"].lower=="interactive":
+        if cf["Options"]["call_mode"].lower()=="interactive":
             plt.draw()
             plt.ioff()
         else:
@@ -1175,7 +1175,7 @@ def L6_summary_plotdaily(cf,ds,daily_dict):
     figname = plot_path+site_name.replace(" ","")+"_SEB"
     figname = figname+"_"+sdt+"_"+edt+'.png'
     fig.savefig(figname,format='png')
-    if cf["Options"]["call_mode"].lower=="interactive":
+    if cf["Options"]["call_mode"].lower()=="interactive":
         plt.draw()
         plt.ioff()
     else:
@@ -1252,7 +1252,7 @@ def L6_summary_plotcumulative(cf,ds,cumulative_dict):
         figname = plot_path+site_name.replace(" ","")+"_Cumulative_"+item.replace("_","")
         figname = figname+"_"+sdt+"_"+edt+'.png'
         fig.savefig(figname,format='png')
-        if cf["Options"]["call_mode"].lower=="interactive":
+        if cf["Options"]["call_mode"].lower()=="interactive":
             plt.draw()
             plt.ioff()
         else:
@@ -1365,17 +1365,17 @@ def L6_summary_daily(ds,series_dict):
     for item in series_list:
         if item not in ds.series.keys(): continue
         daily_dict[item] = {}
-        data_1d,flag_1d,attr = qcutils.GetSeriesasMA(ds,item,si=si,ei=ei)
+        variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
         if item in series_dict["lists"]["co2"]:
-            data_1d = qcutils.convert_units_func(ds,data_1d,attr["units"],"gC/m2",ts)
+            variable = qcutils.convert_units_func(ds, variable, "gC/m2")
             daily_dict[item]["units"] = "gC/m2"
         else:
-            daily_dict[item]["units"] = attr["units"]
-        data_2d = data_1d.reshape(nDays,ntsInDay)
-        if series_dict["daily"][item]["operator"].lower()=="average":
-            daily_dict[item]["data"] = numpy.ma.average(data_2d,axis=1)
-        elif series_dict["daily"][item]["operator"].lower()=="sum":
-            daily_dict[item]["data"] = numpy.ma.sum(data_2d,axis=1)
+            daily_dict[item]["units"] = variable["Attr"]["units"]
+        data_2d = variable["Data"].reshape(nDays, ntsInDay)
+        if series_dict["daily"][item]["operator"].lower() == "average":
+            daily_dict[item]["data"] = numpy.ma.average(data_2d, axis=1)
+        elif series_dict["daily"][item]["operator"].lower() == "sum":
+            daily_dict[item]["data"] = numpy.ma.sum(data_2d, axis=1)
             daily_dict[item]["units"] = daily_dict[item]["units"]+"/day"
         else:
             msg = "Unrecognised operator ("+series_dict["daily"][item]["operator"]
@@ -1385,8 +1385,8 @@ def L6_summary_daily(ds,series_dict):
         # add the format to be used
         daily_dict[item]["format"] = series_dict["daily"][item]["format"]
         # now do the flag, this is the fraction of data with QC flag = 0 in the day
-        daily_dict[item]["flag"] = numpy.zeros(nDays,dtype=numpy.float64)
-        flag_2d = flag_1d.reshape(nDays,ntsInDay)
+        daily_dict[item]["flag"] = numpy.zeros(nDays, dtype=numpy.float64)
+        flag_2d = variable["Flag"].reshape(nDays, ntsInDay)
         for i in range(nDays):
             daily_dict[item]["flag"][i] = 1-float(numpy.count_nonzero(flag_2d[i,:]))/float(ntsInDay)
     return daily_dict
@@ -1456,28 +1456,29 @@ def L6_summary_monthly(ds,series_dict):
         monthly_dict["DateTime"]["data"].append(dt[si])
         for item in series_list:
             if item not in ds.series.keys(): continue
-            data_1d,flag,attr = qcutils.GetSeriesasMA(ds,item,si=si,ei=ei)
+            variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
             if item in series_dict["lists"]["co2"]:
-                data_1d = qcutils.convert_units_func(ds,data_1d,attr["units"],"gC/m2",ts)
+                variable = qcutils.convert_units_func(ds, variable, "gC/m2")
                 monthly_dict[item]["units"] = "gC/m2"
             else:
-                monthly_dict[item]["units"] = attr["units"]
+                monthly_dict[item]["units"] = variable["Attr"]["units"]
             if series_dict["monthly"][item]["operator"].lower()=="average":
                 monthly_dict[item]["data"] = numpy.append(monthly_dict[item]["data"],
-                                                          numpy.ma.average(data_1d))
+                                                          numpy.ma.average(variable["Data"]))
             elif series_dict["monthly"][item]["operator"].lower()=="sum":
                 monthly_dict[item]["data"] = numpy.append(monthly_dict[item]["data"],
-                                                          numpy.ma.sum(data_1d))
+                                                          numpy.ma.sum(variable["Data"]))
                 monthly_dict[item]["units"] = monthly_dict[item]["units"]+"/month"
             else:
-                print "unrecognised operator"
+                msg = "L6_summary_monthly: unrecognised operator"
+                logger.error(msg)
             monthly_dict[item]["format"] = series_dict["monthly"][item]["format"]
         start_date = end_date+dateutil.relativedelta.relativedelta(minutes=ts)
         end_date = start_date+dateutil.relativedelta.relativedelta(months=1)
         end_date = end_date-dateutil.relativedelta.relativedelta(minutes=ts)
     return monthly_dict
 
-def L6_summary_annual(ds,series_dict):
+def L6_summary_annual(ds, series_dict):
     """
     Purpose:
      Calculate the annual averages or sums of various quantities and write
@@ -1521,19 +1522,20 @@ def L6_summary_annual(ds,series_dict):
         annual_dict["nDays"]["data"][i] = nDays
         for item in series_list:
             if item not in ds.series.keys(): continue
-            data_1d,flag,attr = qcutils.GetSeriesasMA(ds,item,si=si,ei=ei)
+            variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
             if item in series_dict["lists"]["co2"]:
-                data_1d = qcutils.convert_units_func(ds,data_1d,attr["units"],"gC/m2",ts)
+                variable = qcutils.convert_units_func(ds, variable, "gC/m2")
                 annual_dict[item]["units"] = "gC/m2"
             else:
-                annual_dict[item]["units"] = attr["units"]
+                annual_dict[item]["units"] = variable["Attr"]["units"]
             if series_dict["annual"][item]["operator"].lower()=="average":
-                annual_dict[item]["data"][i] = numpy.ma.average(data_1d)
+                annual_dict[item]["data"][i] = numpy.ma.average(variable["Data"])
             elif series_dict["annual"][item]["operator"].lower()=="sum":
-                annual_dict[item]["data"][i] = numpy.ma.sum(data_1d)
+                annual_dict[item]["data"][i] = numpy.ma.sum(variable["Data"])
                 annual_dict[item]["units"] = annual_dict[item]["units"]+"/year"
             else:
-                print "unrecognised operator"
+                msg = "L6_summary_annual: unrecognised operator"
+                logger.error(msg)
             annual_dict[item]["format"] = series_dict["annual"][item]["format"]
     return annual_dict
 
@@ -1575,13 +1577,13 @@ def L6_summary_cumulative(ds,series_dict):
                                                   "format":"dd/mm/yyyy HH:MM"}
         for item in series_list:
             cumulative_dict[str(year)][item] = {}
-            data,flag,attr = qcutils.GetSeriesasMA(ds,item,si=si,ei=ei)
+            variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
             if item in series_dict["lists"]["co2"]:
-                data = qcutils.convert_units_func(ds,data,attr["units"],"gC/m2",ts)
+                variable = qcutils.convert_units_func(ds, variable, "gC/m2")
                 cumulative_dict[str(year)][item]["units"] = "gC/m2"
             else:
-                cumulative_dict[str(year)][item]["units"] = attr["units"]
-            cumulative_dict[str(year)][item]["data"] = numpy.ma.cumsum(data)
+                cumulative_dict[str(year)][item]["units"] = variable["Attr"]["units"]
+            cumulative_dict[str(year)][item]["data"] = numpy.ma.cumsum(variable["Data"])
             cumulative_dict[str(year)][item]["format"] = series_dict["cumulative"][item]["format"]
             cumulative_dict[str(year)][item]["units"] = cumulative_dict[str(year)][item]["units"]+"/year"
     return cumulative_dict
