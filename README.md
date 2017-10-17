@@ -4,7 +4,7 @@ Welcome to the repository for the PyFluxPro code.
 
 PyFluxPro is a suite of Python scripts integrated into a single GUI that is designed to simplify and standardise the quality control, post-processing, gap filling and partitioning of data from flux towers.  PyFluxPro has been developed by the OzFlux (http://ozflux.org.au) community in Australia and is used by the community as the operational tool for processing data from the OzFlux network of flux towers.  PyFluxPro is not limited to Australia and can be used for flux tower data collected anywhere in the world.  Using PyFluxPro does not require any knowledge of Python (though we would always recommend people learn Python anyway!), all aspects of the processing can be controlled via the simple GUI and by editing text files.  PyFluxPro can read data from Excel workbooks and CSV files and uses netCDF files (http://www.unidata.ucar.edu/software/netcdf/) for storing intermediate and final output data.
 
-The following documentation gives basic information on how to install and use PyFluxPro.
+The following documentation gives basic information on how to install and use PyFluxPro.  Details on the algorithms used in PyFluxPro and results for several sites in the Australian OzFlux network can be found in a recent publication in the OzFlux Special Issue of Biogeosciences (https://www.biogeosciences.net/14/2903/2017/).
 
 # Installation and Updating
 There are 3 steps to installing PyFluxPro:
