@@ -24,6 +24,9 @@ To install the Anaconda Python V2.7 distribution, follow these steps:
 * 4. The default installation provides everything needed to run PyFluxPro with 1 exception, the module required to read and write netCDF files.  This can be installed as follows:
   1. Open a command line window or terminal session.
   2. At the command prompt, type "conda install netcdf4" and follow the instructions.  Accept all of the defaults and the netCDF module will be installed.
+* 5. As of October 2017, the default Anaconda installation no longer installs the ConfigObj module and this will need to be installed using the same method as that used for the netCDF module above:
+  1. Open a command line window or terminal session.
+  2. At the command prompt, type "conda install configobj" and follow the instructions.  Accept all of the defaults and the ConfigObj module will be installed.
 
 At the end of this process, you should have a functioning installation of the Python language interpeter.
 
