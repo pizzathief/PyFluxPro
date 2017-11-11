@@ -74,7 +74,7 @@ def read_isd_file(isd_file_path):
     ds.series["ps"] = {"Data":[],"Flag":[],"Attr":{"long_name":"Surface pressure","units":"kPa"}}
     ds.series["Precip"] = {"Data":[],"Flag":[],"Attr":{"long_name":"Precipitation","units":"mm"}}
     # define the codes for good data in the ISD file
-    OK_obs_code = ["FM-15","CRN05"]
+    OK_obs_code = ["AUTO ","CRN05","CRN15","FM-12","FM-15","FM-16","SY-MT"]
     # iterate over the lines in the file and decode the data
     for i in range(len(content)-1):
     #for i in range(10):
@@ -113,9 +113,12 @@ def read_isd_file(isd_file_path):
         except:
             ds.series["ps"]["Data"].append(float(9999.9))
         # precipitation, mm
-        try:
-            ds.series["Precip"]["Data"].append(float(content[i][113:117])/float(10))
-        except:
+        if content[i][108:111] == "AA1":
+            try:
+                ds.series["Precip"]["Data"].append(float(content[i][113:117])/float(10))
+            except:
+                ds.series["Precip"]["Data"].append(float(999.9))
+        else:
             ds.series["Precip"]["Data"].append(float(999.9))
     # add the time zone to the DateTime ataributes
     ds.series["DateTime"]["Attr"]["time_zone"] = "UTC"
@@ -206,17 +209,49 @@ def interpolate_ds(ds_in, ts, k=3):
     for label in series_list:
         #print label
         data_in, flag_in, attr_in = qcutils.GetSeriesasMA(ds_in, label)
-        data_out = interpolate_1d(x1, data_in, x2, k=1)
-        flag_out = interpolate_1d(x1, flag_in, x2, k=1)
-        # clamp the flag to either 0 or 1
-        idx = numpy.where(flag_out != 0)[0]
-        flag_out[idx] = numpy.int(1)
+        # check if we are dealing with precipitation
+        if "Precip" in label:
+            # precipitation shouldn't be interpolated, just assign any precipitation
+            # to the ISD time stamp.
+            data_out = numpy.ma.zeros(len(idt), dtype=numpy.float64)
+            idx = numpy.searchsorted(x2, numpy.intersect1d(x2, x1))
+            data_out[idx] = data_in
+        else:
+            # interpolate everything else
+            data_out = interpolate_1d(x1, data_in, x2)
+        flag_out = numpy.zeros(len(idt))
         attr_out = attr_in
         qcutils.CreateSeries(ds_out, label, data_out, Flag=flag_out, Attr=attr_out)
 
     return ds_out
 
-def interpolate_1d(x1,y1,x2,k=3,ext=0):
+def interpolate_1d(x1, y1, x2):
+    """
+    Purpose:
+     Interpolate data from one time step to another.
+    Assumptions:
+    Usage:
+    Author: PRI
+    Date: June 2017
+    """
+    # off we go
+    if numpy.ma.is_masked(y1):
+        # check we have at least 2 non-masked points
+        if numpy.ma.count(y1) >= 2:
+            # input Y array is a masked array
+            idx = numpy.where(numpy.ma.getmaskarray(y1) == False)[0]
+            int_fn = scipy.interpolate.Akima1DInterpolator(x1[idx], y1[idx].data)
+            y2 = int_fn(x2)
+        else:
+            msg = "Not enough points (<2) to interpolate"
+            logger.warning(msg)
+            y2 = numpy.ma.ones(len(x2))*float(c.missing_value)
+    else:
+        int_fn = scipy.interpolate.Akima1DInterpolator(x1, y1)
+        y2 = int_fn(x2)
+    return y2
+
+def interpolate_1d_old(x1,y1,x2,k=3,ext=0):
     """
     Purpose:
      Interpolate data from one time step to another.
@@ -363,7 +398,10 @@ isd_time_steps = OrderedDict()
 for site in site_list:
     # construct the output file path
     fluxnet_id = site_info[site]["FluxNet ID"]
-    nc_out_path = os.path.join(out_base_path,fluxnet_id,"Data","ISD",fluxnet_id+"_ISD.nc")
+    if len(fluxnet_id) == 0:
+        nc_out_path = os.path.join(out_base_path,site,"Data","ISD",site+"_ISD.nc")
+    else:
+        nc_out_path = os.path.join(out_base_path,fluxnet_id,"Data","ISD",fluxnet_id+"_ISD.nc")
     # construct the config dictionary for the concatenate routine
     cf_concat = ConfigObj(indent_type="    ")    
     cf_concat["Options"] = {"NumberOfDimensions":1,
@@ -504,8 +542,12 @@ for site in site_list:
                 ds_all.series[all_label]["Flag"][idx] = flag
                 ds_all.series[all_label]["Attr"] = copy.deepcopy(attr)
         # write the netCDF file with the combined data for this year
-        nc_file_name = fluxnet_id+"_ISD_"+str(year)+".nc"
-        nc_dir_path = os.path.join(out_base_path,fluxnet_id,"Data","ISD")
+        if len(fluxnet_id) == 0:
+            nc_dir_path = os.path.join(out_base_path,site,"Data","ISD")
+            nc_file_name = site+"_ISD_"+str(year)+".nc"
+        else:
+            nc_dir_path = os.path.join(out_base_path,fluxnet_id,"Data","ISD")
+            nc_file_name = fluxnet_id+"_ISD_"+str(year)+".nc"
         if not os.path.exists(nc_dir_path):
             os.makedirs(nc_dir_path)
         nc_file_path = os.path.join(nc_dir_path,nc_file_name)

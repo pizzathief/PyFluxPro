@@ -176,6 +176,7 @@ for n, erai_name in enumerate(erai_list):
         # make the datetime series timezone naive and put it in data structure
         dt_erai_loc_tts = [x.replace(tzinfo=None) for x in dt_erai_loc_tts]
         ds_erai.series["DateTime"]["Data"] = dt_erai_loc_tts
+        ds_erai.series["DateTime"]["Flag"] = numpy.zeros(len(dt_erai_loc_tts))
         ds_erai.globalattributes["nc_nrecs"] = len(dt_erai_loc_tts)
         ds_erai.globalattributes["start_datetime"] = str(dt_erai_loc_tts[0])
         ds_erai.globalattributes["end_datetime"] = str(dt_erai_loc_tts[-1])
