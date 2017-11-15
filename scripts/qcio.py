@@ -2443,9 +2443,9 @@ def xlsx_write_series(ds, xlsxfullname, outputlist=None):
         else:
             ds.globalattributes["xl_datemode"] = 1
     if int(ds.globalattributes["xl_datemode"])==1:
-        xlfile = xlsxwriter.Workbook(xlsxfullname, {'date_1904': True})
+        xlfile = xlsxwriter.Workbook(xlsxfullname, {'date_1904': True, 'nan_inf_to_errors': True})
     else:
-        xlfile = xlsxwriter.Workbook(xlsxfullname, {'date_1904': False})
+        xlfile = xlsxwriter.Workbook(xlsxfullname, {'date_1904': False, 'nan_inf_to_errors': True})
     # add sheets to the Excel file
     xlAttrSheet = xlfile.add_worksheet('Attr')
     xlDataSheet = xlfile.add_worksheet('Data')
