@@ -29,7 +29,7 @@ if sys.argv[1].lower()=="australia":
     erai_info["area"] = "-10/110/-45/155"
     target_directory = "/home/peter/OzFlux/ERAI/"
     start_date = "2017-01-01"
-    end_date = "2017-04-30"
+    end_date = "2017-08-30"
 elif sys.argv[1].lower()=="usa":
     erai_info["area"] = "70/229.5/30/300"
     target_directory = "/home/peter/AmeriFlux/ERAI/"

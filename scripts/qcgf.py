@@ -1348,8 +1348,8 @@ def gfalternate_loadoutputdata(ds_tower,data_dict,alternate_info):
     label_alternate = alternate_info["label_alternate"]
     data_tower = data_dict[label_tower]["data"]
     ts = alternate_info["time_step"]
-    si = qcutils.GetDateIndex(ldt_tower,alternate_info["startdate"],ts=ts)
-    ei = qcutils.GetDateIndex(ldt_tower,alternate_info["enddate"],ts=ts)
+    si = qcutils.GetDateIndex(ldt_tower,alternate_info["startdate"],ts=ts,default=0)
+    ei = qcutils.GetDateIndex(ldt_tower,alternate_info["enddate"],ts=ts,default=len(ldt_tower))
     if alternate_info["overwrite"]:
         ind1 = numpy.where(numpy.ma.getmaskarray(data_dict[label_output][label_alternate]["data"])==False)[0]
     else:
@@ -1872,6 +1872,8 @@ def gfalternate_run_gui(ds_tower,ds_alt,alt_gui,alternate_info):
         gfalternate_progress(alt_gui,"Starting auto (monthly) run ...")
         # get the start datetime entered in the alternate GUI
         if len(alt_gui.startEntry.get())!=0: alternate_info["startdate"] = alt_gui.startEntry.get()
+        alternate_info["gui_startdate"] = alternate_info["startdate"]
+        alternate_info["gui_enddate"] = alternate_info["enddate"]
         startdate = dateutil.parser.parse(alternate_info["startdate"])
         overlap_startdate = dateutil.parser.parse(alternate_info["overlap_startdate"])
         overlap_enddate = dateutil.parser.parse(alternate_info["overlap_enddate"])
@@ -1884,6 +1886,7 @@ def gfalternate_run_gui(ds_tower,ds_alt,alt_gui,alternate_info):
             startdate = enddate
             enddate = startdate+dateutil.relativedelta.relativedelta(months=1)
             alternate_info["startdate"] = startdate.strftime("%Y-%m-%d %H:%M")
+            enddate = min([enddate,overlap_enddate])
             alternate_info["enddate"] = enddate.strftime("%Y-%m-%d %H:%M")
         gfalternate_autocomplete(ds_tower,ds_alt,alternate_info)
         gfalternate_progress(alt_gui,"Finished auto (monthly) run ...")

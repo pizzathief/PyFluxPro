@@ -177,7 +177,3 @@ def DateTimeFromDateAndTimeString(ds,DateString_in,TimeString_in):
     ds.globalattributes["nc_nrecs"] = nRecs
     return 1
 
-def test(arg1,arg2):
-    print "got args:",arg1,arg2
-    return "that worked"
-
