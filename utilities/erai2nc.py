@@ -10,6 +10,7 @@ from configobj import ConfigObj
 import netCDF4
 import numpy
 import pytz
+import scipy
 from scipy.interpolate import InterpolatedUnivariateSpline
 import xlrd
 # check the scripts directory is present
@@ -209,10 +210,18 @@ for n, erai_name in enumerate(erai_list):
         alt_solar_limit = float(site_sa_limit)*numpy.ones(len(alt_solar_3hr))
         sa = numpy.where(alt_solar_3hr<=float(site_sa_limit),alt_solar_limit,alt_solar_3hr)
         coef_3hr = Fsd_erai_3hr/numpy.sin(numpy.deg2rad(sa))
-        # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, coef_3hr, k=1)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, coef_3hr) 
         # get the coefficient at the tower time step
-        coef_tts = s(erai_time_tts)
+        coef_tts = int_fn(erai_time_tts) 
+
+        # ==== old = UnivariateSpline ==== 
+        # get the spline interpolation function
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, coef_3hr, k=1)
+        # get the coefficient at the tower time step
+        #coef_tts = s(erai_time_tts)
+
         # get the downwelling solar radiation at the tower time step
         Fsd_erai_tts = coef_tts*numpy.sin(numpy.deg2rad(alt_solar_tts))
         flag = numpy.zeros(len(Fsd_erai_tts),dtype=numpy.int32)
@@ -233,10 +242,17 @@ for n, erai_name in enumerate(erai_list):
         Fn_sw_erai_3hr = Fn_sw_erai_3hr/(erai_timestep*60)
         # normalise the ERA-I et shortwave by the solar altitude
         coef_3hr = Fn_sw_erai_3hr/numpy.sin(numpy.deg2rad(sa))
-        # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, coef_3hr, k=1)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, coef_3hr) 
         # get the coefficient at the tower time step
-        coef_tts = s(erai_time_tts)
+        coef_tts = int_fn(erai_time_tts) 
+
+        # get the spline interpolation function
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, coef_3hr, k=1)
+        # get the coefficient at the tower time step
+        #coef_tts = s(erai_time_tts)
+
         # get the downwelling solar radiation at the tower time step
         Fn_sw_erai_tts = coef_tts*numpy.sin(numpy.deg2rad(alt_solar_tts))
         flag = numpy.zeros(len(Fn_sw_erai_tts),dtype=numpy.int32)
@@ -258,10 +274,16 @@ for n, erai_name in enumerate(erai_list):
         idx = numpy.where((hour_utc==3)|(hour_utc==15))[0]
         Fld_erai_3hr[idx] = Fld_accum[idx]
         Fld_erai_3hr = Fld_erai_3hr/(erai_timestep*60)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Fld_erai_3hr) 
+        # get the coefficient at the tower time step
+        Fld_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Fld_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Fld_erai_3hr, k=1)
         # get the downwelling longwave at the tower time step
-        Fld_erai_tts = s(erai_time_tts)
+        #Fld_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fld_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Downwelling long wave radiation",units="W/m2")
         qcutils.CreateSeries(ds_erai,"Fld",Fld_erai_tts,flag,attr)
@@ -278,10 +300,16 @@ for n, erai_name in enumerate(erai_list):
         Fn_lw_erai_3hr[idx] = Fn_lw_accum[idx]
         # get the average value over the 3 hourly period
         Fn_lw_erai_3hr = Fn_lw_erai_3hr/(erai_timestep*60)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Fn_lw_erai_3hr) 
+        # get the coefficient at the tower time step
+        Fn_lw_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Fn_lw_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Fn_lw_erai_3hr, k=1)
         # get the net longwave at the tower time step
-        Fn_lw_erai_tts = s(erai_time_tts)
+        #Fn_lw_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fn_lw_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Net long wave radiation",units="W/m2")
         qcutils.CreateSeries(ds_erai,"Fn_lw",Fn_lw_erai_tts,flag,attr)
@@ -308,10 +336,16 @@ for n, erai_name in enumerate(erai_list):
         Fh_erai_3hr[idx] = Fh_accum[idx]
         # get the average value over the 3 hourly period
         Fh_erai_3hr = Fh_erai_3hr/(erai_timestep*60)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Fh_erai_3hr) 
+        # get the coefficient at the tower time step
+        Fh_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Fh_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Fh_erai_3hr, k=1)
         # get the net longwave at the tower time step
-        Fh_erai_tts = s(erai_time_tts)
+        #Fh_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fh_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Sensible heat flux",units="W/m2")
         qcutils.CreateSeries(ds_erai,"Fh",Fh_erai_tts,flag,attr)
@@ -328,10 +362,16 @@ for n, erai_name in enumerate(erai_list):
         Fe_erai_3hr[idx] = Fe_accum[idx]
         # get the average value over the 3 hourly period
         Fe_erai_3hr = Fe_erai_3hr/(erai_timestep*60)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Fe_erai_3hr) 
+        # get the coefficient at the tower time step
+        Fe_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Fe_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Fe_erai_3hr, k=1)
         # get the net longwave at the tower time step
-        Fe_erai_tts = s(erai_time_tts)
+        #Fe_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Fe_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Latent heat flux",units="W/m2")
         qcutils.CreateSeries(ds_erai,"Fe",Fe_erai_tts,flag,attr)
@@ -351,10 +391,16 @@ for n, erai_name in enumerate(erai_list):
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         ps_3d = erai_file.variables["sp"][:,:,:]
         ps_erai_3hr = ps_3d[:,site_lat_index,site_lon_index]/float(1000)
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, ps_erai_3hr) 
+        # get the coefficient at the tower time step
+        ps_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, ps_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, ps_erai_3hr, k=1)
         # get the air pressure at the tower time step
-        ps_erai_tts = s(erai_time_tts)
+        #ps_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(ps_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Surface pressure",units="kPa")
         qcutils.CreateSeries(ds_erai,"ps",ps_erai_tts,flag,attr)
@@ -363,10 +409,16 @@ for n, erai_name in enumerate(erai_list):
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Ta_3d = erai_file.variables["t2m"][:,:,:]
         Ta_erai_3hr = Ta_3d[:,site_lat_index,site_lon_index] - 273.15
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Ta_erai_3hr) 
+        # get the coefficient at the tower time step
+        Ta_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Ta_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Ta_erai_3hr, k=1)
         # get the air temperature at the tower time step
-        Ta_erai_tts = s(erai_time_tts)
+        #Ta_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Ta_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Air temperature",units="C")
         qcutils.CreateSeries(ds_erai,"Ta",Ta_erai_tts,flag,attr)
@@ -376,10 +428,16 @@ for n, erai_name in enumerate(erai_list):
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Td_3d = erai_file.variables["d2m"][:,:,:]
         Td_erai_3hr = Td_3d[:,site_lat_index,site_lon_index] - 273.15
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Td_erai_3hr) 
+        # get the coefficient at the tower time step
+        Td_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Td_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Td_erai_3hr, k=1)
         # get the dew point temperature at the towespeedr time step
-        Td_erai_tts = s(erai_time_tts)
+        #Td_erai_tts = s(erai_time_tts)
         # get the relative humidity
         es_erai_tts = mf.es(Ta_erai_tts)
         e_erai_tts = mf.es(Td_erai_tts)
@@ -406,10 +464,16 @@ for n, erai_name in enumerate(erai_list):
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Habl_3d = erai_file.variables["blh"][:,:,:]
         Habl_erai_3hr = Habl_3d[:,site_lat_index,site_lon_index]
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Habl_erai_3hr) 
+        # get the coefficient at the tower time step
+        Habl_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Habl_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Habl_erai_3hr, k=1)
         # get the boundary layer height at the tower time step
-        Habl_erai_tts = s(erai_time_tts)
+        #Habl_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Habl_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Boundary layer height",units="m")
         qcutils.CreateSeries(ds_erai,"Habl",Habl_erai_tts,flag,attr)
@@ -433,10 +497,16 @@ for n, erai_name in enumerate(erai_list):
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Sws_3d = erai_file.variables["swvl1"][:,:,:]
         Sws_erai_3hr = Sws_3d[:,site_lat_index,site_lon_index]
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Sws_erai_3hr) 
+        # get the coefficient at the tower time step
+        Sws_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Sws_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Sws_erai_3hr, k=1)
         # get the soil moisture at the tower time step
-        Sws_erai_tts = s(erai_time_tts)
+        #Sws_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Sws_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Soil moisture",units="frac")
         qcutils.CreateSeries(ds_erai,"Sws",Sws_erai_tts,flag,attr)
@@ -445,10 +515,16 @@ for n, erai_name in enumerate(erai_list):
         # NOTE: ERA-I variables are dimensioned [time,latitude,longitude]
         Ts_3d = erai_file.variables["stl1"][:,:,:]
         Ts_erai_3hr = Ts_3d[:,site_lat_index,site_lon_index] - 273.15
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, Ts_erai_3hr) 
+        # get the coefficient at the tower time step
+        Ts_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, Ts_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, Ts_erai_3hr, k=1)
         # get the soil moisture at the tower time step
-        Ts_erai_tts = s(erai_time_tts)
+        #Ts_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(Ts_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="Soil temperature",units="C")
         qcutils.CreateSeries(ds_erai,"Ts",Ts_erai_tts,flag,attr)
@@ -458,20 +534,32 @@ for n, erai_name in enumerate(erai_list):
         # U first ...
         U_3d = erai_file.variables["u10"][:,:,:]
         U_erai_3hr = U_3d[:,site_lat_index,site_lon_index]
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, U_erai_3hr) 
+        # get the coefficient at the tower time step
+        U_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, U_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, U_erai_3hr, k=1)
         # get the soil moisture at the tower time step
-        U_erai_tts = s(erai_time_tts)
+        #U_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(U_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="U component of wind speed",units="m/s")
         qcutils.CreateSeries(ds_erai,"U",U_erai_tts,flag,attr)
         # ... then V
         V_3d = erai_file.variables["v10"][:,:,:]
         V_erai_3hr = V_3d[:,site_lat_index,site_lon_index]
+
+        # get the Akima interpolator function
+        int_fn = scipy.interpolate.Akima1DInterpolator(erai_time_3hr, V_erai_3hr) 
+        # get the coefficient at the tower time step
+        V_erai_tts = int_fn(erai_time_tts) 
+
         # get the spline interpolation function
-        s = InterpolatedUnivariateSpline(erai_time_3hr, V_erai_3hr, k=1)
+        #s = InterpolatedUnivariateSpline(erai_time_3hr, V_erai_3hr, k=1)
         # get the soil moisture at the tower time step
-        V_erai_tts = s(erai_time_tts)
+        #V_erai_tts = s(erai_time_tts)
         flag = numpy.zeros(len(V_erai_tts),dtype=numpy.int32)
         attr = qcutils.MakeAttributeDictionary(long_name="V component of wind speed",units="m/s")
         qcutils.CreateSeries(ds_erai,"V",V_erai_tts,flag,attr)
