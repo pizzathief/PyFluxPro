@@ -1586,6 +1586,8 @@ def nc_read_series(ncFullName,checktimestep=True,fixtimestepmethod=""):
             raise Exception("nc_read_series: file not found")
     # file probably exists, so let's read it
     ncFile = netCDF4.Dataset(ncFullName,'r')
+    # disable automatic masking of data when valid_range specified
+    ncFile.set_auto_mask(False)
     # now deal with the global attributes
     gattrlist = ncFile.ncattrs()
     if len(gattrlist)!=0:
@@ -1733,6 +1735,7 @@ def nc_read_var(ncFile,ThisOne):
         data = ncFile.variables[ThisOne][:,0,0]
         # netCDF4 returns a masked array if the "missing_variable" attribute has been set
         # for the variable, here we trap this and force the array in ds.series to be ndarray
+        # may not be needed after adding ncFile.set_auto_mask(False) in nc_read_series().
         if numpy.ma.isMA(data): data,dummy = qcutils.MAtoSeries(data)
         # check for a QC flag
         if ThisOne+'_QCFlag' in ncFile.variables.keys():
