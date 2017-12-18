@@ -1735,6 +1735,7 @@ def nc_read_var(ncFile,ThisOne):
         data = ncFile.variables[ThisOne][:,0,0]
         # netCDF4 returns a masked array if the "missing_variable" attribute has been set
         # for the variable, here we trap this and force the array in ds.series to be ndarray
+        # may not be needed after adding ncFile.set_auto_mask(False) in nc_read_series().
         if numpy.ma.isMA(data): data,dummy = qcutils.MAtoSeries(data)
         # check for a QC flag
         if ThisOne+'_QCFlag' in ncFile.variables.keys():
