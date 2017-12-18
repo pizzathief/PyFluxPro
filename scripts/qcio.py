@@ -1586,6 +1586,8 @@ def nc_read_series(ncFullName,checktimestep=True,fixtimestepmethod=""):
             raise Exception("nc_read_series: file not found")
     # file probably exists, so let's read it
     ncFile = netCDF4.Dataset(ncFullName,'r')
+    # disable automatic masking of data when valid_range specified
+    ncFile.set_auto_mask(False)
     # now deal with the global attributes
     gattrlist = ncFile.ncattrs()
     if len(gattrlist)!=0:
