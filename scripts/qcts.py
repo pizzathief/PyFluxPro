@@ -2701,9 +2701,9 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
     # check to see if we have enough data to proceed
     # deal with possible aliases for the sonic temperature
     if Tv_in not in ds.series.keys():
-        if "Tv_CSAT" in ds.series.keys():
-            Tv_in = "Tv_CSAT"
-            Ta_out = "Ta_CSAT"
+        if "Tv_CSAT_Av" in ds.series.keys():
+            Tv_in = "Tv_CSAT_Av"
+            Ta_out = "Ta_CSAT_Av"
         else:
             logger.error(" TaFromTv: sonic virtual temperature not found in data structure")
             return
