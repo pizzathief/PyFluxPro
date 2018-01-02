@@ -1852,6 +1852,7 @@ def gfalternate_run_gui(ds_tower,ds_alt,alt_gui,alternate_info):
     #alternate_info["series_list"] = ["Ah","Ta"]
     logger.info(" Gap filling "+str(list(set(series_list)))+" using alternate data")
     if alt_gui.peropt.get()==1:
+        logger.info("Starting manual run ...")
         gfalternate_progress(alt_gui,"Starting manual run ...")
         # get the start and end datetimes entered in the alternate GUI
         if len(alt_gui.startEntry.get())!=0: alternate_info["startdate"] = alt_gui.startEntry.get()
@@ -1868,6 +1869,7 @@ def gfalternate_run_gui(ds_tower,ds_alt,alt_gui,alternate_info):
                           "overlap_enddate":enddate.strftime("%Y-%m-%d %H:%M"),
                           "startdate":startdate.strftime("%Y-%m-%d %H:%M"),
                           "enddate":enddate.strftime("%Y-%m-%d %H:%M")}
+        logger.info("Finished manual run ...")
     elif alt_gui.peropt.get()==2:
         gfalternate_progress(alt_gui,"Starting auto (monthly) run ...")
         # get the start datetime entered in the alternate GUI

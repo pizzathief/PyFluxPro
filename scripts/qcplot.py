@@ -411,8 +411,15 @@ def plottimeseries(cf,nFig,dsa,dsb,si,ei):
         else:
             logger.error('  plttimeseries: series '+ThisOne+' not in data structure')
     fig.show()
-    fname = 'plots/'+SiteName.replace(' ','')+'_'+Level+'_'+p['PlotDescription'].replace(' ','')+'.png'
-    fig.savefig(fname,format='png')
+    if "plot_path" in cf["Files"]:
+        plot_path = os.path.join(cf["Files"]["plot_path"],Level)
+    else:
+        plot_path = "plots/"
+    if not os.path.exists(plot_path):
+        os.makedirs(plot_path)
+    file_name = SiteName.replace(' ','')+p['PlotDescription'].replace(' ','')+'.png'
+    file_path = os.path.join(plot_path, file_name)
+    fig.savefig(file_path,format='png')
 
 def plot_quickcheck(cf):
     nFig = 0
