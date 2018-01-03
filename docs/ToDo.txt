@@ -29,3 +29,62 @@ ValueError: operands could not be broadcast together with shapes (0,) (1510,)
 7) do WD as components
 8) plot alernate statistics
 9) QC of ISD and ERAI data
+
+Anne's list
+1) merge EP and PFP fluxes
+   - we want to retain ability to pick out only Fc_EP and Fc_EP_QC = 0 or 0/1
+     - can be done with existing code as long as Fc_EP and Fc_EP_QC are in output file
+   - QC EP fluxes at L2 using EP QC flags
+   - QC PFP covariances at L2 and fluxes at L3 using standard PFP QC checks
+   - merge EP and PFP fluxes at L3: Fc_EC = merge(Fc_EP,Fc_PFP)
+     - EP flux missing and QC flag missing ==> use PFP fluxes (ignores EP QC flag)
+     - EP flux present but EP QC flag missing ==> use PFP fluxes
+     - EP flux present but EP QC flag = 2 ==> don't use PFP flux, set merged flux to -9999, set PFP QC flag to ?
+     - EP flux present but EP QC flag = 1 or 0 ==> use EP flux, set PFP QC flag to ?
+     - EP flux present but EP QC flag = 0 ==> use EP flux, set PFP QC flag to ?
+       - give user ability to accept EP fluxes
+         - if EP QC flag = 0
+           if EP QC flag = 0,1
+           if EP QC flag = 0,1,2
+       - gap filling fluxes should be able to use only EP fluxes or merged EP and PFP fluxes
+         - requires specifying target in L5 control file
+     - PFP QC flag must be different for each case
+
+
+
+2) handling storage
+   - Fc_profile QC at L2
+     - using profile QC flag read in at L1
+     - using range check
+   - merge Fc_profile and Fc_single to Fc_storage
+   - calculate NEE = Fc_EC + Fc_storage
+               Fc = Fc_EC + Fc_storage
+     - replaces qcts.CorrectFcForStorage()
+
+3) multiple sources for NEE
+   - Fc
+   - Fc+Fc_storge
+   - Fc_EP
+   - Fc_EP+Fc_storage
+   
+   
+Peter
+1) implement AddSeries at L3
+   - done
+   - not implemented as AddSeries but qcts.CorrectFcForStorage()
+2) rename Fc_storage in existing PFP to Fc_single
+   - done
+3) mask merged Fc when EP QC flag = 2 but not when EP QC flag = -9999
+   - done
+   - implemented as new QC check EPQCFlagCheck
+4) implement target = in L5 control file
+   - done
+5) implement output file name in custom climatology and CPD control files
+   used for batch processing
+   - done
+
+Anne
+1) push 1 path through using Fc=Fc_EC+Fc_storage
+   - requires Peter to do 1), 2) and 3) above
+2) either push all paths through GUI
+   or     set up multiple control files for batch processing
