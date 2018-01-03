@@ -1221,11 +1221,14 @@ def CorrectFgForStorage(cf,ds,Fg_out='Fg',Fg_in='Fg',Ts_in='Ts',Sws_in='Sws'):
     # get the soil temperature difference from time step to time step
     dTs = numpy.ma.zeros(nRecs)
     dTs[1:] = numpy.ma.diff(Ts)
+    # set the temporal difference in Ts for the first value of the series to missing value ...
+    dTs[0] = numpy.ma.masked
     # write the temperature difference into the data structure so we can use its flag later
     dTs_flag = numpy.zeros(nRecs,dtype=numpy.int32)
     index = numpy.where(numpy.ma.getmaskarray(dTs)==True)[0]
     #index = numpy.ma.where(numpy.ma.getmaskarray(dTs)==True)[0]
     dTs_flag[index] = numpy.int32(1)
+    logger.warning('  Setting first SHFstorage in series to missing value')
     attr = qcutils.MakeAttributeDictionary(long_name='Change in soil temperature',units='C')
     qcutils.CreateSeries(ds,"dTs",dTs,dTs_flag,attr)
     # get the time difference
