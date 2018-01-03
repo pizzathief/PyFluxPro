@@ -2,12 +2,27 @@
 *.pyc
 
 # log files
-logfiles
+logfiles/
+utilities/logfiles/
 
 # solo files
-solo/output
-solo/inf
-solo/input
+solo/output/
+solo/inf/
+solo/input/
+solo/log/
+
+# control files
+controlfiles/AmeriFlux/
+controlfiles/OzFlux/
+
+# Jupyter notebook files
+ipynb/
+
+# plots
+plots/
+
+# stashed files
+stash/
 
 # mac files
 .DS_store

@@ -1004,13 +1004,11 @@ def CalculateComponentsFromWsWd(ds):
     Author: PRI/WW/MK/EvG
     Date: July 2016
     """
-    Wd,Wd_flag,attr = qcutils.GetSeriesasMA(ds,"Wd")
-    Ws,Ws_flag,attr = qcutils.GetSeriesasMA(ds,"Ws")
-    u,v = qcutils.convert_WsWdtoUV(Ws,Wd)
-    u_attr = qcutils.MakeAttributeDictionary(long_name="U component of wind in meteorological coordinates (positive east)")
-    v_attr = qcutils.MakeAttributeDictionary(long_name="V component of wind in meteorological coordinates (positive north)")
-    qcutils.CreateSeries(ds,"U",u,Wd_flag,u_attr)
-    qcutils.CreateSeries(ds,"V",v,Wd_flag,v_attr)
+    Wd = qcutils.GetVariable(ds, "Wd")
+    Ws = qcutils.GetVariable(ds, "Ws")
+    u, v = qcutils.convert_WSWDtoUV(Ws, Wd)
+    qcutils.CreateVariable(ds, u)
+    qcutils.CreateVariable(ds, v)
 
 def CalculateFcStorageSinglePoint(cf,ds,Fc_out='Fc_single',CO2_in='CO2'):
     """

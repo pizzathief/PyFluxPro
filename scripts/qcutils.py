@@ -67,29 +67,27 @@ def CheckQCFlags(ds):
     """
     msg = " Checking missing data and QC flags are consistent"
     logger.info(msg)
+    labels = [label for label in ds.series.keys() if label not in ["DateTime"]]
     # force any values of -9999 with QC flags of 0 to have a QC flag of 8
-    for ThisOne in ds.series.keys():
-        data = numpy.ma.masked_values(ds.series[ThisOne]["Data"],-9999)
-        flag = numpy.ma.masked_equal(numpy.mod(ds.series[ThisOne]["Flag"],10),0)
-        mask = data.mask&flag.mask
-        idx = numpy.ma.where(mask==True)[0]
+    for label in labels:
+        var = GetVariable(ds, label)
+        condition = numpy.ma.getmaskarray(var["Data"]) & (numpy.mod(var["Flag"],10) == 0)
+        idx = numpy.ma.where(condition == True)[0]
         if len(idx)!=0:
-            msg = " "+ThisOne+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
+            msg = " "+label+": "+str(len(idx))+" missing values with flag = 0 (forced to 8)"
             logger.warning(msg)
-            ds.series[ThisOne]["Flag"][idx] = numpy.int32(8)
+            var["Flag"][idx] = numpy.int32(8)
+            CreateVariable(ds, var)
     # force all values != -9999 to have QC flag = 0, 10, 20 etc
     nRecs = int(ds.globalattributes["nc_nrecs"])
-    missing_array = numpy.ones(nRecs)*float(c.missing_value)
-    series_list = ds.series.keys()
-    if "DateTime" in series_list:
-        series_list.remove("DateTime")
-    for ThisOne in series_list:
-        bool_array = numpy.isclose(ds.series[ThisOne]["Data"], missing_array)
-        idx = numpy.where((bool_array == False)&(numpy.mod(ds.series[ThisOne]["Flag"],10)!=0))[0]
+    for label in labels:
+        var = GetVariable(ds, label)
+        condition = (numpy.ma.getmaskarray(var["Data"]) == False) & (numpy.mod(var["Flag"],10) != 0)
+        idx = numpy.where(condition == True)[0]
         if len(idx)!=0:
-            msg = " "+ThisOne+": "+str(len(idx))+" non-missing values with flag != 0"
+            msg = " "+label+": "+str(len(idx))+" non-missing values with flag != 0"
             logger.warning(msg)
-            #ds.series[ThisOne]["Data"][idx] = numpy.float64(c.missing_value)
+            #ds.series[label]["Data"][idx] = numpy.float64(c.missing_value)
     return
 
 def CheckTimeStep(ds):
@@ -646,7 +644,7 @@ def convert_anglestring(anglestring):
         # return with the string converted to a float
         return (float(new[0])+float(new[1])/60.0+float(new[2])/3600.0) * direction[new_dir]
 
-def convert_WsWdtoUV(Ws,Wd):
+def convert_WSWDtoUV(WS, WD):
     """
     Purpose:
      Convert wind speed and direction to U and V conponents.
@@ -655,15 +653,41 @@ def convert_WsWdtoUV(Ws,Wd):
       - U is positive towards east
       - V is positive towards north
     Usage:
-     u,v = qcutils.convert_WsWdtoUV(Ws,Wd)
+     U, V = pfp_utils.convert_WSWDtoUV(WS, WD)
     Author: PRI
     Date: February 2015
     """
-    u = -Ws*numpy.sin(numpy.radians(Wd))
-    v = -Ws*numpy.cos(numpy.radians(Wd))
-    return u,v
+    nrecs = len(WS["Data"])
+    # create variables of 1s and 0s for QC flags
+    f0 = numpy.zeros(nrecs, dtype=numpy.int32)
+    f1 = numpy.ones(nrecs, dtype=numpy.int32)
+    # create empty variables for U and V
+    U = create_empty_variable("u", nrecs)
+    V = create_empty_variable("v", nrecs)
+    # get the components from the wind speed and direction
+    U["Data"] = -WS["Data"]*numpy.sin(numpy.radians(WD["Data"]))
+    V["Data"] = -WS["Data"]*numpy.cos(numpy.radians(WD["Data"]))
+    # set components to 0 when WS is less than 0.01
+    U["Data"] = numpy.ma.where(WS["Data"] < 0.01, numpy.float64(0), U["Data"])
+    V["Data"] = numpy.ma.where(WS["Data"] < 0.01, numpy.float64(0), V["Data"])
+    # now set the QC flag
+    U["Flag"] = numpy.where(numpy.ma.getmaskarray(U["Data"]) == True, f1, f0)
+    V["Flag"] = numpy.where(numpy.ma.getmaskarray(V["Data"]) == True, f1, f0)
+    # update the variable attributes
+    U["Attr"]["long_name"] = "U component of wind velocity, positive east"
+    U["Attr"]["units"] = "m/s"
+    V["Attr"]["long_name"] = "V component of wind velocity, positive north"
+    V["Attr"]["units"] = "m/s"
+    # copy the datetime if it is available
+    if "DateTime" in WS.keys():
+        U["DateTime"] = copy.deepcopy(WS["DateTime"])
+        V["DateTime"] = copy.deepcopy(WS["DateTime"])
+    elif "DateTime" in WD.keys():
+        U["DateTime"] = copy.deepcopy(WD["DateTime"])
+        V["DateTime"] = copy.deepcopy(WD["DateTime"])
+    return U, V
 
-def convert_UVtoWsWd(u,v):
+def convert_UVtoWSWD(U, V):
     """
     Purpose:
      Convert U and V conponents to wind speed and direction
@@ -672,14 +696,39 @@ def convert_UVtoWsWd(u,v):
       - U is positive towards east
       - V is positive towards north
     Usage:
-     Ws,Wd = qcutils.convert_UVtoWsWd(U,V)
+     WS, WD = pfp_utils.convert_UVtoWSWD(U, V)
     Author: PRI
     Date: February 2015
     """
-    Wd = float(270) - (numpy.degrees(numpy.arctan2(v,u)))
-    Wd = numpy.mod(Wd,360)
-    Ws = numpy.sqrt(u*u + v*v)
-    return Ws,Wd
+    nrecs = len(U["Data"])
+    # create variables of 1s and 0s for QC flags
+    f0 = numpy.zeros(nrecs)
+    f1 = numpy.ones(nrecs)
+    # create empty variables for WS and WD
+    WS = create_empty_variable("Ws", nrecs)
+    WD = create_empty_variable("Wd", nrecs)
+    # get the wind speed and direction from the components
+    WD["Data"] = float(270) - (numpy.degrees(numpy.ma.arctan2(V["Data"], U["Data"])))
+    WD["Data"] = numpy.ma.mod(WD["Data"], 360)
+    WS["Data"] = numpy.ma.sqrt(U["Data"]*U["Data"] + V["Data"]*V["Data"])
+    # mask WD when the WS is less than 0.01
+    WD["Data"] = numpy.ma.masked_where(WS["Data"] < 0.01, WD["Data"])
+    # now set the QC flag
+    WS["Flag"] = numpy.where(numpy.ma.getmaskarray(WS["Data"]) == True, f1, f0)
+    WD["Flag"] = numpy.where(numpy.ma.getmaskarray(WD["Data"]) == True, f1, f0)
+    # update the variable attributes
+    WS["Attr"]["long_name"] = "Wind speed"
+    WS["Attr"]["units"] = "m/s"
+    WD["Attr"]["long_name"] = "Wind direction"
+    WD["Attr"]["units"] = "deg"
+    # copy the datetime if it is available
+    if "DateTime" in U.keys():
+        WS["DateTime"] = copy.deepcopy(U["DateTime"])
+        WD["DateTime"] = copy.deepcopy(U["DateTime"])
+    elif "DateTime" in V.keys():
+        WS["DateTime"] = copy.deepcopy(V["DateTime"])
+        WD["DateTime"] = copy.deepcopy(V["DateTime"])
+    return WS, WD
 
 def CreateSeries(ds,Label,Data,Flag,Attr):
     """
@@ -745,7 +794,7 @@ def CreateDatetimeRange(start,stop,step=datetime.timedelta(minutes=30)):
         start = start + step
     return result
 
-def create_empty_variable(label, nrecs):
+def create_empty_variable(label, nrecs, datetime=[]):
     """
     Purpose:
      Returns an empty variable.  Data values are set to -9999, flag values are set to 1
@@ -761,6 +810,8 @@ def create_empty_variable(label, nrecs):
     flag = numpy.ones(nrecs, dtype=numpy.int32)
     attr = make_attribute_dictionary()
     variable = {"Label":label, "Data":data, "Flag":flag, "Attr":attr}
+    if len(datetime) == nrecs:
+        variable["DateTime"] = datetime
     return variable
 
 def CreateVariable(ds,variable):
@@ -1272,6 +1323,7 @@ def GetSeries(ds,ThisOne,si=0,ei=-1,mode="truncate"):
             Attr = MakeAttributeDictionary()
     else:
         # make an empty series if the requested series does not exist in the data structure
+        logger.warning("GetSeries: requested variable not found, making empty series ...")
         Series,Flag,Attr = MakeEmptySeries(ds,ThisOne)
     # tidy up
     if ei==-1: ei = nRecs - 1
@@ -1675,6 +1727,30 @@ def get_number_from_heightstring(height):
     except:
         z = 0.0
     return z
+
+def get_nctime_from_datetime(ds, time_units="seconds since 1970-01-01 00:00:00.0",
+                             calendar="gregorian"):
+    """
+    Purpose:
+     Generate a time series in the supplied units from the datetime objects stored
+     in the data structure ds.
+    Usage:
+     get_nctime_from_datetime(ds, time_units)
+     where ds is a data structure (data_structure)
+           group is the group in the data structure be handled (string)
+           time_units provides the units and the reference datetime (string)
+                      e.g. time_units = "seconds since 1970-01-01 00:00:00.0"
+    Author: PRI
+    Date: October 2017
+    """
+    ldt = ds.series["DateTime"]["Data"]
+    data = netCDF4.date2num(ldt, time_units, calendar=calendar)
+    flag = numpy.zeros(len(data))
+    attr = {"long_name":"time", "standard_name":"time", "units":time_units, "calendar":calendar}
+    variable = {"Label":"time", "Data":data, "Flag":flag, "Attr":attr}
+    CreateVariable(ds, variable)
+
+    return
 
 def get_nrecs(ds):
     if 'nc_nrecs' in ds.globalattributes.keys():
@@ -2120,11 +2196,25 @@ def polyval(p,x):
     return y
 
 def rounddttots(dt,ts=30):
+    """
+    Purpose:
+     Round the time stamp to the nearest time step.
+    Usage:
+    Author: PRI (probably stolen from StackOverFlow)
+    Date: Back in the day
+    """
     dt += datetime.timedelta(minutes=int(ts/2))
     dt -= datetime.timedelta(minutes=dt.minute % int(ts),seconds=dt.second,microseconds=dt.microsecond)
     return dt
 
 def rounddttoseconds(dt):
+    """
+    Purpose:
+     Round the time stamp to the nearest the nearest second.
+    Usage:
+    Author: PRI (probably stolen from StackOverFlow)
+    Date: Back in the day
+    """
     dt += datetime.timedelta(seconds=0.5)
     dt -= datetime.timedelta(seconds=dt.second % 1,microseconds=dt.microsecond)
     return dt
