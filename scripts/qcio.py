@@ -377,13 +377,15 @@ def read_eddypro_full(csvname):
 def reddyproc_write_csv(cf):
     # this needs to be re-written!
     # get the file names
-    ncFileName = cf["Files"]["in_filename"]
+    file_path = cf["Files"]["file_path"]
+    nc_name = cf["Files"]["in_filename"]
+    ncFileName = os.path.join(file_path, nc_name)
     if not os.path.exists(ncFileName):
-        file_name = os.path.split(ncFileName)
-        msg = " netCDF file "+file_name[1]+" not found"
+        msg = " netCDF file "+ncFileName+" not found"
         logger.warning(msg)
         return
-    csvFileName = cf["Files"]["out_filename"]
+    csv_name = cf["Files"]["out_filename"]
+    csvFileName = os.path.join(file_path, csv_name)
     file_name = os.path.split(csvFileName)
     if not os.path.exists(file_name[0]):
         os.makedirs(file_name[0])
