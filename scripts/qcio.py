@@ -1783,15 +1783,56 @@ def nc_open_write(ncFullName,nctype='NETCDF4'):
         ncFile = ''
     return ncFile
 
-def nc_write_series(ncFile,ds,outputlist=None,ndims=3):
+def nc_write_data(nc_obj, data_dict):
     """
     Purpose:
-     Write the contents of a data structure to a netCDF file.
+     Write a dictionary to a netCDF file or group within a netCDF file.
     Usage:
-     nc_file = qcio.nc_open_write(nc_name)
-     qcio.nc_write_series(nc_file,ds)
-     where nc_file is a netCDF file object returned by qcio.nc_open_write
-           ds is a data structure
+    Author: PRI
+    Date: January 2018
+    """
+    nrecs = len(data_dict["variables"]["DateTime"]["data"])
+    # and give it dimensions of time, latitude and longitude
+    nc_obj.createDimension("time", nrecs)
+    nc_obj.createDimension("latitude", 1)
+    nc_obj.createDimension("longitude", 1)
+    dims = ("time", "latitude", "longitude")
+    # write the time variable to the netCDF object
+    nc_time_units = "seconds since 1970-01-01 00:00:00.0"
+    nc_time = netCDF4.date2num(data_dict["variables"]["DateTime"]["data"], nc_time_units, calendar="gregorian")
+    nc_var = nc_obj.createVariable("time", "d", ("time",))
+    nc_var[:] = nc_time
+    setattr(nc_var, "long_name", "time")
+    setattr(nc_var, "standard_name", "time")
+    setattr(nc_var, "units", nc_time_units)
+    setattr(nc_var, "calendar", "gregorian")
+    # write the latitude and longitude variables to the group
+    nc_var = nc_obj.createVariable("latitude", "d", ("latitude",))
+    nc_var[:] = float(data_dict["globalattributes"]["latitude"])
+    setattr(nc_var, 'long_name', 'latitude')
+    setattr(nc_var, 'standard_name', 'latitude')
+    setattr(nc_var, 'units', 'degrees north')
+    nc_var = nc_obj.createVariable("longitude", "d", ("longitude",))
+    nc_var[:] = float(data_dict["globalattributes"]["longitude"])
+    setattr(nc_var, 'long_name', 'longitude')
+    setattr(nc_var, 'standard_name', 'longitude')
+    setattr(nc_var, 'units', 'degrees east')
+    # get a list of variables to write to the netCDF file
+    labels = sorted([label for label in data_dict["variables"].keys() if label != "DateTime"])
+    # write the variables to the netCDF file object
+    for label in labels:
+        nc_var = nc_obj.createVariable(label, "d", dims)
+        nc_var[:, 0, 0] = data_dict["variables"][label]["data"].tolist()
+        for attr_key in data_dict["variables"][label]["attr"]:
+            attr_value = data_dict["variables"][label]["attr"][attr_key]
+            nc_var.setncattr(attr_key, attr_value)
+
+    return
+
+def nc_write_globalattributes(nc_file, ds, flag_defs=True):
+    """
+    Purpose:
+    Usage:
     Author: PRI
     Date: Back in the day
     """
@@ -1817,15 +1858,32 @@ def nc_write_series(ncFile,ds,outputlist=None,ndims=3):
             attr = ds.globalattributes[item].encode('ascii','ignore')
         else:
             attr = str(ds.globalattributes[item])
-        setattr(ncFile,item,attr)
-    for item in flag_list:
-        if isinstance(ds.globalattributes[item],str):
-            attr = ds.globalattributes[item]
-        elif isinstance(ds.globalattributes[item],unicode):
-            attr = ds.globalattributes[item].encode('ascii','ignore')
-        else:
-            attr = str(ds.globalattributes[item])
-        setattr(ncFile,item,attr)
+        setattr(nc_file,item,attr)
+    if flag_defs:
+        for item in flag_list:
+            if isinstance(ds.globalattributes[item],str):
+                attr = ds.globalattributes[item]
+            elif isinstance(ds.globalattributes[item],unicode):
+                attr = ds.globalattributes[item].encode('ascii','ignore')
+            else:
+                attr = str(ds.globalattributes[item])
+            setattr(nc_file,item,attr)
+    return
+
+def nc_write_series(ncFile, ds, outputlist=None, ndims=3):
+    """
+    Purpose:
+     Write the contents of a data structure to a netCDF file.
+    Usage:
+     nc_file = qcio.nc_open_write(nc_name)
+     qcio.nc_write_series(nc_file,ds)
+     where nc_file is a netCDF file object returned by qcio.nc_open_write
+           ds is a data structure
+    Author: PRI
+    Date: Back in the day
+    """
+    # write the global attributes to the netCDF file
+    nc_write_globalattributes(ncFile, ds)
     # we specify the size of the Time dimension because netCDF4 is slow to write files
     # when the Time dimension is unlimited
     if "nc_nrecs" in ds.globalattributes.keys():
@@ -1852,6 +1910,7 @@ def nc_write_series(ncFile,ds,outputlist=None,ndims=3):
     for ThisOne in ["DateTime","DateTime_UTC"]:
         if ThisOne in outputlist: outputlist.remove(ThisOne)
     # write the time variable
+    ldt = ds.series["DateTime"]["Data"]
     nc_time = netCDF4.date2num(ldt,"days since 1800-01-01 00:00:00.0",calendar="gregorian")
     ncVar = ncFile.createVariable("time","d",("time",))
     ncVar[:] = nc_time
@@ -2265,24 +2324,24 @@ def xl_write_ISD_timesteps(xl_file_path, data):
 
     return
 
-def xl_write_data(xl_sheet,data,xlCol=0):
+def xl_write_data(xl_sheet, data, xlCol=0):
     """
     Purpose:
      Writes a dictionary to a worksheet in an Excel workbook.
      This routine has 2 arguments,an Excel worksheet instance and
      a dictionary of data to be written out.  The dictionary
      format needs to be:
-      1) data["DateTime"]["data"]   - a list of Python datetimes, these will
-                                      be written tp the first column of the
-                                      worksheet
-         data["DateTime"]["units"]  - units of the date time eg "Days", "Years"
-         data["DateTime"]["format"] - a format string for xlwt.easyxf eg "dd/mm/yyy"
-      2) data[variable]["data"]   - a numpy array of data values
-         data[variable]["units"]  - units of the data
-         data[variable]["format"] - an xlwt.easyxf format string eg "0.00" for 2 decimal places
+      1) data["variables"]["DateTime"]["data"]   - a list of Python datetimes, these will
+                                                   be written tp the first column of the
+                                                   worksheet
+         data["variables"]["DateTime"]["units"]  - units of the date time eg "Days", "Years"
+         data["variables"]["DateTime"]["format"] - a format string for xlwt.easyxf eg "dd/mm/yyy"
+      2) data["variables"][variable]["data"]     - a numpy array of data values
+         data["variables"][variable]["units"]    - units of the data
+         data["variables"][variable]["format"]   - an xlwt.easyxf format string eg "0.00" for 2 decimal places
          There can be multiple variables but each must follow the above template.
     Usage:
-     qcio.xl_write_data(xl_sheet,data)
+     qcio.xl_write_data(xl_sheet, data)
       where xl_sheet is an Excel worksheet instance
             data     is a dictionary as defined above
     Side effects:
@@ -2294,27 +2353,27 @@ def xl_write_data(xl_sheet,data,xlCol=0):
     """
     #xlCol = 0
     # write the data to the xl file
-    series_list = data.keys()
-    xl_sheet.write(1,xlCol,data["DateTime"]["units"])
-    nrows = len(data["DateTime"]["data"])
+    series_list = data["variables"].keys()
+    xl_sheet.write(1,xlCol,data["variables"]["DateTime"]["attr"]["units"])
+    nrows = len(data["variables"]["DateTime"]["data"])
     ncols = len(series_list)
-    d_xf = xlwt.easyxf(num_format_str=data["DateTime"]["format"])
+    d_xf = xlwt.easyxf(num_format_str=data["variables"]["DateTime"]["attr"]["format"])
     for j in range(nrows):
-        xl_sheet.write(j+2,xlCol,data["DateTime"]["data"][j],d_xf)
+        xl_sheet.write(j+2,xlCol,data["variables"]["DateTime"]["data"][j],d_xf)
     series_list.remove("DateTime")
     series_list.sort()
     for item in series_list:
         xlCol = xlCol + 1
         try:
-            xl_sheet.write(0,xlCol,data[item]["units"])
+            xl_sheet.write(0,xlCol,data["variables"][item]["attr"]["units"])
         except:
             pass
         xl_sheet.write(1,xlCol,item)
-        d_xf = xlwt.easyxf(num_format_str=data[item]["format"])
-        if numpy.ma.isMA(data[item]["data"]):
-            tmp = numpy.ma.filled(data[item]["data"],fill_value=numpy.NaN)
+        d_xf = xlwt.easyxf(num_format_str=data["variables"][item]["attr"]["format"])
+        if numpy.ma.isMA(data["variables"][item]["data"]):
+            tmp = numpy.ma.filled(data["variables"][item]["data"],fill_value=numpy.NaN)
         else:
-            tmp = data[item]["data"]
+            tmp = data["variables"][item]["data"]
         for j in range(nrows):
             xl_sheet.write(j+2,xlCol,tmp[j],d_xf)
 
