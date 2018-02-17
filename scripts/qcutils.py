@@ -1424,7 +1424,7 @@ def GetSeriesasMA(ds,ThisOne,si=0,ei=-1,mode="truncate"):
     Series,WasND = SeriestoMA(Series)
     return Series,Flag,Attr
 
-def GetVariable(ds,label,si=0,ei=-1,mode="truncate",out_type="ma"):
+def GetVariable(ds, label, start=0, end=-1, mode="truncate", out_type="ma"):
     """
     Purpose:
      Returns a data variable from the data structure as a dictionary.
@@ -1433,8 +1433,8 @@ def GetVariable(ds,label,si=0,ei=-1,mode="truncate",out_type="ma"):
     where the arguments are;
       ds    - the data structure (dict)
       label - label of the data variable in ds (string)
-      si    - start index (integer), default 0
-      ei    - end index (integer), default -1
+      start - start date or index (integer), default 0
+      end   - end date or index (integer), default -1
     and the returned values are;
      The data are returned as a dictionary;
       variable["label"] - variable label in data structure
@@ -1448,12 +1448,28 @@ def GetVariable(ds,label,si=0,ei=-1,mode="truncate",out_type="ma"):
       Fsd = qcutils.GetSeriesAsDict(ds,"Fsd")
     Author: PRI
     """
+    nrecs = int(ds.globalattributes["nc_nrecs"])
+    if end == -1:
+        end = nrecs
     ts = int(ds.globalattributes["time_step"])
-    ldt,flag,attr = GetSeries(ds,"DateTime",si=si,ei=ei,mode=mode)
-    data,flag,attr = GetSeries(ds,label,si=si,ei=ei,mode=mode)
-    if out_type == "ma":
-        data,WasND = SeriestoMA(data)
-    variable = {"Label":label,"Data":data,"Flag":flag,"Attr":attr,"DateTime":numpy.array(ldt),"time_step":ts}
+    if "DateTime" in ds.series.keys():
+        ldt = ds.series["DateTime"]["Data"]
+        si = get_start_index(ldt, start)
+        ei = get_end_index(ldt, end)
+    else:
+        if isinstance(start, numbers.Number):
+            si = max([0,int(start)])
+        else:
+            si = 0
+        if isinstance(end, numbers.Number):
+            ei = min([int(end), nrecs])
+        else:
+            ei = nrecs
+    data,flag,attr = GetSeries(ds, label, si=si, ei=ei, mode=mode)
+    if isinstance(data, numpy.ndarray):
+        data, WasND = SeriestoMA(data)
+    variable = {"Label":label,"Data":data,"Flag":flag,"Attr":attr,
+                "DateTime":numpy.array(ldt[si:ei+1]),"time_step":ts}
     return variable
 
 def GetUnitsFromds(ds, ThisOne):
@@ -1609,6 +1625,54 @@ def get_diurnalstats(dt,data,info):
     diel_stats["Mn"] = numpy.ma.min(data_2d,axis=0)
     return diel_stats
 
+def get_end_index(ldt, end, mode="quiet"):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: October 2016
+    """
+    if isinstance(ldt, list):
+        ldt = numpy.array(ldt)
+    if isinstance(end, str):
+        try:
+            end = dateutil.parser.parse(end)
+            if end <= ldt[-1] and end >= ldt[0]:
+                ei = numpy.where(ldt == end)[0][0]
+            else:
+                if mode == "verbose":
+                    msg = "Requested end date not found, setting to last date"
+                    logger.warning(msg)
+                ei = len(ldt)
+        except ValueError as error:
+            if mode == "verbose":
+                msg = "Error parsing end date string, setting to last date"
+                logger.warning(msg)
+            ei = len(ldt)
+    elif isinstance(end, datetime.datetime):
+        if end >= ldt[0] and end <= ldt[-1]:
+            ei = numpy.where(ldt == end)[0][0]
+        else:
+            if mode == "verbose":
+                msg = "Requested end date not found, setting to last date"
+                logger.warning(msg)
+            ei = len(ldt)
+    elif (isinstance(end, numpy.int64) or isinstance(end, numpy.int32)
+          or isinstance(end, int)):
+        if (end > 0 and end <= len(ldt)) or (end == -1):
+            ei = end
+        else:
+            if mode == "verbose":
+                msg = "Requested end index not found, setting to last index"
+                logger.warning(msg)
+            ei = len(ldt)
+    else:
+        if mode == "verbose":
+            msg = "Unrecognised type for end date, setting to last date"
+            logger.warning(msg)
+        ei = len(ldt)
+    return ei
+
 def get_keyvaluefromcf(cf,sections,key,default=None,mode="quiet"):
     """
     Purpose:
@@ -1761,6 +1825,54 @@ def get_nrecs(ds):
         series_list = ds.series.keys()
         nRecs = len(ds.series[series_list[0]]['Data'])
     return nRecs
+
+def get_start_index(ldt, start, mode="quiet"):
+    """
+    Purpose:
+    Usage:
+    Author: PRI
+    Date: October 2016
+    """
+    if isinstance(ldt, list):
+        ldt = numpy.array(ldt)
+    if isinstance(start, str):
+        try:
+            start = dateutil.parser.parse(start)
+            if start >= ldt[0] and start <= ldt[-1]:
+                si = numpy.where(ldt == start)[0][0]
+            else:
+                if mode == "verbose":
+                    msg = "Requested start date not found, setting to first date"
+                    logger.warning(msg)
+                si = 0
+        except ValueError as error:
+            if mode == "verbose":
+                msg = "Error parsing start date string, setting to first date"
+                logger.warning(msg)
+            si = 0
+    elif isinstance(start, datetime.datetime):
+        if start >= ldt[0] and start <= ldt[-1]:
+            si = numpy.where(ldt == start)[0][0]
+        else:
+            if mode == "verbose":
+                msg = "Requested start date not found, setting to first date"
+                logger.warning(msg)
+            si = 0
+    elif (isinstance(start, numpy.int64) or isinstance(start, numpy.int32)
+          or isinstance(start, int)):
+        if start >= 0 and start < len(ldt):
+            si = start
+        else:
+            if mode == "verbose":
+                msg = "Requested start index not found, setting to 0"
+                logger.warning(msg)
+            si = 0
+    else:
+        if mode == "verbose":
+            msg = "Unrecognised type for start, setting to first date"
+            logger.warning(msg)
+        si = 0
+    return si
 
 def get_timestep(ds):
     """
