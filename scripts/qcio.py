@@ -252,12 +252,14 @@ def csv_read_series(cf):
     missing_values = {}
     filling_values = {}
     for item in col_list:
-        missing_values[item] = ["NA","N/A","NAN","#NAME?","#VALUE!","#DIV/0!","#REF!"]
+        missing_values[item] = ["NA","N/A","NAN","NaN","nan","#NAME?","#VALUE!","#DIV/0!","#REF!",
+                                "Infinity", "-Infinity",]
         filling_values[item] = c.missing_value
     # read the CSV file
-    data = numpy.genfromtxt(csv_filename,delimiter=dialect.delimiter,skip_header=skip,
+    deletechars = set("""~!@#$%^&=+~\|]}[{';: ?.>,<""")
+    data_array = numpy.genfromtxt(csv_filename,delimiter=dialect.delimiter,skip_header=skip,
                             names=header,usecols=col_list,missing_values=missing_values,
-                            filling_values=filling_values,dtype=None)
+                            filling_values=filling_values,deletechars=deletechars,dtype=None)
     # get the variables and put them into the data structure
     # we'll deal with DateTime and xlDateTime separately
     for item in ["xlDateTime","DateTime"]:
@@ -265,12 +267,40 @@ def csv_read_series(cf):
     # put the data into the data structure
     # NOTE: we will let the function to be called deal with missing
     # dates or empty lines
-    for var in var_list:
-        ds.series[var] = {}
-        ds.series[var]["Data"] = data[csv_varnames[var]]
-        zeros = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
-        ones = numpy.ones(len(data[csv_varnames[var]]),dtype=numpy.int32)
-        ds.series[var]["Flag"] = numpy.where(ds.series[var]["Data"]==c.missing_value,ones,zeros)
+    #for var in var_list:
+        #ds.series[var] = {}
+        #ds.series[var]["Data"] = data[csv_varnames[var]]
+        #idx = numpy.isfinite(ds.series[var]["Data"])
+        #ds.series[var]["Data"][idx] = float(c.missing_value)
+        #zeros = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        #ones = numpy.ones(len(data[csv_varnames[var]]),dtype=numpy.int32)
+        #ds.series[var]["Flag"] = numpy.where(ds.series[var]["Data"]==c.missing_value,ones,zeros)
+    for label in var_list:
+        variable = {"Label":label}
+        # get the data
+        data = data_array[csv_varnames[label]]
+        # make the flag
+        flag = numpy.zeros(len(data), dtype=numpy.int32)
+        # set flag of non-finite values to 1
+        # we use a try ... except clause here because the DATE and TIME arrays
+        # contain character data not numeric data and this causes numpy.isfinite()
+        # to throw and exception.
+        try:
+            idx = numpy.where(numpy.isfinite(data) == False)[0]
+            data[idx] = numpy.float64(c.missing_value)
+            flag[idx] = numpy.int32(1)
+        except TypeError:
+            pass
+        # set flag of missing data to 1
+        missing = numpy.full_like(data, c.missing_value)
+        idx = numpy.where(data==missing)[0]
+        flag[idx] = numpy.int32(1)
+        variable["Data"] = data
+        variable["Flag"] = flag
+        # make the attribute dictionary ...
+        attr = {}
+        variable["Attr"] = copy.deepcopy(attr)
+        qcutils.CreateVariable(ds, variable)
     # call the function given in the control file
     # NOTE: the function being called needs to deal with missing date values
     # and empty lines
@@ -2407,11 +2437,11 @@ def xl_write_series(ds, xlfullname, outputlist=None):
     globalattrlist.sort()
     for ThisOne in sorted([x for x in globalattrlist if 'Flag' not in x]):
         xlAttrSheet.write(xlrow,xlcol,ThisOne)
-        xlAttrSheet.write(xlrow,xlcol+1,str(ds.globalattributes[ThisOne]))
+        xlAttrSheet.write(xlrow,xlcol+1,str(ds.globalattributes[ThisOne].encode('ascii','ignore')))
         xlrow = xlrow + 1
     for ThisOne in sorted([x for x in globalattrlist if 'Flag' in x]):
         xlAttrSheet.write(xlrow,xlcol,ThisOne)
-        xlAttrSheet.write(xlrow,xlcol+1,str(ds.globalattributes[ThisOne]))
+        xlAttrSheet.write(xlrow,xlcol+1,str(ds.globalattributes[ThisOne].encode('ascii','ignore')))
         xlrow = xlrow + 1
     # write the variable attributes
     logger.info(' Writing the variable attributes to Excel file '+xlfullname)
