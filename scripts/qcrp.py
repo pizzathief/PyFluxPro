@@ -1400,9 +1400,8 @@ def L6_summary_daily(ds, series_dict):
     series_list.sort()
     for item in series_list:
         if item not in ds.series.keys(): continue
-        daily_dict["variables"][item] = {"attr":{}, "data":mt_data, "flag":f0}
-        variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
-        daily_dict["variables"][item]["attr"] = copy.deepcopy(variable["Attr"])
+        daily_dict[item] = {}
+        variable = qcutils.GetVariable(ds, item, start=si, end=ei)
         if item in series_dict["lists"]["co2"]:
             variable = qcutils.convert_units_func(ds, variable, "gC/m2")
             daily_dict["variables"][item]["attr"]["units"] = "gC/m2"
@@ -1515,7 +1514,7 @@ def L6_summary_monthly(ds,series_dict):
         monthly_dict["variables"]["DateTime"]["data"].append(dt[si])
         for item in series_list:
             if item not in ds.series.keys(): continue
-            variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
+            variable = qcutils.GetVariable(ds, item, start=si, end=ei)
             if item in series_dict["lists"]["co2"]:
                 variable = qcutils.convert_units_func(ds, variable, "gC/m2")
                 monthly_dict["variables"][item]["attr"]["units"] = "gC/m2"
@@ -1588,7 +1587,7 @@ def L6_summary_annual(ds, series_dict):
         annual_dict["variables"]["nDays"]["data"][i] = nDays
         for item in series_list:
             if item not in ds.series.keys(): continue
-            variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
+            variable = qcutils.GetVariable(ds, item, start=si, end=ei)
             if item in series_dict["lists"]["co2"]:
                 variable = qcutils.convert_units_func(ds, variable, "gC/m2")
                 annual_dict["variables"][item]["attr"]["units"] = "gC/m2"
@@ -1645,10 +1644,8 @@ def L6_summary_cumulative(ds, series_dict):
         cdyr["variables"]["DateTime"] = {"data":ldt,"flag":f0,
                                          "attr":{"units":"Year","format":"dd/mm/yyyy HH:MM"}}
         for item in series_list:
-            cdyr["variables"][item] = {"data":numpy.full(len(ldt), c.missing_value, dtype=numpy.float64),
-                                       "flag":numpy.zeros(len(ldt), dtype=numpy.int32),
-                                       "attr":{}}
-            variable = qcutils.GetVariable(ds, item, si=si, ei=ei)
+            cumulative_dict[str(year)][item] = {}
+            variable = qcutils.GetVariable(ds, item, start=si, end=ei)
             if item in series_dict["lists"]["co2"]:
                 variable = qcutils.convert_units_func(ds, variable, "gC/m2")
                 cdyr["variables"][item]["attr"]["units"] = "gC/m2"
