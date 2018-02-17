@@ -6,6 +6,9 @@ logfiles/
 utilities/logfiles/
 
 # solo files
+solo/bin/sofm
+solo/bin/solo
+solo/bin/seqsolo
 solo/output/
 solo/inf/
 solo/input/
