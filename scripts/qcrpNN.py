@@ -1450,7 +1450,7 @@ def rpSOLO_runsofm(ds,SOLO_gui,driverlist,targetlabel,nRecs,si=0,ei=-1):
     badlines = []
     for TheseOnes in driverlist:
         driver,flag,attr = qcutils.GetSeries(ds,TheseOnes,si=si,ei=ei)
-        index = numpy.where(abs(driver-float(c.missing_value)<c.eps))[0]
+        index = numpy.where(abs(driver-float(c.missing_value))<c.eps)[0]
         if len(index)!=0:
             logger.error(' SOLO_runsofm: c.missing_value found in driver '+TheseOnes+' at lines '+str(index))
             badlines = badlines+index.tolist()
