@@ -2361,14 +2361,14 @@ def xl_write_data(xl_sheet, data, xlCol=0):
      This routine has 2 arguments,an Excel worksheet instance and
      a dictionary of data to be written out.  The dictionary
      format needs to be:
-      1) data["variables"]["DateTime"]["data"]   - a list of Python datetimes, these will
-                                                   be written tp the first column of the
-                                                   worksheet
-         data["variables"]["DateTime"]["units"]  - units of the date time eg "Days", "Years"
-         data["variables"]["DateTime"]["format"] - a format string for xlwt.easyxf eg "dd/mm/yyy"
-      2) data["variables"][variable]["data"]     - a numpy array of data values
-         data["variables"][variable]["units"]    - units of the data
-         data["variables"][variable]["format"]   - an xlwt.easyxf format string eg "0.00" for 2 decimal places
+      1) data["DateTime"]["data"]   - a list of Python datetimes, these will
+                                      be written tp the first column of the
+                                      worksheet
+         data["DateTime"]["units"]  - units of the date time eg "Days", "Years"
+         data["DateTime"]["format"] - a format string for xlwt.easyxf eg "dd/mm/yyy"
+      2) data[variable]["data"]     - a numpy array of data values
+         data[variable]["units"]    - units of the data
+         data[variable]["format"]   - an xlwt.easyxf format string eg "0.00" for 2 decimal places
          There can be multiple variables but each must follow the above template.
     Usage:
      qcio.xl_write_data(xl_sheet, data)
@@ -2383,27 +2383,27 @@ def xl_write_data(xl_sheet, data, xlCol=0):
     """
     #xlCol = 0
     # write the data to the xl file
-    series_list = data["variables"].keys()
-    xl_sheet.write(1,xlCol,data["variables"]["DateTime"]["attr"]["units"])
-    nrows = len(data["variables"]["DateTime"]["data"])
+    series_list = data.keys()
+    xl_sheet.write(1,xlCol,data["DateTime"]["attr"]["units"])
+    nrows = len(data["DateTime"]["data"])
     ncols = len(series_list)
-    d_xf = xlwt.easyxf(num_format_str=data["variables"]["DateTime"]["attr"]["format"])
+    d_xf = xlwt.easyxf(num_format_str=data["DateTime"]["attr"]["format"])
     for j in range(nrows):
-        xl_sheet.write(j+2,xlCol,data["variables"]["DateTime"]["data"][j],d_xf)
+        xl_sheet.write(j+2,xlCol,data["DateTime"]["data"][j],d_xf)
     series_list.remove("DateTime")
     series_list.sort()
     for item in series_list:
         xlCol = xlCol + 1
         try:
-            xl_sheet.write(0,xlCol,data["variables"][item]["attr"]["units"])
+            xl_sheet.write(0,xlCol,data[item]["attr"]["units"])
         except:
             pass
         xl_sheet.write(1,xlCol,item)
-        d_xf = xlwt.easyxf(num_format_str=data["variables"][item]["attr"]["format"])
-        if numpy.ma.isMA(data["variables"][item]["data"]):
-            tmp = numpy.ma.filled(data["variables"][item]["data"],fill_value=numpy.NaN)
+        d_xf = xlwt.easyxf(num_format_str=data[item]["attr"]["format"])
+        if numpy.ma.isMA(data[item]["data"]):
+            tmp = numpy.ma.filled(data[item]["data"],fill_value=numpy.NaN)
         else:
-            tmp = data["variables"][item]["data"]
+            tmp = data[item]["data"]
         for j in range(nrows):
             xl_sheet.write(j+2,xlCol,tmp[j],d_xf)
 
