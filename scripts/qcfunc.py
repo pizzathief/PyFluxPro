@@ -84,6 +84,36 @@ def AhfromMR(ds,Ah_out,MR_in,Ta_in,ps_in):
     qcutils.CreateSeries(ds,Ah_out,Ah_data,flag,Ah_attr)
     return 1
 
+def ConvertK2C(ds, T_in, T_out):
+    """
+    Purpose:
+     Function to convert temperature from K to C.
+    Usage:
+     qcfunc.ConvertK2C(ds, T_in, T_out)
+    Author: PRI
+    Date: February 2018
+    """
+    var_in = qcutils.GetVariable(ds, T_in)
+    var_out = qcutils.convert_units_func(ds, var_in, "C", mode="quiet")
+    var_out["Label"] = T_out
+    qcutils.CreateVariable(ds, var_out)
+    return 1
+
+def ConvertPa2kPa(ds, ps_in, ps_out):
+    """
+    Purpose:
+     Function to convert pressure from Pa to kPa.
+    Usage:
+     qcfunc.ConvertPa2kPa(ds, ps_in, ps_out)
+    Author: PRI
+    Date: February 2018
+    """
+    var_in = qcutils.GetVariable(ds, ps_in)
+    var_out = qcutils.convert_units_func(ds, var_in, "kPa", mode="quiet")
+    var_out["Label"] = ps_out
+    qcutils.CreateVariable(ds, var_out)
+    return 1
+
 def DateTimeFromDoY(ds,Year_in,DoY_in,Hdh_in):
     year,f,a = qcutils.GetSeriesasMA(ds,Year_in)
     doy,f,a = qcutils.GetSeriesasMA(ds,DoY_in)
