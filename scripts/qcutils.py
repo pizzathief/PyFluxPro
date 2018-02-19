@@ -288,9 +288,10 @@ def convert_units_func(ds, variable, new_units, mode="quiet"):
     # check the units are something we understand
     # add more lists here to cope with water etc
     co2_list = ["umol/m2/s","gC/m2","mg/m3","mgCO2/m3","umol/mol","mg/m2/s","mgCO2/m2/s"]
-    h2o_list = ["g/m3","mmol/mol","%","frac","kg/kg"]
-    t_list = ["C","K"]
-    ok_list = co2_list+h2o_list+t_list
+    h2o_list = ["g/m3", "mmol/mol", "%", "frac", "kg/kg"]
+    t_list = ["C", "K"]
+    ps_list = ["Pa", "hPa", "kPa"]
+    ok_list = co2_list+h2o_list+t_list+ps_list
     # parse the original units
     if old_units not in ok_list:
         msg = " Unrecognised units in quantity provided ("+old_units+")"
@@ -313,6 +314,12 @@ def convert_units_func(ds, variable, new_units, mode="quiet"):
     elif new_units in t_list:
         if old_units in t_list:
             variable = convert_units_t(ds, variable, new_units)
+        else:
+            msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
+            logger.error(msg)
+    elif new_units in ps_list:
+        if old_units in ps_list:
+            variable = convert_units_ps(ds, variable, new_units)
         else:
             msg = " New units ("+new_units+") not compatible with old ("+old_units+")"
             logger.error(msg)
@@ -577,7 +584,7 @@ def convert_units_h2o(ds, variable, new_units):
         new_data = numpy.ma.array(old_data,copy=True,mask=True)
     return new_data
 
-def convert_units_t(ds,old_data,old_units,new_units):
+def convert_units_t(ds, var_in, new_units):
     """
     Purpose:
      General purpose routine to convert from one set of temperature units
@@ -586,24 +593,54 @@ def convert_units_t(ds,old_data,old_units,new_units):
       C to K
       K to C
     Usage:
-     new_data = qcutils.convert_units_t(ds,old_data,old_units,new_units)
+     new_data = qcutils.convert_units_t(ds, variable, new_units)
       where ds is a data structure
-            old_data (numpy array) is the data to be converted
-            old_units (string) is the old units
+            variable is a variable dictionary (qcutils.GetVariable())
             new_units (string) is the new units
     Author: PRI
     Date: January 2016
     """
+    var_out = copy.deepcopy(var_in)
     ts = int(ds.globalattributes["time_step"])
-    if old_units=="C" and new_units=="K":
-        new_data = old_data+c.C2K
-    elif old_units=="K" and new_units=="C":
-        new_data = old_data-c.C2K
+    if var_in["Attr"]["units"] == "C" and new_units == "K":
+        var_out["Data"] = var_in["Data"] + c.C2K
+        var_out["Attr"]["units"] = "K"
+    elif var_in["Attr"]["units"] == "K" and new_units == "C":
+        var_out["Data"] = var_in["Data"] - c.C2K
+        var_out["Attr"]["units"] = "C"
     else:
-        msg = " Unrecognised conversion from "+old_units+" to "+new_units
+        msg = " Unrecognised conversion from "+var_in["Attr"]["units"]+" to "+new_units
         logger.error(msg)
-        new_data = numpy.ma.array(old_data,copy=True,mask=True)
-    return new_data
+    return var_out
+
+def convert_units_ps(ds, var_in, new_units):
+    """
+    Purpose:
+     General purpose routine to convert from one set of pressure units
+     to another.
+     Conversions supported are:
+      Pa to kPa
+      hPa to kPa
+    Usage:
+     new_data = qcutils.convert_units_ps(ds, variable, new_units)
+      where ds is a data structure
+            variable is a variable dictionary (qcutils.GetVariable())
+            new_units (string) is the new units
+    Author: PRI
+    Date: February 2018
+    """
+    var_out = copy.deepcopy(var_in)
+    ts = int(ds.globalattributes["time_step"])
+    if var_in["Attr"]["units"] == "Pa" and new_units == "kPa":
+        var_out["Data"] = var_in["Data"]/float(1000)
+        var_out["Attr"]["units"] = "kPa"
+    elif var_in["Attr"]["units"] == "hPa" and new_units == "kPa":
+        var_out["Data"] = var_in["Data"]/float(10)
+        var_out["Attr"]["units"] = "kPa"
+    else:
+        msg = " Unrecognised conversion from "+var_in["Attr"]["units"]+" to "+new_units
+        logger.error(msg)
+    return var_out
 
 def convert_anglestring(anglestring):
     """
