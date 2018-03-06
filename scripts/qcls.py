@@ -298,14 +298,14 @@ def l4qc(cf,ds3):
     if ds4.returncodes["solo"]=="quit": return ds4
     # merge the first group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="prerequisite")
-    ## re-calculate the ground heat flux but only if requested in control file
-    #opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
-    #if opt.lower()!="no":
-        #qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
-    ## re-calculate the net radiation
-    #qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
-    ## re-calculate the available energy
-    #qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
+    # re-calculate the ground heat flux but only if requested in control file
+    opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
+    if opt.lower()!="no":
+        qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
+    # re-calculate the net radiation
+    qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
+    # re-calculate the available energy
+    qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
     # merge the second group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="standard")
     # re-calculate the water vapour concentrations
@@ -345,23 +345,27 @@ def l5qc(cf,ds4):
     # *** start of the section that does the gap filling of the fluxes ***
     # apply the turbulence filter (if requested)
     qcck.ApplyTurbulenceFilter(cf,ds5)
-    # fill short gaps using interpolation
-    #qcgf.GapFillUsingInterpolation(cf,ds5)
-    # do the gap filling using SOLO
-    qcgf.GapFillUsingSOLO(cf,ds4,ds5)
-    if ds5.returncodes["solo"]=="quit": return ds5
-    ## gap fill using marginal distribution sampling
-    #qcgf.GapFillFluxUsingMDS(cf,ds5)
-    ## gap fill using ratios
-    #qcgf.GapFillFluxFromDayRatio(cf,ds5)
-    # gap fill using climatology
-    qcgf.GapFillFromClimatology(ds5)
-    # merge the gap filled drivers into a single series
-    qcts.MergeSeriesUsingDict(ds5,merge_order="standard")
-    # write the percentage of good data as a variable attribute
-    qcutils.get_coverage_individual(ds5)
-    # write the percentage of good data for groups
-    qcutils.get_coverage_groups(ds5)
+    tmp_path = cf["Files"]["file_path"]+"PFP_L5_ApplyTurbulenceFilter.nc"
+    tmp_nc = qcio.nc_open_write(tmp_path)
+    qcio.nc_write_series(tmp_nc,ds5)
+    ds5.returncodes["solo"] = "quit"
+    ## fill short gaps using interpolation
+    ##qcgf.GapFillUsingInterpolation(cf,ds5)
+    ## do the gap filling using SOLO
+    #qcgf.GapFillUsingSOLO(cf,ds4,ds5)
+    #if ds5.returncodes["solo"]=="quit": return ds5
+    ### gap fill using marginal distribution sampling
+    ##qcgf.GapFillFluxUsingMDS(cf,ds5)
+    ### gap fill using ratios
+    ##qcgf.GapFillFluxFromDayRatio(cf,ds5)
+    ## gap fill using climatology
+    #qcgf.GapFillFromClimatology(ds5)
+    ## merge the gap filled drivers into a single series
+    #qcts.MergeSeriesUsingDict(ds5,merge_order="standard")
+    ## write the percentage of good data as a variable attribute
+    #qcutils.get_coverage_individual(ds5)
+    ## write the percentage of good data for groups
+    #qcutils.get_coverage_groups(ds5)
 
     return ds5
 

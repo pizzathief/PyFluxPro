@@ -1001,8 +1001,7 @@ def gfalternate_getcorrecteddata(ds_alternate,data_dict,stat_dict,alternate_info
         if alternate_info["fit_type"].lower()=="replace":
             gfalternate_getfitcorrecteddata(data_dict, stat_dict, alternate_info)
         else:
-            #data_dict[label_output][label_alternate]["fitcorr"] = numpy.ma.masked_all_like(data_dict[label_output][label_alternate]["data"])
-            data_dict[label_output][label_alternate]["fitcorr"] = numpy.ma.copy(data_dict[label_output][label_alternate]["data"])
+            data_dict[label_output][label_alternate]["fitcorr"] = numpy.ma.masked_all_like(data_dict[label_output][label_alternate]["data"])
             stat_dict[label_output][label_alternate]["slope"] = float(0)
             stat_dict[label_output][label_alternate]["offset"] = float(0)
             stat_dict[label_output][label_alternate]["eqnstr"] = "Too few points"
@@ -1552,13 +1551,12 @@ def gfalternate_main(ds_tower,ds_alt,alternate_info,label_tower_list=[]):
                 stat_dict[label_output][label_alternate] = {"startdate":alternate_info["startdate"],"enddate":alternate_info["enddate"]}
                 if label_output not in data_dict[label_tower]["output_list"]:
                     data_dict[label_tower]["output_list"].append(label_output)
-#                    if alternate_info["gotminpoints_both"]: data_dict[label_tower]["output_list"].append(label_output)
                 data_dict[label_output][label_alternate] = {"data":data_alternate,"attr":attr_alternate}
                 gfalternate_getcorrecteddata(ds_alternate,data_dict,stat_dict,alternate_info,mode=mode)
                 gfalternate_loadoutputdata(ds_tower,data_dict,alternate_info)
                 # check to see if we have alternate data for this whole period, if so there is no reason to continue
-                #ind_tower = numpy.where(abs(ds_tower.series[label_output]["Data"][si_tower:ei_tower+1]-float(c.missing_value))<c.eps)[0]
-                #if len(ind_tower)==0: break
+                ind_tower = numpy.where(abs(ds_tower.series[label_output]["Data"][si_tower:ei_tower+1]-float(c.missing_value))<c.eps)[0]
+                if len(ind_tower)==0: break
         # we have completed the loop over the alternate data for this output
         # now do the statistics, diurnal average and daily averages for this output
         gfalternate_getoutputstatistics(data_dict,stat_dict,alternate_info)
