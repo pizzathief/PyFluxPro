@@ -294,7 +294,11 @@ def convert_units_func(ds, variable, new_units, mode="quiet"):
     ok_list = co2_list+h2o_list+t_list+ps_list
     # parse the original units
     if old_units not in ok_list:
-        msg = " Unrecognised units in quantity provided ("+old_units+")"
+        if "Label" in variable:
+            label = variable["Label"]
+        else:
+            label = "quantity provided"
+        msg = " Unrecognised units ("+old_units+") in "+label
         logger.error(msg)
     elif new_units not in ok_list:
         msg = " Unrecognised units requested ("+new_units+")"
