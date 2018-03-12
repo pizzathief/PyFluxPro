@@ -142,158 +142,138 @@ def copy_datastructure(cf,ds_in):
                         pass
     return ds_out
 
-def csv_read_series(cf):
-    """
-    Purpose:
-     Reads a CSV file and returns the data in a data structure.
-     The CSV file must conform to the following rules:
-      1) the first line of the CSV file is a header line that contains
-         the variable names for each column
-      2) the second and all subsequent lines must contain data
-      3) the first colume must contain a string representation
-         of the datetime
-      4) missing data in the CSV file is represented by a blank
-         or by "NA".
-    Usage:
-     ds = csv_read_series(cf)
-     where cf is a control file
-           ds is a data structure
-    Author: PRI
-    Date: September 2015
-    """
-    # get a data structure
-    ds = DataStructure()
-    # return if [[[Function]]] not in [[DateTime]]
+def csv_read_parse_cf(cf):
+    info = {"cf_ok":False}
     if "DateTime" not in cf["Variables"]:
         msg = "No [[DateTime]] section in control file ..."
         logger.error(msg)
-        ds.returncodes = {"value":1,"message":msg}
-        return ds
+        return info
     if "Function" not in cf["Variables"]["DateTime"]:
         msg = "No [[[Function]]] section in [[DateTime]] section ..."
         logger.error(msg)
-        ds.returncodes = {"value":1,"message":msg}
-        return ds
+        return info
     # get the filename, return if missing or doesn't exist
     csv_filename = get_infilenamefromcf(cf)
     if len(csv_filename)==0:
         msg = ' in_filename not found in control file'
         logger.error(msg)
-        ds.returncodes = {"value":1,"message":msg}
-        return ds
+        return info
     if not os.path.exists(csv_filename):
         msg = ' Input file '+csv_filename+' specified in control file not found'
         logger.error(msg)
-        ds.returncodes = {"value":1,"message":msg}
-        return ds
+        return info
+    else:
+        info["csv_filename"] = csv_filename
+
     # get the header row, first data row and units row
     opt = qcutils.get_keyvaluefromcf(cf,["Files"],"in_firstdatarow",default=2)
-    first_data_row = int(opt)
+    info["first_data_row"] = int(opt)
+    info["skip_header"] = info["first_data_row"]-1
     opt = qcutils.get_keyvaluefromcf(cf,["Files"],"in_headerrow",default=1)
-    header_row = int(opt)
+    info["header_row"] = int(opt)
     opt = qcutils.get_keyvaluefromcf(cf,["Files"],"in_unitsrow",default=-1)
-    units_row = int(opt)
+    info["units_row"] = int(opt)
     # set the delimiters
-    delimiters = [",", "\t"]
-    # sniff the file to find out the dialect and the delimiter
-    csv_file = open(csv_filename,'rb')
-    # skip to the header row
-    for i in range(0, header_row):
-        line = csv_file.readline()
-    # sniff the CSV dialect
-    dialect = csv.Sniffer().sniff(line, delimiters)
-    # rewind to the start
-    csv_file.seek(0)
-    # and read the file with the dialect set
-    csv_reader = csv.reader(csv_file,dialect)
-    # get the header and units lines
-    for i in range(1,first_data_row):
-        line = csv_reader.next()
-        if i==header_row:
-            header = line
-            for i in range(len(header)):
-                if "*" in header[i]:
-                    header[i] = header[i].replace("*","star")
-        if units_row!=-1:
-            if i==units_row: units = line
-    csv_file.close()
+    info["delimiters"] = [",", "\t"]
 
+    # sniff the file to find out the dialect and the delimiter
+    csv_file = open(info["csv_filename"],'rb')
+    # skip to the header row
+    for i in range(0, info["first_data_row"]):
+        line = csv_file.readline()
+        if i == info["header_row"]-1 or i == info["units_row"]-1:
+            # sniff the CSV dialect
+            info["dialect"] = csv.Sniffer().sniff(line, info["delimiters"])
+        if i == info["header_row"]-1:
+            info["header_line"] = line
+            # header line from comma separated string to list
+            info["header_list"] = info["header_line"].split(info["dialect"].delimiter)
+        if i == info["units_row"]-1:
+            info["units_line"] = line
+            # units line from comma separated string to list
+            info["units_list"] = info["units_line"].split(info["dialect"].delimiter)
+    csv_file.close()
     # get a list of series to be read from CSV file and check
     # to make sure the requested variables are in the csv file,
     # dump them if they aren't
     csv_varnames = {}
     for item in cf["Variables"].keys():
         if "csv" in cf["Variables"][item].keys():
-            opt = qcutils.get_keyvaluefromcf(cf,["Variables",item,"csv"],"name",default="")
-            if "*" in opt:
-                opt = opt.replace("*","star")
-            if opt in header:
+            opt = qcutils.get_keyvaluefromcf(cf, ["Variables", item, "csv"], "name", default="")
+            if opt in info["header_line"]:
                 csv_varnames[item] = str(opt)
             else:
                 msg = "  "+str(opt)+" not found in CSV file, skipping ..."
                 logger.error(msg)
                 continue
-        # 2017-09-07 - deprecate use of "xl" sectiuon names for CSV files
-        #elif "xl" in cf["Variables"][item].keys():
-            #opt = qcutils.get_keyvaluefromcf(cf,["Variables",item,"xl"],"name",default="")
-            #if csv_varname in header:
-                #csv_varnames[item] = str(opt)
         elif "Function" not in cf["Variables"][item].keys():
-            msg = " No csv, xl or Function section in control file for "+item
+            msg = " No csv or Function section in control file for "+item
             logger.info(msg)
-    var_list = csv_varnames.keys()
-    csv_list = [csv_varnames[x] for x in var_list]
-    col_list = [header.index(item) for item in csv_list]
-    # read the csv file using numpy's genfromtxt
-    file_name = os.path.split(csv_filename)
-    logger.info(" Reading "+file_name[1])
-    skip = first_data_row-1
+            continue
+    info["csv_varnames"] = csv_varnames
+    info["var_list"] = csv_varnames.keys()
+    info["csv_list"] = [csv_varnames[x] for x in info["var_list"]]
+    info["col_list"] = [info["header_list"].index(item) for item in info["csv_list"]]
+
     # define the missing values and the value with which to fill them
-    missing_values = {}
-    filling_values = {}
-    for item in col_list:
-        missing_values[item] = ["NA","N/A","NAN","NaN","nan","#NAME?","#VALUE!","#DIV/0!","#REF!",
-                                "Infinity", "-Infinity",]
-        filling_values[item] = c.missing_value
+    info["missing_values"] = "NA,N/A,NAN,NaN,nan,#NAME?,#VALUE!,#DIV/0!,#REF!,Infinity,-Infinity"
+    info["filling_values"] = c.missing_value
+    info["deletechars"] = set("""~!@#$%^&=+~\|]}[{';: ?.>,<""")
+
+    info["cf_ok"] = True
+
+    return info
+
+def csv_read_series(cf):
+    """
+    Purpose:
+     Reads a CSV file and returns the data in a data structure.
+    Usage:
+     ds = csv_read_series(cf)
+     where cf is a control file
+           ds is a data structure
+    Author: PRI
+    Date: September 2015
+    Mods: February 2018 (PRI) - rewrite
+    """
+    # get a data structure
+    ds = DataStructure()
+    # parse the control file
+    info = csv_read_parse_cf(cf)
+    # return with an empty data structure if parsing failed
+    if not info["cf_ok"]:
+        return ds
+    # read the csv file using numpy's genfromtxt
+    file_name = os.path.split(info["csv_filename"])
+    logger.info(" Reading "+file_name[1])
     # read the CSV file
-    deletechars = set("""~!@#$%^&=+~\|]}[{';: ?.>,<""")
-    data_array = numpy.genfromtxt(csv_filename,delimiter=dialect.delimiter,skip_header=skip,
-                            names=header,usecols=col_list,missing_values=missing_values,
-                            filling_values=filling_values,deletechars=deletechars,dtype=None)
+    data_array = numpy.genfromtxt(info["csv_filename"], delimiter=info["dialect"].delimiter,
+                                  skip_header=info["skip_header"], names=info["header_line"],
+                                  usecols=info["col_list"], missing_values=info["missing_values"],
+                                  filling_values=info["filling_values"], deletechars=info["deletechars"],
+                                  usemask=True, dtype=None)
     # get the variables and put them into the data structure
-    # we'll deal with DateTime and xlDateTime separately
-    for item in ["xlDateTime","DateTime"]:
-        if item in var_list: var_list.remove(item)
+    # we'll deal with DateTime separately
+    for item in ["DateTime"]:
+        if item in info["var_list"]:
+            info["var_list"].remove(item)
     # put the data into the data structure
-    # NOTE: we will let the function to be called deal with missing
-    # dates or empty lines
-    #for var in var_list:
-        #ds.series[var] = {}
-        #ds.series[var]["Data"] = data[csv_varnames[var]]
-        #idx = numpy.isfinite(ds.series[var]["Data"])
-        #ds.series[var]["Data"][idx] = float(c.missing_value)
-        #zeros = numpy.zeros(len(data[csv_varnames[var]]),dtype=numpy.int32)
-        #ones = numpy.ones(len(data[csv_varnames[var]]),dtype=numpy.int32)
-        #ds.series[var]["Flag"] = numpy.where(ds.series[var]["Data"]==c.missing_value,ones,zeros)
-    for label in var_list:
+    for label in info["var_list"]:
+        csv_label = info["csv_varnames"][label]
         variable = {"Label":label}
-        # get the data
-        data = data_array[csv_varnames[label]]
         # make the flag
-        flag = numpy.zeros(len(data), dtype=numpy.int32)
-        # set flag of non-finite values to 1
-        # we use a try ... except clause here because the DATE and TIME arrays
-        # contain character data not numeric data and this causes numpy.isfinite()
-        # to throw and exception.
+        flag = numpy.zeros(len(data_array[csv_label]), dtype=numpy.int32)
+        # get the data
         try:
+            data = numpy.array(data_array[info["csv_varnames"][label]], dtype=numpy.float64)
             idx = numpy.where(numpy.isfinite(data) == False)[0]
             data[idx] = numpy.float64(c.missing_value)
             flag[idx] = numpy.int32(1)
-        except TypeError:
-            pass
+        except ValueError:
+            data = data_array[info["csv_varnames"][label]]
         # set flag of missing data to 1
         missing = numpy.full_like(data, c.missing_value)
-        idx = numpy.where(data==missing)[0]
+        idx = numpy.where(data == missing)[0]
         flag[idx] = numpy.int32(1)
         variable["Data"] = data
         variable["Flag"] = flag
@@ -301,18 +281,17 @@ def csv_read_series(cf):
         attr = {}
         variable["Attr"] = copy.deepcopy(attr)
         qcutils.CreateVariable(ds, variable)
-    # call the function given in the control file
-    # NOTE: the function being called needs to deal with missing date values
-    # and empty lines
+    # call the function given in the control file to convert the date/time string to a datetime object
+    # NOTE: the function being called needs to deal with missing date values and empty lines
     function_string = cf["Variables"]["DateTime"]["Function"]["func"]
     function_name = function_string.split("(")[0]
     function_args = function_string.split("(")[1].replace(")","").split(",")
-    result = getattr(qcfunc,function_name)(ds,*function_args)
+    result = getattr(qcfunc,function_name)(ds, *function_args)
     # set some global attributes
     ds.globalattributes['featureType'] = 'timeseries'
-    ds.globalattributes['csv_filename'] = csv_filename
+    ds.globalattributes['csv_filename'] = info["csv_filename"]
     ds.globalattributes['xl_datemode'] = str(0)
-    s = os.stat(csv_filename)
+    s = os.stat(info["csv_filename"])
     t = time.localtime(s.st_mtime)
     ds.globalattributes['csv_moddatetime'] = str(datetime.datetime(t[0],t[1],t[2],t[3],t[4],t[5]))
     ds.returncodes = {"value":0,"message":"OK"}
@@ -2361,14 +2340,14 @@ def xl_write_data(xl_sheet, data, xlCol=0):
      This routine has 2 arguments,an Excel worksheet instance and
      a dictionary of data to be written out.  The dictionary
      format needs to be:
-      1) data["variables"]["DateTime"]["data"]   - a list of Python datetimes, these will
-                                                   be written tp the first column of the
-                                                   worksheet
-         data["variables"]["DateTime"]["units"]  - units of the date time eg "Days", "Years"
-         data["variables"]["DateTime"]["format"] - a format string for xlwt.easyxf eg "dd/mm/yyy"
-      2) data["variables"][variable]["data"]     - a numpy array of data values
-         data["variables"][variable]["units"]    - units of the data
-         data["variables"][variable]["format"]   - an xlwt.easyxf format string eg "0.00" for 2 decimal places
+      1) data["DateTime"]["data"]   - a list of Python datetimes, these will
+                                      be written tp the first column of the
+                                      worksheet
+         data["DateTime"]["units"]  - units of the date time eg "Days", "Years"
+         data["DateTime"]["format"] - a format string for xlwt.easyxf eg "dd/mm/yyy"
+      2) data[variable]["data"]     - a numpy array of data values
+         data[variable]["units"]    - units of the data
+         data[variable]["format"]   - an xlwt.easyxf format string eg "0.00" for 2 decimal places
          There can be multiple variables but each must follow the above template.
     Usage:
      qcio.xl_write_data(xl_sheet, data)
@@ -2383,27 +2362,27 @@ def xl_write_data(xl_sheet, data, xlCol=0):
     """
     #xlCol = 0
     # write the data to the xl file
-    series_list = data["variables"].keys()
-    xl_sheet.write(1,xlCol,data["variables"]["DateTime"]["attr"]["units"])
-    nrows = len(data["variables"]["DateTime"]["data"])
+    series_list = data.keys()
+    xl_sheet.write(1,xlCol,data["DateTime"]["attr"]["units"])
+    nrows = len(data["DateTime"]["data"])
     ncols = len(series_list)
-    d_xf = xlwt.easyxf(num_format_str=data["variables"]["DateTime"]["attr"]["format"])
+    d_xf = xlwt.easyxf(num_format_str=data["DateTime"]["attr"]["format"])
     for j in range(nrows):
-        xl_sheet.write(j+2,xlCol,data["variables"]["DateTime"]["data"][j],d_xf)
+        xl_sheet.write(j+2,xlCol,data["DateTime"]["data"][j],d_xf)
     series_list.remove("DateTime")
     series_list.sort()
     for item in series_list:
         xlCol = xlCol + 1
         try:
-            xl_sheet.write(0,xlCol,data["variables"][item]["attr"]["units"])
+            xl_sheet.write(0,xlCol,data[item]["attr"]["units"])
         except:
             pass
         xl_sheet.write(1,xlCol,item)
-        d_xf = xlwt.easyxf(num_format_str=data["variables"][item]["attr"]["format"])
-        if numpy.ma.isMA(data["variables"][item]["data"]):
-            tmp = numpy.ma.filled(data["variables"][item]["data"],fill_value=numpy.NaN)
+        d_xf = xlwt.easyxf(num_format_str=data[item]["attr"]["format"])
+        if numpy.ma.isMA(data[item]["data"]):
+            tmp = numpy.ma.filled(data[item]["data"],fill_value=numpy.NaN)
         else:
-            tmp = data["variables"][item]["data"]
+            tmp = data[item]["data"]
         for j in range(nrows):
             xl_sheet.write(j+2,xlCol,tmp[j],d_xf)
 

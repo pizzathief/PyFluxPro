@@ -1469,7 +1469,7 @@ def L6_summary_write_ncfile(nc_file, nc_group, data_dict):
 def L6_summary_write_xlfile(xl_file,sheet_name,data_dict):
     # add the daily worksheet to the summary Excel file
     xl_sheet = xl_file.add_sheet(sheet_name)
-    qcio.xl_write_data(xl_sheet,data_dict)
+    qcio.xl_write_data(xl_sheet,data_dict["variables"])
 
 def L6_summary_monthly(ds,series_dict):
     """
