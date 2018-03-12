@@ -437,7 +437,7 @@ def do_diurnalcheck(cf,ds,section,series,code=5):
             lHdh = ds.series['Hdh']['Data'][mindex]
             l2ds = ds.series[series]['Data'][mindex]
             for i in range(nInts):
-                li = numpy.where(abs(lHdh-(float(i)/float(n))<c.eps)&(l2ds!=float(c.missing_value)))
+                li = numpy.where((abs(lHdh-(float(i)/float(n)))<c.eps)&(l2ds!=float(c.missing_value)))
                 if numpy.size(li)!=0:
                     Av[i] = numpy.mean(l2ds[li])
                     Sd[i] = numpy.std(l2ds[li])

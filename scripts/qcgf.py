@@ -3225,12 +3225,19 @@ def gfSOLO_runsofm(dsa,dsb,driverlist,targetlabel,nRecs,si=0,ei=-1):
     # now fill the driver data array
     i = 0
     badlines = []
+    baddates = []
+    badvalues = []
     for TheseOnes in driverlist:
         driver,flag,attr = qcutils.GetSeries(dsb,TheseOnes,si=si,ei=ei)
-        index = numpy.where(abs(driver-float(c.missing_value)<c.eps))[0]
+        index = numpy.where(abs(driver-float(c.missing_value))<c.eps)[0]
         if len(index)!=0:
             logger.error(' GapFillUsingSOLO: c.missing_value found in driver '+TheseOnes+' at lines '+str(index))
             badlines = badlines+index.tolist()
+            for n in index:
+                baddates.append(dsb.series["DateTime"]["Data"][n])
+                badvalues.append(dsb.series[TheseOnes]["Data"][n])
+            logger.error(' GapFillUsingSOLO: driver values: '+str(badvalues))
+            logger.error(' GapFillUsingSOLO: datetimes: '+str(baddates))
         sofminputdata[:,i] = driver[:]
         i = i + 1
     if len(badlines)!=0:
