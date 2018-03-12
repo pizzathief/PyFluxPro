@@ -298,14 +298,14 @@ def l4qc(cf,ds3):
     if ds4.returncodes["solo"]=="quit": return ds4
     # merge the first group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="prerequisite")
-    ## re-calculate the ground heat flux but only if requested in control file
-    #opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
-    #if opt.lower()!="no":
-        #qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
-    ## re-calculate the net radiation
-    #qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
-    ## re-calculate the available energy
-    #qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
+    # re-calculate the ground heat flux but only if requested in control file
+    opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
+    if opt.lower()!="no":
+        qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
+    # re-calculate the net radiation
+    qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
+    # re-calculate the available energy
+    qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
     # merge the second group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="standard")
     # re-calculate the water vapour concentrations

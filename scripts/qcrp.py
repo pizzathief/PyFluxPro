@@ -390,9 +390,9 @@ def ERUsingLloydTaylor(cf, ds, info):
     series_list = LT_info["er"].keys()
     for series in series_list:
         # create dictionaries for the results
-        E0_results = {}
-        E0_raw_results = {}
-        rb_results = {}
+        E0_results = {"variables":{}}
+        E0_raw_results = {"variables":{}}
+        rb_results = {"variables":{}}
         # add a sheet for this series
         xl_sheet = xl_file.add_sheet(series)
         # get a local copy of the config dictionary
@@ -454,14 +454,14 @@ def ERUsingLloydTaylor(cf, ds, info):
             index = numpy.where(year_array == yr)
             opt_params_dict['Eo'][index] = Eo_dict[yr]
             opt_params_dict['Eo error code'][index] = EoQC_dict[yr]
-        E0_results["DateTime"] = {"data":[datetime.datetime(int(yr),1,1) for yr in Eo_dict.keys()],
-                                  "attr":{"units":"Year","format":"yyyy"}}
-        E0_results["E0"] = {"data":[float(Eo_dict[yr]) for yr in Eo_dict.keys()],
-                            "attr":{"units":"none","format":"0"}}
-        E0_raw_results["DateTime"] = {"data":[datetime.datetime(int(yr),1,1) for yr in Eo_raw_dict.keys()],
-                                      "attr":{"units":"Year","format":"yyyy"}}
-        E0_raw_results["E0"] = {"data":[float(Eo_raw_dict[yr]) for yr in Eo_raw_dict.keys()],
-                                "attr":{"units":"none","format":"0"}}
+        E0_results["variables"]["DateTime"] = {"data":[datetime.datetime(int(yr),1,1) for yr in Eo_dict.keys()],
+                                               "attr":{"units":"Year","format":"yyyy"}}
+        E0_results["variables"]["E0"] = {"data":[float(Eo_dict[yr]) for yr in Eo_dict.keys()],
+                                         "attr":{"units":"none","format":"0"}}
+        E0_raw_results["variables"]["DateTime"] = {"data":[datetime.datetime(int(yr),1,1) for yr in Eo_raw_dict.keys()],
+                                                   "attr":{"units":"Year","format":"yyyy"}}
+        E0_raw_results["variables"]["E0"] = {"data":[float(Eo_raw_dict[yr]) for yr in Eo_raw_dict.keys()],
+                                             "attr":{"units":"none","format":"0"}}
         # write the E0 values to the Excel file
         qcio.xl_write_data(xl_sheet,E0_raw_results,xlCol=0)
         qcio.xl_write_data(xl_sheet,E0_results,xlCol=2)
@@ -508,9 +508,11 @@ def ERUsingLloydTaylor(cf, ds, info):
         # get the indices of non-NaN elements
         idx = numpy.where(numpy.isnan(rb_data)!=True)[0]
         # get the datetime dictionary
-        rb_results["DateTime"] = {"data":rb_date[idx],"attr":{"units":"Date","format":"dd/mm/yyyy"}}
+        rb_results["variables"]["DateTime"] = {"data":rb_date[idx],
+                                  "attr":{"units":"Date","format":"dd/mm/yyyy"}}
         # get the rb values
-        rb_results["rb_noct"] = {"data":rb_data[idx],"attr":{"units":"none","format":"0.00"}}
+        rb_results["variables"]["rb_noct"] = {"data":rb_data[idx],
+                            "attr":{"units":"none","format":"0.00"}}
         # write to the Excel file
         qcio.xl_write_data(xl_sheet,rb_results,xlCol=4)
         # Interpolate
@@ -1398,7 +1400,7 @@ def L6_summary_daily(ds, series_dict):
     series_list.sort()
     for item in series_list:
         if item not in ds.series.keys(): continue
-        daily_dict["variables"][item] = {"attr":{}}
+        daily_dict["variables"][item] = {"data":[],"attr":{}}
         variable = qcutils.GetVariable(ds, item, start=si, end=ei)
         if item in series_dict["lists"]["co2"]:
             variable = qcutils.convert_units_func(ds, variable, "gC/m2")
@@ -1642,7 +1644,7 @@ def L6_summary_cumulative(ds, series_dict):
         cdyr["variables"]["DateTime"] = {"data":ldt,"flag":f0,
                                          "attr":{"units":"Year","format":"dd/mm/yyyy HH:MM"}}
         for item in series_list:
-            cdyr["variables"][item] = {"attr":{}}
+            cdyr["variables"][item] = {"data":[],"attr":{}}
             variable = qcutils.GetVariable(ds, item, start=si, end=ei)
             if item in series_dict["lists"]["co2"]:
                 variable = qcutils.convert_units_func(ds, variable, "gC/m2")
