@@ -2373,10 +2373,7 @@ def xl_write_data(xl_sheet, data, xlCol=0):
     series_list.sort()
     for item in series_list:
         xlCol = xlCol + 1
-        try:
-            xl_sheet.write(0,xlCol,data[item]["attr"]["units"])
-        except:
-            pass
+        xl_sheet.write(0,xlCol,data[item]["attr"]["units"])
         xl_sheet.write(1,xlCol,item)
         d_xf = xlwt.easyxf(num_format_str=data[item]["attr"]["format"])
         if numpy.ma.isMA(data[item]["data"]):
