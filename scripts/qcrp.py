@@ -463,8 +463,8 @@ def ERUsingLloydTaylor(cf, ds, info):
         E0_raw_results["variables"]["E0"] = {"data":[float(Eo_raw_dict[yr]) for yr in Eo_raw_dict.keys()],
                                              "attr":{"units":"none","format":"0"}}
         # write the E0 values to the Excel file
-        qcio.xl_write_data(xl_sheet,E0_raw_results,xlCol=0)
-        qcio.xl_write_data(xl_sheet,E0_results,xlCol=2)
+        qcio.xl_write_data(xl_sheet,E0_raw_results["variables"],xlCol=0)
+        qcio.xl_write_data(xl_sheet,E0_results["variables"],xlCol=2)
         # *** end of annual estimates of E0 code ***
         # *** start of estimating rb code for each window ***
         # this section could be a separate routine
@@ -514,7 +514,7 @@ def ERUsingLloydTaylor(cf, ds, info):
         rb_results["variables"]["rb_noct"] = {"data":rb_data[idx],
                             "attr":{"units":"none","format":"0.00"}}
         # write to the Excel file
-        qcio.xl_write_data(xl_sheet,rb_results,xlCol=4)
+        qcio.xl_write_data(xl_sheet,rb_results["variables"],xlCol=4)
         # Interpolate
         opt_params_dict['rb_noct'] = qcrpLT.interp_params(opt_params_dict['rb_noct'])
         #print 'Done!'
