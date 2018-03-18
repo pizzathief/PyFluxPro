@@ -637,15 +637,16 @@ def SpecificHumidityFromRH(ds):
         attr = qcutils.MakeAttributeDictionary(long_name='Specific humidity',units='kg/kg',standard_name='specific_humidity')
         qcutils.CreateSeries(ds,"q",q_new,q_new_flag,attr)
 
-def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_CSAT',ps_name='ps',
+def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_SONIC_Av',ps_name='ps',
                                      q_name="q",Ah_name='Ah',RH_name='RH'):
     """
         Add time series of meteorological variables based on fundamental
         relationships (Stull 1988)
 
-        Usage qcts.CalculateMeteorologicalVariables(ds,Ta_name,ps_name,Ah_name)
+        Usage qcts.CalculateMeteorologicalVariables(ds,Ta_name,Tv_name,ps_name,q_name,Ah_name,RH_name)
         ds: data structure
         Ta_name: data series name for air temperature
+        Tv_name: data series name for sonic virtual air temperature
         ps_name: data series name for pressure
         Ah_name: data series name for absolute humidity
         q_name : data series name for specific humidity
@@ -671,8 +672,15 @@ def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_CSAT',ps_name='
     logger.info(' Adding standard met variables to database')
     # get the required data series
     Ta,f,a = qcutils.GetSeriesasMA(ds,Ta_name)
-    # use Tv_CSAT if it is in the data structure, otherwise use Ta
-    if Tv_name not in ds.series.keys(): Tv_name = Ta_name
+    # deal with possible aliases for the sonic temperature for the time being
+    if Tv_name not in ds.series.keys():
+       if "Tv_CSAT_Av" in ds.series.keys():
+           Tv_name = "Tv_CSAT_Av"
+       elif "Tv_CSAT" in ds.series.keys():
+           Tv_name = "Tv_CSAT"
+       else: 
+           Tv_name = Ta_name   # use Tv_CSAT if it is in the data structure, otherwise use Ta
+
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_name)
     ps,f,a = qcutils.GetSeriesasMA(ds,ps_name)
     Ah,f,a = qcutils.GetSeriesasMA(ds,Ah_name)
@@ -2705,6 +2713,9 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
         if "Tv_CSAT_Av" in ds.series.keys():
             Tv_in = "Tv_CSAT_Av"
             Ta_out = "Ta_CSAT_Av"
+        elif "Tv_CSAT" in ds.series.keys():
+            Tv_in = "Tv_CSAT"
+            Ta_out = "Ta_CSAT"
         else:
             logger.error(" TaFromTv: sonic virtual temperature not found in data structure")
             return
