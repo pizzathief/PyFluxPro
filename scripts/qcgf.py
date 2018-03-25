@@ -298,11 +298,9 @@ def gfClimatology_interpolateddaily(ds,series,output,xlbooks):
     # actually ...
     # this may not be the fastest but it may be the most robust because it matches dates of missing data
     # to dates in the climatology file
-    li = 0
     for ii in idx:
         try:
-            jj = cdt.index(ldt[ii],li)
-            li = jj
+            jj = qcutils.find_nearest_value(cdt, ldt[ii])
             data[ii] = val1d[jj]
             flag[ii] = numpy.int32(40)
         except ValueError:
@@ -1427,9 +1425,12 @@ def gfalternate_matchstartendtimes(ds,ds_alternate):
     # do the alternate and tower data overlap?
     if overlap:
         # index of alternate datetimes that are also in tower datetimes
-        alternate_index = qcutils.FindIndicesOfBInA(ldt_tower,ldt_alternate)
+        #alternate_index = qcutils.FindIndicesOfBInA(ldt_tower,ldt_alternate)
+        #alternate_index = [qcutils.find_nearest_value(ldt_tower, dt) for dt in ldt_alternate]
         # index of tower datetimes that are also in alternate datetimes
-        tower_index = qcutils.FindIndicesOfBInA(ldt_alternate,ldt_tower)
+        #tower_index = qcutils.FindIndicesOfBInA(ldt_alternate,ldt_tower)
+        #tower_index = [qcutils.find_nearest_value(ldt_alternate, dt) for dt in ldt_tower]
+        tower_index, alternate_index = qcutils.FindMatchingIndices(ldt_tower, ldt_alternate)
         # check that the indices point to the same times
         ldta = [ldt_alternate[i] for i in alternate_index]
         ldtt = [ldt_tower[i] for i in tower_index]
@@ -2636,7 +2637,7 @@ def gfSOLO_plot(pd,dsa,dsb,driverlist,targetlabel,outputlabel,solo_info,si=0,ei=
     # get the time step
     ts = int(dsb.globalattributes['time_step'])
     # get a local copy of the datetime series
-    xdt = numpy.array(dsb.series['DateTime']['Data'][si:ei+1])
+    xdt = dsb.series["DateTime"]["Data"][si:ei+1]
     Hdh,f,a = qcutils.GetSeriesasMA(dsb,'Hdh',si=si,ei=ei)
     # get the observed and modelled values
     obs,f,a = qcutils.GetSeriesasMA(dsb,targetlabel,si=si,ei=ei)

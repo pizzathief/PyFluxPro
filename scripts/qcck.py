@@ -528,11 +528,13 @@ def do_excludedates(cf,ds,section,series,code=6):
     for i in range(NumExclude):
         ExcludeDateList = ast.literal_eval(cf[section][series]['ExcludeDates'][str(i)])
         try:
-            si = ldt.index(datetime.datetime.strptime(ExcludeDateList[0],'%Y-%m-%d %H:%M'))
+            dt = datetime.datetime.strptime(ExcludeDateList[0],'%Y-%m-%d %H:%M')
+            si = qcutils.find_nearest_value(ldt, dt)
         except ValueError:
             si = 0
         try:
-            ei = ldt.index(datetime.datetime.strptime(ExcludeDateList[1],'%Y-%m-%d %H:%M')) + 1
+            dt = datetime.datetime.strptime(ExcludeDateList[1],'%Y-%m-%d %H:%M')
+            ei = qcutils.find_nearest_value(ldt, dt)
         except ValueError:
             ei = -1
         ds.series[series]['Data'][si:ei] = numpy.float64(c.missing_value)
@@ -549,11 +551,13 @@ def do_excludehours(cf,ds,section,series,code=7):
     for i in range(NumExclude):
         ExcludeHourList = ast.literal_eval(cf[section][series]['ExcludeHours'][str(i)])
         try:
-            si = ldt.index(datetime.datetime.strptime(ExcludeHourList[0],'%Y-%m-%d %H:%M'))
+            dt = datetime.datetime.strptime(ExcludeHourList[0],'%Y-%m-%d %H:%M')
+            si = qcutils.find_nearest_value(ldt, dt)
         except ValueError:
             si = 0
         try:
-            ei = ldt.index(datetime.datetime.strptime(ExcludeHourList[1],'%Y-%m-%d %H:%M')) + 1
+            dt = datetime.datetime.strptime(ExcludeHourList[1],'%Y-%m-%d %H:%M')
+            ei = qcutils.find_nearest_value(ldt, dt)
         except ValueError:
             ei = -1
         for j in range(len(ExcludeHourList[2])):

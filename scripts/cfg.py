@@ -1,5 +1,22 @@
 version_name = "PyFluxPro"
-version_number = "V0.1.2"
+version_number = "V0.1.3"
+# V0.1.3 - "make it faster" version
+#        - at some stage, about the time OFQC became PFP, PFP
+#          became very slow, especially monthly summaries at
+#          L6.  The suspect was the use of qcutils.GetVariables()
+#          which I've been using to replace GetSeriesasMA().
+#          Some quick profiling in Jupyter showed that
+#          GetSeriesasMA() took ~750 us to produce the data
+#          compared to ~350 ms for GetVariables(), that's a
+#          factor of 500 slower!
+#        - the culprit turned out to be the use of numpy.array()
+#          to convert the datetime (originally a list) to an
+#          array (~85 ms) plus some unnecessary use of
+#          qcutils.get_start_index() and get_end_index().
+#        - the fix was to re-write PFP so that datetime is stored
+#          in the data structure as an array rather than a list plus
+#          some changes to GetDateIndex(), FindIndicesOfBInA()
+#          and sundry other routines.
 # V0.1.2 - version produced during resolution of differences
 #          between OFQC V2.9.6 and PFP V0.1.1 found by Craig
 #          McFarlane at Great Western Woodlands:
