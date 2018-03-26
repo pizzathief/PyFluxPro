@@ -1604,7 +1604,6 @@ def nc_read_series(ncFullName,checktimestep=True,fixtimestepmethod=""):
     if len(gattrlist)!=0:
         for gattr in gattrlist:
             ds.globalattributes[gattr] = getattr(ncFile,gattr)
-        if "time_step" in ds.globalattributes: c.ts = ds.globalattributes["time_step"]
     # get a list of the variables in the netCDF file (not their QC flags)
     varlist = [x for x in ncFile.variables.keys() if "_QCFlag" not in x]
     for ThisOne in varlist:
@@ -1671,7 +1670,6 @@ def nc_read_todf(ncFullName,var_data=[]):
         gattr = {}
         for attr in gattrlist:
             gattr[attr] = getattr(ncFile,attr)
-            if "time_step" in gattr.keys(): c.ts = gattr["time_step"]
     # get a list of Python datetimes from the xlDatetime
     # this may be better replaced with one of the standard OzFluxQC routines
     dates_list=[datetime.datetime(*xlrd.xldate_as_tuple(elem,0)) for elem in ncFile.variables['xlDateTime']]

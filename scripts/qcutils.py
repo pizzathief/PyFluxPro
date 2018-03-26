@@ -9,6 +9,7 @@ import logging
 import math
 import meteorologicalfunctions as mf
 import netCDF4
+import numbers
 import numpy
 import os
 import platform
@@ -27,6 +28,32 @@ def bp(fx,tao):
     """
     bp = 2 * c.Pi * fx * tao
     return bp
+
+def bisection(array,value):
+    '''Given an ``array`` , and given a ``value`` , returns an index j such that ``value`` is between array[j]
+    and array[j+1]. ``array`` must be monotonic increasing. j=-1 or j=len(array) is returned
+    to indicate that ``value`` is out of range below and above respectively.
+    Stolen from https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array/2566508'''
+    n = len(array)
+    if (value < array[0]):
+        return -1
+    elif (value > array[n-1]):
+        return n
+    jl = 0# Initialize lower
+    ju = n-1# and upper limits.
+    while (ju-jl > 1):# If we are not yet done,
+        jm=(ju+jl) >> 1# compute a midpoint with a bitshift
+        if (value >= array[jm]):
+            jl=jm# and replace either the lower limit
+        else:
+            ju=jm# or the upper limit, as appropriate.
+        # Repeat until the test condition is satisfied.
+    if (value == array[0]):# edge cases at bottom
+        return 0
+    elif (value == array[n-1]):# and top
+        return n-1
+    else:
+        return jl
 
 def cfkeycheck(cf,Base='Variables',ThisOne=[],key=[]):
     if len(ThisOne) == 0:
@@ -899,6 +926,18 @@ def file_exists(filename,mode="verbose"):
     else:
         return True
 
+def find_nearest_value(array, value):
+    """
+    Purpose:
+     qcutils.bisection() gives the left bound of the interval of array containing
+     value, this function gives the index of the closest value.
+    """
+    i = bisection(array, value)
+    if i < len(array)-1:
+        if abs(array[i+1]-value) <= abs(array[i]-value):
+            i = i + 1
+    return i
+
 def FindIndicesOfBInA(a,b):
     """
     Purpose:
@@ -921,13 +960,37 @@ def FindIndicesOfBInA(a,b):
     Author: PRI
     Date: July 2015
     Comments: Replaces find_indices used up to V2.9.3.
+    March 2018 - rewritten to handle numpy.ndarray and lists
     """
     if len(set(a))!=len(a):
         msg = " FindIndicesOfBInA: first argument contains duplicate values"
         logger.warning(msg)
-    tmpset = set(a)
-    indices = [i for i,item in enumerate(b) if item in tmpset]
+    if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
+        asorted = numpy.argsort(a)
+        bpos = numpy.searchsorted(a[asorted], b)
+        indices = asorted[bpos]
+    elif isinstance(a, list) and isinstance(b, list):
+        tmpset = set(a)
+        indices = [i for i,item in enumerate(b) if item in tmpset]
+    else:
+        msg = " FindIndicesOfBInA: inputs must be both list or both numpy arrays"
+        logger.warning(msg)
+        indices = []
     return indices
+
+def FindMatchingIndices(a, b):
+    a1=numpy.argsort(a)
+    b1=numpy.argsort(b)
+    # use searchsorted:
+    sort_left_a=a[a1].searchsorted(b[b1], side='left')
+    sort_right_a=a[a1].searchsorted(b[b1], side='right')
+    sort_left_b=b[b1].searchsorted(a[a1], side='left')
+    sort_right_b=b[b1].searchsorted(a[a1], side='right')
+    # which values of b are also in a?
+    inds_b=(sort_right_a-sort_left_a > 0).nonzero()[0]
+    # which values of a are also in b?
+    inds_a=(sort_right_b-sort_left_b > 0).nonzero()[0]
+    return inds_a, inds_b
 
 def RemoveDuplicateRecords(ds):
     """ Remove duplicate records."""
@@ -936,9 +999,7 @@ def RemoveDuplicateRecords(ds):
         if item in ds.series.keys():
             ldt,ldt_flag,ldt_attr = GetSeries(ds,item)
             # ldt_nodups is returned as an ndarray
-            ldt_nodups,idx_nodups = numpy.unique(numpy.array(ldt),return_index=True)
-            # now get ldt_nodups as a list
-            ldt_nodups = ldt_nodups.tolist()
+            ldt_nodups,idx_nodups = numpy.unique(ldt,return_index=True)
             # and put it back into the data structure
             ds.series[item]["Data"] = ldt_nodups
             ds.series[item]["Flag"] = ldt_flag[idx_nodups]
@@ -985,7 +1046,7 @@ def FixNonIntegralTimeSteps(ds,fixtimestepmethod=""):
         sys.exit()
     if ans.lower()[0]=="r":
         logger.info(" Rounding to the nearest time step")
-        ldt_rounded = [rounddttots(dt,ts=ts) for dt in ldt]
+        ldt_rounded = numpy.array([rounddttots(dt,ts=ts) for dt in ldt])
         rdt = numpy.array([(ldt_rounded[i]-ldt_rounded[i-1]).total_seconds() for i in range(1,len(ldt))])
         logger.info(" Maximum time step is now "+str(numpy.max(rdt))+" seconds, minimum time step is now "+str(numpy.min(rdt)))
         # replace the existing datetime series with the datetime series rounded to the nearest time step
@@ -1012,18 +1073,16 @@ def FixTimeGaps(ds):
     # generate a datetime list from the start datetime to the end datetime
     ldt_start = ldt_gaps[0]
     ldt_end = ldt_gaps[-1]
-    ldt_nogaps = [result for result in perdelta(ldt_start,ldt_end,datetime.timedelta(minutes=ts))]
+    nogaps = [result for result in perdelta(ldt_start,ldt_end,datetime.timedelta(minutes=ts))]
+    ldt_nogaps = numpy.array(nogaps)
     # update the global attribute containing the number of records
     nRecs = len(ldt_nogaps)
     ds.globalattributes['nc_nrecs'] = nRecs
     # find the indices of the no-gap data in the original data
-    idx_gaps = FindIndicesOfBInA(ldt_gaps,ldt_nogaps)
+    idx_gaps = FindIndicesOfBInA(ldt_nogaps,ldt_gaps)
     # update the series of Python datetimes
     ds.series['DateTime']['Data'] = ldt_nogaps
     ds.series['DateTime']['Flag'] = numpy.zeros(len(ldt_nogaps),dtype=numpy.int32)
-    #org_flag = ds.series['DateTime']['Flag'].astype(numpy.int32)
-    #ds.series['DateTime']['Flag'] = numpy.ones(nRecs,dtype=numpy.int32)
-    #ds.series['DateTime']['Flag'][idx_gaps] = org_flag
     # get a list of series in the data structure
     series_list = [item for item in ds.series.keys() if '_QCFlag' not in item]
     # remove the datetime-related series from data structure
@@ -1224,7 +1283,7 @@ def GetDateIndex(ldt,date,ts=30,default=0,match='exact'):
                 date = dateutil.parser.parse(date)
                 if (date>=ldt[0]) and (date<=ldt[-1]):
                     # date string parsed OK, is it within the datetime range of the data?
-                    i = numpy.where(numpy.array(ldt) == date)[0][0]
+                    i = find_nearest_value(ldt, date)
                 else:
                     # set to default if not within the datetime range of the data
                     i = default
@@ -1238,7 +1297,7 @@ def GetDateIndex(ldt,date,ts=30,default=0,match='exact'):
         # the input date was a datetime object
         # check it is within the datetime range of the data
         if (date>=ldt[0]) and (date<=ldt[-1]):
-            i = numpy.where(numpy.array(ldt) == date)[0][0]
+            i = find_nearest_value(ldt, date)
         else:
             # set to default if not within the datetime range of the data
             i = default
@@ -1493,24 +1552,14 @@ def GetVariable(ds, label, start=0, end=-1, mode="truncate", out_type="ma"):
     if end == -1:
         end = nrecs
     ts = int(ds.globalattributes["time_step"])
-    if "DateTime" in ds.series.keys():
-        ldt = ds.series["DateTime"]["Data"]
-        si = get_start_index(ldt, start)
-        ei = get_end_index(ldt, end)
-    else:
-        if isinstance(start, numbers.Number):
-            si = max([0,int(start)])
-        else:
-            si = 0
-        if isinstance(end, numbers.Number):
-            ei = min([int(end), nrecs])
-        else:
-            ei = nrecs
+    ldt = ds.series["DateTime"]["Data"]
+    si = get_start_index(ldt, start)
+    ei = get_end_index(ldt, end)
     data,flag,attr = GetSeries(ds, label, si=si, ei=ei, mode=mode)
     if isinstance(data, numpy.ndarray):
         data, WasND = SeriestoMA(data)
     variable = {"Label":label,"Data":data,"Flag":flag,"Attr":attr,
-                "DateTime":numpy.array(ldt[si:ei+1]),"time_step":ts}
+                "DateTime":ldt[si:ei+1],"time_step":ts}
     return variable
 
 def GetUnitsFromds(ds, ThisOne):
@@ -1588,7 +1637,7 @@ def get_datetimefromnctime(ds,time,time_units):
     nRecs = int(ds.globalattributes["nc_nrecs"])
     dt = netCDF4.num2date(time,time_units)
     ds.series[unicode("DateTime")] = {}
-    ds.series["DateTime"]["Data"] = list(dt)
+    ds.series["DateTime"]["Data"] = dt
     ds.series["DateTime"]["Flag"] = numpy.zeros(nRecs)
     ds.series["DateTime"]["Attr"] = {}
     ds.series["DateTime"]["Attr"]["long_name"] = "Datetime in local timezone"
@@ -1604,12 +1653,11 @@ def get_datetimefromxldate(ds):
     nRecs = len(ds.series['xlDateTime']['Data'])
     datemode = int(ds.globalattributes['xl_datemode'])
     ds.series[unicode('DateTime')] = {}
-    ds.series['DateTime']['Data'] = [None]*nRecs
     basedate = datetime.datetime(1899, 12, 30)
-    #ldt = [basedate + datetime.timedelta(days=xldate[i] + 1462 * datemode) for i in range(nRecs)]
-    #ds.series['DateTime']['Data'][i] = ldt
+    dt = [None]*nRecs
     for i in range(nRecs):
-        ds.series['DateTime']['Data'][i] = basedate + datetime.timedelta(days=xldate[i] + 1462 * datemode)
+        dt[i] = basedate + datetime.timedelta(days=xldate[i] + 1462 * datemode)
+    ds.series['DateTime']['Data'] = numpy.array(dt)
     ds.series['DateTime']['Flag'] = numpy.zeros(nRecs)
     ds.series['DateTime']['Attr'] = {}
     ds.series['DateTime']['Attr']['long_name'] = 'Datetime in local timezone'
@@ -1626,21 +1674,20 @@ def get_datetimefromymdhms(ds):
     nRecs = get_nrecs(ds)
     ts = ds.globalattributes["time_step"]
     ds.series[unicode('DateTime')] = {}
-    ds.series['DateTime']['Data'] = [None]*nRecs
+    dt = [None]*nRecs
     if "Microseconds" in ds.series.keys():
         microseconds = ds.series["Microseconds"]["Data"]
     else:
         microseconds = numpy.zeros(nRecs,dtype=numpy.float64)
     for i in range(nRecs):
-        #print i,int(ds.series['Year']['Data'][i]),int(ds.series['Month']['Data'][i]),int(ds.series['Day']['Data'][i])
-        #print i,int(ds.series['Hour']['Data'][i]),int(ds.series['Minute']['Data'][i]),int(ds.series['Second']['Data'][i])
-        ds.series['DateTime']['Data'][i] = datetime.datetime(int(ds.series['Year']['Data'][i]),
-                                                       int(ds.series['Month']['Data'][i]),
-                                                       int(ds.series['Day']['Data'][i]),
-                                                       int(ds.series['Hour']['Data'][i]),
-                                                       int(ds.series['Minute']['Data'][i]),
-                                                       int(ds.series['Second']['Data'][i]),
-                                                       int(microseconds[i]))
+        dt = datetime.datetime(int(ds.series['Year']['Data'][i]),
+                                int(ds.series['Month']['Data'][i]),
+                                int(ds.series['Day']['Data'][i]),
+                                int(ds.series['Hour']['Data'][i]),
+                                int(ds.series['Minute']['Data'][i]),
+                                int(ds.series['Second']['Data'][i]),
+                                int(microseconds[i]))
+    ds.series['DateTime']['Data'] = numpy.array(dt)
     ds.series['DateTime']['Flag'] = numpy.zeros(nRecs)
     ds.series['DateTime']['Attr'] = {}
     ds.series['DateTime']['Attr']['long_name'] = 'Date-time object'
@@ -1673,9 +1720,7 @@ def get_end_index(ldt, end, mode="quiet"):
     Author: PRI
     Date: October 2016
     """
-    if isinstance(ldt, list):
-        ldt = numpy.array(ldt)
-    if isinstance(end, str):
+    if isinstance(end, basestring):
         try:
             end = dateutil.parser.parse(end)
             if end <= ldt[-1] and end >= ldt[0]:
@@ -1698,15 +1743,8 @@ def get_end_index(ldt, end, mode="quiet"):
                 msg = "Requested end date not found, setting to last date"
                 logger.warning(msg)
             ei = len(ldt)
-    elif (isinstance(end, numpy.int64) or isinstance(end, numpy.int32)
-          or isinstance(end, int)):
-        if (end > 0 and end <= len(ldt)) or (end == -1):
-            ei = end
-        else:
-            if mode == "verbose":
-                msg = "Requested end index not found, setting to last index"
-                logger.warning(msg)
-            ei = len(ldt)
+    elif (isinstance(end, numbers.Number)):
+        ei = min([int(end), len(ldt)])
     else:
         if mode == "verbose":
             msg = "Unrecognised type for end date, setting to last date"
@@ -1874,9 +1912,7 @@ def get_start_index(ldt, start, mode="quiet"):
     Author: PRI
     Date: October 2016
     """
-    if isinstance(ldt, list):
-        ldt = numpy.array(ldt)
-    if isinstance(start, str):
+    if isinstance(start, basestring):
         try:
             start = dateutil.parser.parse(start)
             if start >= ldt[0] and start <= ldt[-1]:
@@ -1899,15 +1935,8 @@ def get_start_index(ldt, start, mode="quiet"):
                 msg = "Requested start date not found, setting to first date"
                 logger.warning(msg)
             si = 0
-    elif (isinstance(start, numpy.int64) or isinstance(start, numpy.int32)
-          or isinstance(start, int)):
-        if start >= 0 and start < len(ldt):
-            si = start
-        else:
-            if mode == "verbose":
-                msg = "Requested start index not found, setting to 0"
-                logger.warning(msg)
-            si = 0
+    elif (isinstance(start, numbers.Number)):
+        si = max([0,int(start)])
     else:
         if mode == "verbose":
             msg = "Unrecognised type for start, setting to first date"
@@ -2405,7 +2434,8 @@ def round_datetime(ds,mode="nearest_timestep"):
         logger.error(" round_datetime: unrecognised mode ("+str(mode)+")"+" ,returning original time series")
         rldt = ds.series["DateTime"]["Data"]
     # replace the original datetime series with the rounded one
-    ds.series["DateTime"]["Data"] = rldt
+    ds.series["DateTime"]["Data"] = numpy.array(rldt)
+    return
 
 def roundtobase(x,base=5):
     return int(base*round(float(x)/base))

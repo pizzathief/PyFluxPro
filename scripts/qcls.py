@@ -380,7 +380,7 @@ def l6qc(cf,ds5):
     Fc_list = [label for label in ds6.series.keys() if label[0:2] == "Fc"]
     qcutils.CheckUnits(ds6, Fc_list, "umol/m2/s", convert_units=True)
     ## apply the turbulence filter (if requested)
-    #qcck.ApplyTurbulenceFilter(cf,ds6)
+    qcck.ApplyTurbulenceFilter(cf,ds6)
     # get ER from the observed Fc
     qcrp.GetERFromFc(cf, ds6, l6_info)
     # estimate ER using SOLO

@@ -91,11 +91,13 @@ def ApplyLinear(cf,ds,ThisOne):
         for i in range(len(LinearList)):
             LinearItemList = ast.literal_eval(cf['Variables'][ThisOne]['Linear'][str(i)])
             try:
-                si = ldt.index(datetime.datetime.strptime(LinearItemList[0],'%Y-%m-%d %H:%M'))
+                dt = datetime.datetime.strptime(LinearItemList[0],'%Y-%m-%d %H:%M')
+                si = qcutils.find_nearest_value(ldt, dt)
             except ValueError:
                 si = 0
             try:
-                ei = ldt.index(datetime.datetime.strptime(LinearItemList[1],'%Y-%m-%d %H:%M')) + 1
+                dt = datetime.datetime.strptime(LinearItemList[1],'%Y-%m-%d %H:%M')
+                ei = qcutils.find_nearest_value(ldt, dt)
             except ValueError:
                 ei = -1
             Slope = float(LinearItemList[2])
@@ -130,11 +132,13 @@ def ApplyLinearDrift(cf,ds,ThisOne):
         for i in range(len(DriftList)):
             DriftItemList = ast.literal_eval(cf['Variables'][ThisOne]['Drift'][str(i)])
             try:
-                si = ldt.index(datetime.datetime.strptime(DriftItemList[0],'%Y-%m-%d %H:%M'))
+                dt = datetime.datetime.strptime(DriftItemList[0],'%Y-%m-%d %H:%M')
+                si = qcutils.find_nearest_value(ldt, dt)
             except ValueError:
                 si = 0
             try:
-                ei = ldt.index(datetime.datetime.strptime(DriftItemList[1],'%Y-%m-%d %H:%M')) + 1
+                dt = datetime.datetime.strptime(DriftItemList[1],'%Y-%m-%d %H:%M') + 1
+                ei = qcutils.find_nearest_value(ldt, dt)
             except ValueError:
                 ei = -1
             Slope = numpy.zeros(len(data))
@@ -174,11 +178,13 @@ def ApplyLinearDriftLocal(cf,ds,ThisOne):
         for i in range(len(DriftList)):
             DriftItemList = ast.literal_eval(cf['Variables'][ThisOne]['LocalDrift'][str(i)])
             try:
-                si = ldt.index(datetime.datetime.strptime(DriftItemList[0],'%Y-%m-%d %H:%M'))
+                dt = datetime.datetime.strptime(DriftItemList[0],'%Y-%m-%d %H:%M')
+                si = qcutils.find_nearest_value(ldt, dt)
             except ValueError:
                 si = 0
             try:
-                ei = ldt.index(datetime.datetime.strptime(DriftItemList[1],'%Y-%m-%d %H:%M')) + 1
+                dt = datetime.datetime.strptime(DriftItemList[1],'%Y-%m-%d %H:%M') + 1
+                ei = qcutils.find_nearest_value(ldt, dt)
             except ValueError:
                 ei = -1
             Slope = numpy.zeros(len(data))
@@ -1389,11 +1395,13 @@ def CorrectWindDirection(cf,ds,Wd_in):
     for i in range(len(KeyList)):
         ItemList = ast.literal_eval(cf['Variables'][Wd_in]['CorrectWindDirection'][str(i)])
         try:
-            si = ldt.index(datetime.datetime.strptime(ItemList[0],'%Y-%m-%d %H:%M'))
+            dt = datetime.datetime.strptime(ItemList[0],'%Y-%m-%d %H:%M')
+            si = qcutils.find_nearest_value(ldt, dt)
         except ValueError:
             si = 0
         try:
-            ei = ldt.index(datetime.datetime.strptime(ItemList[1],'%Y-%m-%d %H:%M')) + 1
+            dt = datetime.datetime.strptime(ItemList[1],'%Y-%m-%d %H:%M')
+            ei = qcutils.find_nearest_value(ldt, dt)
         except ValueError:
             ei = -1
         Correction = float(ItemList[2])
