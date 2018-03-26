@@ -39,13 +39,11 @@ dir_list = ["./solo/inf","./solo/input","./solo/log","./solo/output"]
 for item in dir_list:
     if not os.path.exists(item): os.makedirs(item)
 
-#logging.basicConfig(filename='logfiles/OzFluxQC.log',level=logging.DEBUG)
-#console = logging.StreamHandler()
-#formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s', '%H:%M:%S')
-#console.setFormatter(formatter)
-#console.setLevel(logging.INFO)
-#logging.getLogger('').addHandler(console)
-logger = qclog.init_logger()
+# start a log file with the current date and time in the name
+t = time.localtime()
+rundatetime = datetime.datetime(t[0],t[1],t[2],t[3],t[4],t[5]).strftime("%Y%m%d%H%M")
+log_filename = 'pfp_'+rundatetime+'.log'
+logger = qclog.init_logger(logger_name="pfp_log", file_handler=log_filename)
 
 class qcgui(tk.Tk):
     """
