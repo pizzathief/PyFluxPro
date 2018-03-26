@@ -38,7 +38,6 @@ for item in dir_list:
 dir_list = ["./solo/inf","./solo/input","./solo/log","./solo/output"]
 for item in dir_list:
     if not os.path.exists(item): os.makedirs(item)
-
 # start a log file with the current date and time in the name
 t = time.localtime()
 rundatetime = datetime.datetime(t[0],t[1],t[2],t[3],t[4],t[5]).strftime("%Y%m%d%H%M")
