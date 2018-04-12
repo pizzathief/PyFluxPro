@@ -1834,6 +1834,8 @@ def FhvtoFh(cf,ds,Fh_out='Fh',Fhv_in='Fhv',Tv_in='Tv_SONIC_Av',q_in='q',wA_in='w
     if Tv_in not in ds.series.keys():
         if "Tv_CSAT" in ds.series.keys():
             Tv_in = "Tv_CSAT"
+        elif "Tv_CSAT_Av" in ds.series.keys():
+            Tv_in = "Tv_CSAT_Av"
         else:
             logger.error(" FhvtoFh: sonic virtual temperature not found in data structure")
             return
