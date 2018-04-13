@@ -207,3 +207,31 @@ def DateTimeFromDateAndTimeString(ds,DateString_in,TimeString_in):
     ds.globalattributes["nc_nrecs"] = nRecs
     return 1
 
+def MRfromRH(ds, MR_out, RH_in, Ta_in, ps_in):
+    """
+    Purpose:
+     Calculate H2O mixing ratio from RH.
+    """
+    nRecs = int(ds.globalattributes["nc_nrecs"])
+    zeros = numpy.zeros(nRecs,dtype=numpy.int32)
+    ones = numpy.ones(nRecs,dtype=numpy.int32)
+    for item in [RH_in, Ta_in, ps_in]:
+        if item not in ds.series.keys():
+            msg = " MRfromRH: Requested series "+item+" not found, "+MR_out+" not calculated"
+            logger.error(msg)
+            return 0
+    if MR_out in ds.series.keys():
+        msg = " MRfromRH: Output series "+MR_out+" already exists, skipping ..."
+        logger.error(msg)
+        return 0
+    RH_data,RH_flag,RH_attr = qcutils.GetSeriesasMA(ds, RH_in)
+    Ta_data,Ta_flag,Ta_attr = qcutils.GetSeriesasMA(ds, Ta_in)
+    Ah_data = mf.absolutehumidityfromRH(Ta_data, RH_data)
+    ps_data,ps_flag,ps_attr = qcutils.GetSeriesasMA(ds, ps_in)
+    MR_data = mf.h2o_mmolpmolfromgpm3(Ah_data, Ta_data, ps_data)
+    MR_attr = qcutils.MakeAttributeDictionary(long_name="H2O mixing ratio calculated from "+RH_in+", "+Ta_in+" and "+ps_in,
+                                              height=RH_attr["height"],
+                                              units="mmol/mol")
+    flag = numpy.where(numpy.ma.getmaskarray(MR_data)==True,ones,zeros)
+    qcutils.CreateSeries(ds, MR_out, MR_data, flag, MR_attr)
+    return 1

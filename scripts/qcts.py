@@ -1498,9 +1498,12 @@ def DoFunctions(cf,ds):
     Date: September 2015
     """
     implemented_functions = [name for name,data in inspect.getmembers(qcfunc,inspect.isfunction)]
+    functions = {}
+    convert_vars = []
+    function_vars = []
     for var in cf["Variables"].keys():
         # datetime functions handled elsewhere for now
-        if var=="DateTime": continue
+        if var == "DateTime": continue
         if "Function" not in cf["Variables"][var].keys(): continue
         if "func" not in cf["Variables"][var]["Function"].keys():
             msg = " DoFunctions: 'func' keyword not found in [Functions] for "+var
@@ -1508,12 +1511,23 @@ def DoFunctions(cf,ds):
             continue
         function_string = cf["Variables"][var]["Function"]["func"]
         function_name = function_string.split("(")[0]
+        function_args = function_string.split("(")[1].replace(")","").replace(" ","").split(",")
         if function_name not in implemented_functions:
             msg = " DoFunctions: Requested function "+function_name+" not imlemented, skipping ..."
             logger.error(msg)
             continue
-        function_args = function_string.split("(")[1].replace(")","").split(",")
-        result = getattr(qcfunc,function_name)(ds,var,*function_args)
+        else:
+            functions[var] = {"name":function_name, "arguments":function_args}
+            if "convert" in function_name.lower():
+                convert_vars.append(var)
+            else:
+                function_vars.append(var)
+    for var in convert_vars:
+        result = getattr(qcfunc,functions[var]["name"])(ds,var,*functions[var]["arguments"])
+        msg = " Completed function for "+var
+        logger.info(msg)
+    for var in function_vars:
+        result = getattr(qcfunc,functions[var]["name"])(ds,var,*functions[var]["arguments"])
         msg = " Completed function for "+var
         logger.info(msg)
 
