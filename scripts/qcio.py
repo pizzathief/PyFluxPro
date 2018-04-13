@@ -2175,16 +2175,15 @@ def xl_check_cf_section(cf, label):
     Author: PRI
     Date: March 2017
     """
-    if "Function" in cf["Variables"][label].keys():
-        result = False
-    elif "xl" not in cf["Variables"][label].keys():
-        logger.error("  Key 'xl' not found in control file entry for "+label)
-        result = False
-    elif "sheet" not in cf["Variables"][label]["xl"].keys():
-        logger.error("  Key 'sheet' not found in control file entry for "+label)
-        result = False
-    else:
-        result = True
+    result = False
+    cf_label = cf["Variables"][label]
+    if "xl" in cf_label.keys():
+        if "xl" in cf_label.keys():
+            if "sheet" in cf_label["xl"].keys():
+                result = True
+            else:
+                logger.error("  Key 'sheet' not found in control file entry for "+label)
+                result = False
     return result
 
 def xl_write_AlternateStats(ds):

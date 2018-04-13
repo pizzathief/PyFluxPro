@@ -1423,7 +1423,7 @@ def GetSeries(ds,ThisOne,si=0,ei=-1,mode="truncate"):
             Attr = MakeAttributeDictionary()
     else:
         # make an empty series if the requested series does not exist in the data structure
-        logger.warning("GetSeries: requested variable not found, making empty series ...")
+        logger.warning("GetSeries: "+ThisOne+" not found, making empty series ...")
         Series,Flag,Attr = MakeEmptySeries(ds,ThisOne)
     # tidy up
     if ei==-1: ei = nRecs - 1
