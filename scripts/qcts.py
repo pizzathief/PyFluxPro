@@ -741,6 +741,50 @@ def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_CSAT',ps_name='
     flag = numpy.where(numpy.ma.getmaskarray(h2o)==True,ones,zeros)
     qcutils.CreateSeries(ds,'H2O',h2o,flag,attr)
 
+def CalculateMoninObukhovLength(ds):
+    """
+    Purpose:
+     Calculate the Monin Obukhov length.
+    Usage:
+     qcts.CalculateMoninObukhovLength(ds)
+     where ds is a data structure
+    Side effects:
+     Creates a new series in the data structure containing the Monin-Obukhov length.
+    Author: PRI
+    Date: April 2018
+    """
+    logger.info(' Calculating Monin-Obukhov length')
+    # create a variable dictionary for L
+    nrecs = int(ds.globalattributes["nc_nrecs"])
+    ldt = qcutils.GetVariable(ds, "DateTime")
+    L = qcutils.create_empty_variable("L", nrecs, datetime=ldt["Data"])
+    # create QC flags
+    zeros = numpy.zeros(nrecs, dtype=numpy.int32)
+    ones = numpy.ones(nrecs, dtype=numpy.int32)
+    # get the required meteorological variables
+    Ta = qcutils.GetVariable(ds, "Ta")
+    ps = qcutils.GetVariable(ds, "ps")
+    vp = qcutils.GetVariable(ds, "e")
+    # get the required fluxes
+    ustar = qcutils.GetVariable(ds, "ustar")
+    Fh = qcutils.GetVariable(ds, "Fh")
+    # calculate the density of dry air
+    rho_dry = mf.densitydryair(Ta["Data"], ps["Data"], vp["Data"])
+    # calculate virtual potential temperature
+    Tp = mf.theta(Ta["Data"], ps["Data"])
+    mr = mf.mixingratio(ps["Data"], vp["Data"])
+    Tvp = mf.virtualtheta(Tp, mr)
+    L["Data"] = -Tvp*rho_dry*c.Cp*(ustar["Data"]**3)/(c.g*c.k*Fh["Data"])
+    # get the QC flag
+    L["Flag"] = numpy.where(numpy.ma.getmaskarray(L["Data"]) == True, ones, zeros)
+    # update the variable attributes
+    L["Attr"]["units"] = "m"
+    L["Attr"]["long_name"] = "Monin-Obukhov length"
+    L["Attr"]["standard_name"] = "not defined"
+    # put the Monin-Obukhov variable in the data structure
+    qcutils.CreateVariable(ds, L)
+    return
+
 def CalculateNetRadiation(cf,ds,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu'):
     """
     Purpose:
@@ -2729,6 +2773,9 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
         if "Tv_CSAT_Av" in ds.series.keys():
             Tv_in = "Tv_CSAT_Av"
             Ta_out = "Ta_CSAT_Av"
+        elif "Tv_CSAT" in ds.series.keys():
+            Tv_in = "Tv_CSAT"
+            Ta_out = "Ta_CSAT"
         else:
             logger.error(" TaFromTv: sonic virtual temperature not found in data structure")
             return

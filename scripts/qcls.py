@@ -184,7 +184,7 @@ def l3qc(cf,ds2):
         qcts.Fe_WPL(cf, ds3)
         qcts.Fc_WPL(cf, ds3)
     # **************************************
-    # *** Calculate Monin-Obukhoc length ***
+    # *** Calculate Monin-Obukhov length ***
     # **************************************
     qcts.CalculateMoninObukhovLength(ds3)
     # **************************
@@ -362,6 +362,8 @@ def l5qc(cf,ds4):
     qcgf.GapFillFromClimatology(ds5)
     # merge the gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds5,merge_order="standard")
+    # calculate Monin-Obukhov length
+    qcts.CalculateMoninObukhovLength(ds5)
     # write the percentage of good data as a variable attribute
     qcutils.get_coverage_individual(ds5)
     # write the percentage of good data for groups
