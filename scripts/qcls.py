@@ -183,6 +183,10 @@ def l3qc(cf,ds2):
         # correct the H2O & CO2 flux due to effects of flux on density measurements
         qcts.Fe_WPL(cf, ds3)
         qcts.Fc_WPL(cf, ds3)
+    # **************************************
+    # *** Calculate Monin-Obukhoc length ***
+    # **************************************
+    qcts.CalculateMoninObukhovLength(ds3)
     # **************************
     # *** CO2 and Fc section ***
     # **************************
