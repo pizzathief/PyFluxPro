@@ -3001,21 +3001,28 @@ def gfSOLO_run_gui(dsa,dsb,solo_gui,solo_info):
     elif solo_gui.peropt.get()==3:
         gfSOLO_progress(solo_gui,"Starting auto (days) run ...")
         # get the start datetime entered in the SOLO GUI
-        if len(solo_gui.startEntry.get())!=0: solo_info["startdate"] = solo_gui.startEntry.get()
+        if len(solo_gui.startEntry.get())!=0: solo_info["startdate"] = solo_gui.startEntry.get()  # if you read the GUIs startdate
+        if len(solo_gui.endEntry.get())!=0: solo_info["enddate"] = solo_gui.endEntry.get()        # you need to include end date too
+        solo_info["gui_startdate"] = solo_info["startdate"]
+        solo_info["gui_enddate"] = solo_info["enddate"]
         startdate = dateutil.parser.parse(solo_info["startdate"])
+        gui_enddate = dateutil.parser.parse(solo_info["gui_enddate"])
         file_startdate = dateutil.parser.parse(solo_info["file_startdate"])
         file_enddate = dateutil.parser.parse(solo_info["file_enddate"])
         nDays = int(solo_gui.daysEntry.get())
         enddate = startdate+dateutil.relativedelta.relativedelta(days=nDays)
-        enddate = min([file_enddate,enddate])
+        enddate = min([file_enddate,enddate,gui_enddate])
         solo_info["enddate"] = datetime.datetime.strftime(enddate,"%Y-%m-%d %H:%M")
-        while startdate<file_enddate:
+        solo_info["startdate"] = datetime.datetime.strftime(startdate,"%Y-%m-%d %H:%M")
+        stopdate = min([file_enddate,gui_enddate])
+        while startdate<stopdate: #file_enddate:
             gfSOLO_main(dsa,dsb,solo_info)
             gfSOLO_plotcoveragelines(dsb,solo_info)
             startdate = enddate
             enddate = startdate+dateutil.relativedelta.relativedelta(days=nDays)
+            run_enddate = min([stopdate,enddate])
             solo_info["startdate"] = startdate.strftime("%Y-%m-%d %H:%M")
-            solo_info["enddate"] = enddate.strftime("%Y-%m-%d %H:%M")
+            solo_info["enddate"] = run_enddate.strftime("%Y-%m-%d %H:%M")
         # now fill any remaining gaps
         gfSOLO_autocomplete(dsa,dsb,solo_info)
         # write Excel spreadsheet with fit statistics
