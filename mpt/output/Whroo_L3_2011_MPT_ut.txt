@@ -1,0 +1,324 @@
+-- ustar threshold by season (forward mode 2)
+
+          -9999
+            554
+
+          -9999
+
+          -9999 
+          -9999 
+          -9999 
+          -9999 
+          -9999 
+          -9999 
+          -9999 
+
+-- bootstrapping
+
+          -9999 forward mode 2
+            588
+          -9999 forward mode 2
+            586
+          -9999 forward mode 2
+            548
+          -9999 forward mode 2
+            550
+          -9999 forward mode 2
+            583
+          -9999 forward mode 2
+            565
+          -9999 forward mode 2
+            576
+          -9999 forward mode 2
+            558
+          -9999 forward mode 2
+            534
+          -9999 forward mode 2
+            569
+          -9999 forward mode 2
+            544
+          -9999 forward mode 2
+            579
+          -9999 forward mode 2
+            537
+          -9999 forward mode 2
+            590
+          -9999 forward mode 2
+            562
+          -9999 forward mode 2
+            551
+          -9999 forward mode 2
+            582
+          -9999 forward mode 2
+            544
+          -9999 forward mode 2
+            594
+          -9999 forward mode 2
+            533
+          -9999 forward mode 2
+            513
+          -9999 forward mode 2
+            493
+          -9999 forward mode 2
+            570
+          -9999 forward mode 2
+            558
+          -9999 forward mode 2
+            532
+          -9999 forward mode 2
+            527
+          -9999 forward mode 2
+            563
+          -9999 forward mode 2
+            488
+          -9999 forward mode 2
+            551
+          -9999 forward mode 2
+            547
+          -9999 forward mode 2
+            560
+          -9999 forward mode 2
+            509
+          -9999 forward mode 2
+            556
+          -9999 forward mode 2
+            589
+          -9999 forward mode 2
+            557
+          -9999 forward mode 2
+            557
+          -9999 forward mode 2
+            542
+          -9999 forward mode 2
+            515
+          -9999 forward mode 2
+            573
+          -9999 forward mode 2
+            582
+          -9999 forward mode 2
+            574
+          -9999 forward mode 2
+            551
+          -9999 forward mode 2
+            554
+          -9999 forward mode 2
+            577
+          -9999 forward mode 2
+            582
+          -9999 forward mode 2
+            560
+          -9999 forward mode 2
+            547
+          -9999 forward mode 2
+            561
+          -9999 forward mode 2
+            547
+          -9999 forward mode 2
+            564
+          -9999 forward mode 2
+            559
+          -9999 forward mode 2
+            553
+          -9999 forward mode 2
+            585
+          -9999 forward mode 2
+            533
+          -9999 forward mode 2
+            512
+          -9999 forward mode 2
+            608
+          -9999 forward mode 2
+            513
+          -9999 forward mode 2
+            553
+          -9999 forward mode 2
+            507
+          -9999 forward mode 2
+            521
+          -9999 forward mode 2
+            569
+          -9999 forward mode 2
+            527
+          -9999 forward mode 2
+            589
+          -9999 forward mode 2
+            523
+          -9999 forward mode 2
+            539
+          -9999 forward mode 2
+            509
+          -9999 forward mode 2
+            561
+          -9999 forward mode 2
+            549
+          -9999 forward mode 2
+            561
+          -9999 forward mode 2
+            559
+          -9999 forward mode 2
+            575
+          -9999 forward mode 2
+            547
+          -9999 forward mode 2
+            562
+          -9999 forward mode 2
+            556
+          -9999 forward mode 2
+            554
+          -9999 forward mode 2
+            526
+          -9999 forward mode 2
+            548
+          -9999 forward mode 2
+            561
+          -9999 forward mode 2
+            575
+          -9999 forward mode 2
+            565
+          -9999 forward mode 2
+            526
+          -9999 forward mode 2
+            554
+          -9999 forward mode 2
+            540
+          -9999 forward mode 2
+            560
+          -9999 forward mode 2
+            554
+          -9999 forward mode 2
+            546
+          -9999 forward mode 2
+            559
+          -9999 forward mode 2
+            536
+          -9999 forward mode 2
+            554
+          -9999 forward mode 2
+            559
+          -9999 forward mode 2
+            614
+          -9999 forward mode 2
+            507
+          -9999 forward mode 2
+            579
+          -9999 forward mode 2
+            516
+          -9999 forward mode 2
+            581
+          -9999 forward mode 2
+            558
+          -9999 forward mode 2
+            514
+          -9999 forward mode 2
+            563
+          -9999 forward mode 2
+            554
+          -9999 forward mode 2
+            523
+
+ forward mode 2
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+          -9999
+
+-- percentiles forward mode 2
+not enough values. percentiles not computed.
+
+-- processed on 20180323210829 with ustar_mp v1.0 compiled using GNU C 4.8.4 on Jan 30 2018 at 19:32:17
