@@ -16,6 +16,18 @@ solo/inf/seqsolo.inf
 solo/input/
 solo/log/
 
+# mpt files
+mpt/bin/ustar_mp
+mpt/input/
+mpt.log/
+mpt/output
+
+# mds files
+mds/bin/gf_mds
+mds/input/
+mds/log/
+mds/output/
+
 # control files
 controlfiles/AmeriFlux/
 controlfiles/OzFlux/
