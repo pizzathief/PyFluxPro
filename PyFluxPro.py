@@ -26,6 +26,7 @@ import qcgf
 import qcio
 import qclog
 import qcls
+import qcmpt
 import qcplot
 import qcrp
 #import qcts
@@ -185,6 +186,10 @@ class qcgui(tk.Tk):
         cpdmenu.add_command(label="Standard",command=lambda:self.do_cpd(mode="standard"))
         cpdmenu.add_command(label="Custom",command=lambda:self.do_cpd(mode="custom"))
         utilsmenu.add_cascade(label="u* threshold (CPD)",menu=cpdmenu)
+        mptmenu = tk.Menu(menubar,tearoff=0)
+        mptmenu.add_command(label="Standard",command=lambda:self.do_mpt(mode="standard"))
+        mptmenu.add_command(label="Custom",command=lambda:self.do_mpt(mode="custom"))
+        utilsmenu.add_cascade(label="u* threshold (MPT)",menu=mptmenu)
         menubar.add_cascade(label="Utilities",menu=utilsmenu)
         # and the "Help" menu
         helpmenu = tk.Menu(menubar,tearoff=0)
@@ -256,7 +261,7 @@ class qcgui(tk.Tk):
     def do_cpd(self,mode="standard"):
         """
         Calls qccpd.cpd_main
-        Compares the results OzFluxQC (L3) with those from EddyPro (full output).
+        Calculate the u* threshold using the Change Point Detection (CPD) method.
         """
         logger.info(' Starting estimation u* threshold using CPD')
         self.do_progress(text='Estimating u* threshold using CPD ...')
@@ -615,6 +620,49 @@ class qcgui(tk.Tk):
         qcio.nc_write_series(ncFile,ds6,outputlist=outputlist)             # save the L6 data
         self.do_progress(text='Finished saving L6 partitioned data')      # tell the user we are done
         logger.info("Finished saving L6 partitioned data")
+        logger.info("")
+
+    def do_mpt(self,mode="standard"):
+        """
+        Calls qcmpt.mpt_main
+        Calculate the u* threshold using the Moving Point Threshold (MPT) method.
+        """
+        logger.info(' Starting estimation u* threshold using MPT')
+        self.do_progress(text='Estimating u* threshold using MPT ...')
+        if mode=="standard":
+            stdname = "controlfiles/standard/mpt.txt"
+            if os.path.exists(stdname):
+                cf = qcio.get_controlfilecontents(stdname)
+                self.do_progress(text='Opening input file ...')
+                filename = qcio.get_filename_dialog(path='../Sites',title='Choose a netCDF file')
+                if not os.path.exists(filename):
+                    logger.info( " MPT: no input file chosen")
+                    self.do_progress(text='Waiting for input ...')
+                    return
+                if "Files" not in dir(cf): cf["Files"] = {}
+                cf["Files"]["file_path"] = ntpath.split(filename)[0]+"/"
+                in_filename = ntpath.split(filename)[1]
+                cf["Files"]["in_filename"] = in_filename
+                cf["Files"]["out_filename"] = in_filename.replace(".nc","_MPT.xls")
+            else:
+                self.do_progress(text='Loading control file ...')
+                cf = qcio.load_controlfile(path='controlfiles')
+                if len(cf)==0:
+                    self.do_progress(text='Waiting for input ...')
+                    return
+        else:
+            self.do_progress(text='Loading control file ...')
+            cf = qcio.load_controlfile(path='controlfiles')
+            if len(cf)==0:
+                self.do_progress(text='Waiting for input ...')
+                return
+        self.do_progress(text='Doing the u* threshold (MPT)')
+        if "Options" not in cf:
+            cf["Options"]={}
+        cf["Options"]["call_mode"] = "interactive"
+        qcmpt.mpt_main(cf)
+        self.do_progress(text='Finished estimating u* threshold (MPT)')
+        logger.info(' Finished estimating u* threshold (MPT)')
         logger.info("")
 
     def do_nc2ep_biomet(self):
