@@ -176,7 +176,7 @@ def ERUsingFFNET(cf, ds, info):
     call_mode = qcutils.get_keyvaluefromcf(cf,["Options"],"call_mode",default="interactive")
     FFNET_info["call_mode"]= call_mode
     if call_mode.lower()=="interactive":
-        FFNET_info["show_plots"] = True
+        #FFNET_info["show_plots"] = True
         # call the FFNET GUI
         qcrpNN.rpFFNET_gui(cf,ds,FFNET_info)
     else:
@@ -373,7 +373,7 @@ def ERUsingLloydTaylor(cf, ds, info):
                "er":info["er"]["rpLT"]}
     call_mode = qcutils.get_keyvaluefromcf(cf,["Options"],"call_mode",default="interactive")
     LT_info["call_mode"]= call_mode
-    if call_mode.lower()=="interactive": LT_info["show_plots"] = True
+    #if call_mode.lower()=="interactive": LT_info["show_plots"] = True
     # set the figure number
     if len(plt.get_fignums())==0:
         fig_num = 0
@@ -579,7 +579,7 @@ def ERUsingSOLO(cf, ds, info):
     # check to see if this is a batch or an interactive run
     call_mode = qcutils.get_keyvaluefromcf(cf,["Options"],"call_mode",default="interactive")
     solo_info["call_mode"]= call_mode
-    if call_mode.lower()=="interactive": solo_info["show_plots"] = True
+    #if call_mode.lower()=="interactive": solo_info["show_plots"] = True
     if call_mode.lower()=="interactive":
         # call the ERUsingSOLO GUI
         qcrpNN.rpSOLO_gui(cf,ds,solo_info)
