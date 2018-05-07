@@ -7,6 +7,8 @@ import numpy
 import os
 import qcck
 import qcgf
+import qcgfALT
+import qcgfSOLO
 import qcio
 import qcrp
 import qcts
@@ -295,10 +297,10 @@ def l4qc(cf,ds3):
     # gap fill using climatology
     qcgf.GapFillFromClimatology(ds4)
     # do the gap filling using the ACCESS output
-    qcgf.GapFillFromAlternate(cf,ds4,ds_alt)
+    qcgfALT.GapFillFromAlternate(cf,ds4,ds_alt)
     if ds4.returncodes["alternate"]=="quit": return ds4
     # gap fill using SOLO
-    qcgf.GapFillUsingSOLO(cf,ds3,ds4)
+    qcgfSOLO.GapFillUsingSOLO(cf,ds3,ds4)
     if ds4.returncodes["solo"]=="quit": return ds4
     # merge the first group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="prerequisite")
@@ -352,7 +354,7 @@ def l5qc(cf,ds4):
     # fill short gaps using interpolation
     #qcgf.GapFillUsingInterpolation(cf,ds5)
     # do the gap filling using SOLO
-    qcgf.GapFillUsingSOLO(cf,ds4,ds5)
+    qcgfSOLO.GapFillUsingSOLO(cf,ds4,ds5)
     if ds5.returncodes["solo"]=="quit": return ds5
     ## gap fill using marginal distribution sampling
     #qcgf.GapFillFluxUsingMDS(cf,ds5)
