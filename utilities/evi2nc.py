@@ -165,6 +165,7 @@ for site in site_list:
     # strip the time zone from the local datetime series
     dt_loc = [x.replace(tzinfo=None) for x in dt_loc]
     ds.series["DateTime"]["Data"] = dt_loc
+    ds.series["DateTime"]["Flag"] = numpy.zeros(len(dt_loc),dtype=numpy.int32)
     # update global attributes
     ds.globalattributes["nc_nrecs"] = len(dt_loc)
     ds.globalattributes["start_datetime"] = str(dt_loc[0])
