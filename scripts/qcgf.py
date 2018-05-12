@@ -21,25 +21,29 @@ warnings.filterwarnings("ignore",".*GUI is implemented.*")
 logger = logging.getLogger("pfp_log")
 
 # GapFillParseControlFile parses the L4 control file
-def GapFillParseControlFile(cf,ds,series,ds_alt):
+def GapFillParseControlFile(cf, ds, series, ds_alt):
     # find the section containing the series
-    section = qcutils.get_cfsection(cf,series=series,mode="quiet")
+    section = qcutils.get_cfsection(cf, series=series, mode="quiet")
     # return empty handed if the series is not in a section
-    if len(section)==0: return
+    if len(section) == 0:
+        return
     if "GapFillFromAlternate" in cf[section][series].keys():
         # create the alternate dictionary in ds
-        gfalternate_createdict(cf,ds,series,ds_alt)
+        gfalternate_createdict(cf, ds, series, ds_alt)
     if "GapFillUsingSOLO" in cf[section][series].keys():
         # create the SOLO dictionary in ds
-        gfSOLO_createdict(cf,ds,series)
+        gfSOLO_createdict(cf, ds, series)
+    if "GapFillUsingMDS" in cf[section][series].keys():
+        # create the MDS dictionary in ds
+        gfMDS_createdict(cf, ds, series)
     if "GapFillFromClimatology" in cf[section][series].keys():
         # create the climatology dictionary in the data structure
-        gfClimatology_createdict(cf,ds,series)
+        gfClimatology_createdict(cf, ds, series)
     if "MergeSeries" in cf[section][series].keys():
         # create the merge series dictionary in the data structure
-        gfMergeSeries_createdict(cf,ds,series)
+        gfMergeSeries_createdict(cf, ds, series)
 
-def gfalternate_createdict(cf,ds,series,ds_alt):
+def gfalternate_createdict(cf, ds, series, ds_alt):
     """
     Purpose:
      Creates a dictionary in ds to hold information about the alternate data used to gap fill the tower data.
@@ -49,13 +53,14 @@ def gfalternate_createdict(cf,ds,series,ds_alt):
     Date: August 2014
     """
     # get the section of the control file containing the series
-    section = qcutils.get_cfsection(cf,series=series,mode="quiet")
+    section = qcutils.get_cfsection(cf, series=series, mode="quiet")
     # return without doing anything if the series isn't in a control file section
     if len(section)==0:
         logger.error("GapFillFromAlternate: Series %s not found in control file, skipping ...", series)
         return
     # create the alternate directory in the data structure
-    if "alternate" not in dir(ds): ds.alternate = {}
+    if "alternate" not in dir(ds):
+        ds.alternate = {}
     # name of alternate output series in ds
     output_list = cf[section][series]["GapFillFromAlternate"].keys()
     # loop over the outputs listed in the control file
@@ -205,17 +210,18 @@ def gfalternate_matchstartendtimes(ds,ds_alternate):
             qcutils.CreateSeries(ds_alternate, series, data, flag, attr)
     ds.returncodes["GapFillFromAlternate"] = "normal"
 
-def gfClimatology_createdict(cf,ds,series):
+def gfClimatology_createdict(cf, ds, series):
     """ Creates a dictionary in ds to hold information about the climatological data used
         to gap fill the tower data."""
     # get the section of the control file containing the series
-    section = qcutils.get_cfsection(cf,series=series,mode="quiet")
+    section = qcutils.get_cfsection(cf, series=series,mode="quiet")
     # return without doing anything if the series isn't in a control file section
-    if len(section)==0:
+    if len(section) == 0:
         logger.error("GapFillFromClimatology: Series %s not found in control file, skipping ...", series)
         return
     # create the climatology directory in the data structure
-    if "climatology" not in dir(ds): ds.climatology = {}
+    if "climatology" not in dir(ds):
+        ds.climatology = {}
     # name of alternate output series in ds
     output_list = cf[section][series]["GapFillFromClimatology"].keys()
     # loop over the outputs listed in the control file
@@ -249,8 +255,80 @@ def gfClimatology_createdict(cf,ds,series):
             ds.climatology[output]["method"] = cf[section][series]["GapFillFromClimatology"][output]["method"]
         # create an empty series in ds if the climatology output series doesn't exist yet
         if output not in ds.series.keys():
-            data,flag,attr = qcutils.MakeEmptySeries(ds,output)
-            qcutils.CreateSeries(ds,output,data,flag,attr)
+            data, flag, attr = qcutils.MakeEmptySeries(ds, output)
+            qcutils.CreateSeries(ds, output, data, flag, attr)
+
+def gfMDS_createdict(cf, ds, series):
+    """
+    Purpose:
+     Create an information dictionary for MDS gap filling from the contents
+     of the control file.
+    Usage:
+     info["MDS"] = gfMDS_createdict(cf)
+    Author: PRI
+    Date: May 2018
+    """
+    # get the section of the control file containing the series
+    section = qcutils.get_cfsection(cf, series=series, mode="quiet")
+    # return without doing anything if the series isn't in a control file section
+    if len(section)==0:
+        logger.error("GapFillUsingMDS: Series %s not found in control file, skipping ...", series)
+        return
+    # create the MDS attribute (a dictionary) in ds, this will hold all MDS settings
+    if "mds" not in dir(ds):
+        ds.mds = {}
+    # name of MDS output series in ds
+    output_list = cf[section][series]["GapFillUsingMDS"].keys()
+    # loop over the outputs listed in the control file
+    for output in output_list:
+        # create the dictionary keys for this series
+        ds.mds[output] = {}
+        # get the target
+        if "target" in cf[section][series]["GapFillUsingMDS"][output]:
+            ds.mds[output]["target"] = cf[section][series]["GapFillUsingMDS"][output]["target"]
+        else:
+            ds.mds[output]["target"] = series
+        # site name
+        ds.mds[output]["site_name"] = ds.globalattributes["site_name"]
+        # list of SOLO settings
+        if "mds_settings" in cf[section][series]["GapFillUsingMDS"][output]:
+            mdss_list = ast.literal_eval(cf[section][series]["GapFillUsingMDS"][output]["mds_settings"])
+
+        # list of drivers
+        ds.mds[output]["drivers"] = ast.literal_eval(cf[section][series]["GapFillUsingMDS"][output]["drivers"])
+        # list of tolerances
+        ds.mds[output]["tolerances"] = ast.literal_eval(cf[section][series]["GapFillUsingMDS"][output]["tolerances"])
+        # get the ustar filter option
+        opt = qcutils.get_keyvaluefromcf(cf, [section, series, "GapFillUsingMDS", output], "turbulence_filter", default="")
+        ds.mds[output]["turbulence_filter"] = opt
+        # get the day/night filter option
+        opt = qcutils.get_keyvaluefromcf(cf, [section, series, "GapFillUsingMDS", output], "daynight_filter", default="")
+        ds.mds[output]["daynight_filter"] = opt
+
+    # check that all requested targets and drivers have a mapping to
+    # a FluxNet label, remove if they don't
+    fluxnet_label_map = {"Fc":"NEE", "Fe":"LE", "Fh":"H",
+                         "Fsd":"SW_IN", "Ta":"TA", "VPD":"VPD"}
+    for mds_label in ds.mds:
+        ds.mds[mds_label]["mds_label"] = mds_label
+        pfp_target = ds.mds[mds_label]["target"]
+        if pfp_target not in fluxnet_label_map:
+            print "Target ("+pfp_target+") not supported for MDS gap filling"
+            del ds.mds[mds_label]
+        else:
+            ds.mds[mds_label]["target_mds"] = fluxnet_label_map[pfp_target]
+        pfp_drivers = ds.mds[mds_label]["drivers"]
+        for pfp_driver in pfp_drivers:
+            if pfp_driver not in fluxnet_label_map:
+                print "Driver ("+pfp_driver+") not supported for MDS gap filling"
+                ds.mds[mds_label]["drivers"].remove(pfp_driver)
+            else:
+                if "drivers_mds" not in ds.mds[mds_label]:
+                    ds.mds[mds_label]["drivers_mds"] = []
+                ds.mds[mds_label]["drivers_mds"].append(fluxnet_label_map[pfp_driver])
+        if len(ds.mds[mds_label]["drivers"]) == 0:
+            del ds.mds[mds_label]
+    return
 
 def gfMergeSeries_createdict(cf,ds,series):
     """ Creates a dictionary in ds to hold information about the merging of gap filled

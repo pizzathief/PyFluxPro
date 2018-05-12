@@ -29,16 +29,27 @@ import qcls
 import qcmpt
 import qcplot
 import qcrp
-#import qcts
 import qcutils
 # now check the logfiles and plots directories are present
 dir_list = ["./logfiles/", "./plots/"]
 for item in dir_list:
-    if not os.path.exists(item): os.makedirs(item)
+    if not os.path.exists(item):
+        os.makedirs(item)
 # now check the solo/inf, solo/input, solo/log and solo/output directories are present
 dir_list = ["./solo/inf", "./solo/input", "./solo/log", "./solo/output"]
 for item in dir_list:
-    if not os.path.exists(item): os.makedirs(item)
+    if not os.path.exists(item):
+        os.makedirs(item)
+# next we make sure the MPT directories are present ...
+dir_list = ["./mpt/input", "./mpt/log", "./mpt/output"]
+for item in dir_list:
+    if not os.path.exists(item):
+        os.makedirs(item)
+# ... and make sure the MDS directories are present
+dir_list = ["./mds/input", "./mds/log", "./mds/output"]
+for item in dir_list:
+    if not os.path.exists(item):
+        os.makedirs(item)
 # start a log file with the current date and time in the name
 t = time.localtime()
 rundatetime = datetime.datetime(t[0], t[1], t[2], t[3], t[4], t[5]).strftime("%Y%m%d%H%M")

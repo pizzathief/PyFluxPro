@@ -1,21 +1,25 @@
-import sys
-import logging
+# standard modules
 import ast
-import constants as c
 import copy
-import numpy
+import logging
 import os
+import sys
+import time
+# 3rd party modules
+import numpy
+import xlrd
+# PFP modules
+import constants as c
+import meteorologicalfunctions as mf
 import qcck
 import qcgf
 import qcgfALT
+import qcgfMDS
 import qcgfSOLO
 import qcio
 import qcrp
 import qcts
 import qcutils
-import time
-import xlrd
-import meteorologicalfunctions as mf
 
 logger = logging.getLogger("pfp_log")
 
@@ -329,41 +333,41 @@ def l4qc(cf,ds3):
 
     return ds4
 
-def l5qc(cf,ds4):
-    ds5 = qcio.copy_datastructure(cf,ds4)
+def l5qc(cf, ds4):
+    ds5 = qcio.copy_datastructure(cf, ds4)
     # ds4 will be empty (logical false) if an error occurs in copy_datastructure
     # return from this routine if this is the case
-    if not ds5: return ds5
+    if not ds5:
+        return ds5
     # set some attributes for this level
-    qcutils.UpdateGlobalAttributes(cf,ds5,"L5")
+    qcutils.UpdateGlobalAttributes(cf, ds5, "L5")
     ds5.cf = cf
     # create a dictionary to hold the gap filling data
     ds_alt = {}
     # check to see if we have any imports
-    qcgf.ImportSeries(cf,ds5)
+    qcgf.ImportSeries(cf, ds5)
     # re-apply the quality control checks (range, diurnal and rules)
-    qcck.do_qcchecks(cf,ds5)
+    qcck.do_qcchecks(cf, ds5)
     # now do the flux gap filling methods
     label_list = qcutils.get_label_list_from_cf(cf)
-    for ThisOne in label_list:
+    for label in label_list:
         # parse the control file for information on how the user wants to do the gap filling
-        qcgf.GapFillParseControlFile(cf,ds5,ThisOne,ds_alt)
+        qcgf.GapFillParseControlFile(cf, ds5, label, ds_alt)
     # *** start of the section that does the gap filling of the fluxes ***
     # apply the turbulence filter (if requested)
-    qcck.ApplyTurbulenceFilter(cf,ds5)
+    qcck.ApplyTurbulenceFilter(cf, ds5)
     # fill short gaps using interpolation
-    #qcgf.GapFillUsingInterpolation(cf,ds5)
+    qcgf.GapFillUsingInterpolation(cf, ds5)
     # do the gap filling using SOLO
-    qcgfSOLO.GapFillUsingSOLO(cf,ds4,ds5)
-    if ds5.returncodes["solo"]=="quit": return ds5
-    ## gap fill using marginal distribution sampling
-    #qcgf.GapFillFluxUsingMDS(cf,ds5)
-    ## gap fill using ratios
-    #qcgf.GapFillFluxFromDayRatio(cf,ds5)
+    qcgfSOLO.GapFillUsingSOLO(cf, ds4, ds5)
+    if ds5.returncodes["solo"] == "quit":
+        return ds5
+    # gap fill using marginal distribution sampling
+    qcgfMDS.GapFillFluxUsingMDS(cf, ds5)
     # gap fill using climatology
     qcgf.GapFillFromClimatology(ds5)
     # merge the gap filled drivers into a single series
-    qcts.MergeSeriesUsingDict(ds5,merge_order="standard")
+    qcts.MergeSeriesUsingDict(ds5, merge_order="standard")
     # calculate Monin-Obukhov length
     qcts.CalculateMoninObukhovLength(ds5)
     # write the percentage of good data as a variable attribute
