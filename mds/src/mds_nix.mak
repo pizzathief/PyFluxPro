@@ -14,7 +14,7 @@ CP  = cp
 # we link using -static to make a stand-alone executable and use
 # -s to strip out debugging symbols to reduce the executable size
 $(TARGET): $(OBJ)
-		$(CC) -s -o $(TARGET) $(OBJ) $(LIB)
+		$(CC) -s -static -o $(TARGET) $(OBJ) $(LIB)
 
 install:
 		$(CP) $(TARGET) $(INSTALLDIR)
