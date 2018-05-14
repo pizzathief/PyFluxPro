@@ -1,5 +1,13 @@
 version_name = "PyFluxPro"
-version_number = "V0.1.3"
+version_number = "V0.1.4"
+# V0.1.4 - implement MPT and MDS
+#          - implementation of u* threshold detection using the
+#            Moving Point Threshold (MPT) technique via the
+#            FluxNet C code
+#          - implementation of Marginal Distribution Sampling (MDS)
+#            gap filling via the FluxNet C code
+#            - note that minor change made to common.c around
+#              line 535 to fix bug that caused Calperum to fail
 # V0.1.3 - "make it faster" version
 #        - at some stage, about the time OFQC became PFP, PFP
 #          became very slow, especially monthly summaries at
