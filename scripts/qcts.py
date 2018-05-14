@@ -680,12 +680,12 @@ def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_SONIC_Av',ps_na
     Ta,f,a = qcutils.GetSeriesasMA(ds,Ta_name)
     # deal with possible aliases for the sonic temperature for the time being
     if Tv_name not in ds.series.keys():
-       if "Tv_CSAT_Av" in ds.series.keys():
-           Tv_name = "Tv_CSAT_Av"
-       elif "Tv_CSAT" in ds.series.keys():
-           Tv_name = "Tv_CSAT"
-       else: 
-           Tv_name = Ta_name   # use Tv_CSAT if it is in the data structure, otherwise use Ta
+        if "Tv_CSAT_Av" in ds.series.keys():
+            Tv_name = "Tv_CSAT_Av"
+        elif "Tv_CSAT" in ds.series.keys():
+            Tv_name = "Tv_CSAT"
+        else: 
+            Tv_name = Ta_name   # use Tv_CSAT if it is in the data structure, otherwise use Ta
 
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_name)
     ps,f,a = qcutils.GetSeriesasMA(ds,ps_name)
@@ -2455,43 +2455,45 @@ def MassmanStandard(cf,ds,Ta_in='Ta',Ah_in='Ah',ps_in='ps',ustar_in='ustar',usta
     # *** Massman_2ndpass ends here ***
     return
 
-def MergeSeriesUsingDict(ds,merge_order=""):
+def MergeSeriesUsingDict(ds, merge_order=""):
     """ Merge series as defined in the ds.merge dictionary."""
     # check that ds has a "merge" attribute
-    if "merge" not in dir(ds): raise Exception("MergeSeriesUsingDict: No merge dictionary in ds")
+    if "merge" not in dir(ds):
+        raise Exception("MergeSeriesUsingDict: No merge dictionary in ds")
     if merge_order not in ds.merge.keys():
-        msg = "MergeSeriesUsingDict: merge_order ("+merge_order+") not found in merge dictionary"
+        msg = " MergeSeriesUsingDict: merge_order ("+merge_order+") not found in merge dictionary"
         logger.info(msg)
         return
     # loop over the entries in ds.merge
     for target in ds.merge[merge_order].keys():
         srclist = ds.merge[merge_order][target]["source"]
-        logger.info("Merging "+str(srclist)+"==>"+target)
+        logger.info(" Merging "+str(srclist)+"==>"+target)
         if srclist[0] not in ds.series.keys():
-            logger.error('  MergeSeries: primary input series '+srclist[0]+' not found')
+            logger.error("  MergeSeries: primary input series "+srclist[0]+" not found")
             continue
-        data = ds.series[srclist[0]]['Data'].copy()
-        flag1 = ds.series[srclist[0]]['Flag'].copy()
-        flag2 = ds.series[srclist[0]]['Flag'].copy()
-        attr = ds.series[srclist[0]]['Attr'].copy()
+        data = ds.series[srclist[0]]["Data"].copy()
+        flag1 = ds.series[srclist[0]]["Flag"].copy()
+        flag2 = ds.series[srclist[0]]["Flag"].copy()
+        attr = ds.series[srclist[0]]["Attr"].copy()
         SeriesNameString = srclist[0]
         tmplist = list(srclist)
         tmplist.remove(tmplist[0])
         for label in tmplist:
             if label in ds.series.keys():
-                SeriesNameString = SeriesNameString+', '+label
-                index = numpy.where(numpy.mod(flag1,10)==0)[0]         # find the elements with flag = 0, 10, 20 etc
+                SeriesNameString = SeriesNameString+", "+label
+                index = numpy.where(numpy.mod(flag1, 10) == 0)[0]       # find the elements with flag = 0, 10, 20 etc
                 flag2[index] = 0                                        # set them all to 0
                 if label=="Fg":
-                    index = numpy.where(flag2==22)[0]
-                    if len(index)!=0: flag2[index] = 0
-                index = numpy.where(flag2!=0)[0]                        # index of flag values other than 0,10,20,30 ...
-                data[index] = ds.series[label]['Data'][index].copy()  # replace bad primary with good secondary
-                flag1[index] = ds.series[label]['Flag'][index].copy()
+                    index = numpy.where(flag2 == 22)[0]
+                    if len(index) != 0:
+                        flag2[index] = 0
+                index = numpy.where(flag2 != 0)[0]                      # index of flag values other than 0,10,20,30 ...
+                data[index] = ds.series[label]["Data"][index].copy()    # replace bad primary with good secondary
+                flag1[index] = ds.series[label]["Flag"][index].copy()
             else:
                 logger.error(" MergeSeries: secondary input series "+label+" not found")
         attr["long_name"] = attr["long_name"]+", merged from " + SeriesNameString
-        qcutils.CreateSeries(ds,target,data,flag1,attr)
+        qcutils.CreateSeries(ds, target, data, flag1, attr)
     del ds.merge[merge_order]
 
 def MergeHumidities(cf,ds,convert_units=False):

@@ -569,36 +569,48 @@ class qcgui(tk.Tk):
         """
             Call qcls.l5qc function to gap fill the fluxes.
         """
-        logger.info(" Starting L5 processing ...")
-        cf = qcio.load_controlfile(path='controlfiles')
-        if len(cf)==0: self.do_progress(text='Waiting for input ...'); return
+        logger.info("Starting L5 processing ...")
+        cf = qcio.load_controlfile(path="controlfiles")
+        if len(cf) == 0:
+            self.do_progress(text="Waiting for input ...")
+            return
         infilename = qcio.get_infilenamefromcf(cf)
-        if len(infilename)==0: self.do_progress(text='An error occurred, check the console ...'); return
-        if not qcutils.file_exists(infilename): self.do_progress(text='An error occurred, check the console ...'); return
+        if len(infilename) == 0:
+            self.do_progress(text="An error occurred, check the console ...")
+            return
+        if not qcutils.file_exists(infilename):
+            self.do_progress(text="An error occurred, check the console ...")
+            return
         ds4 = qcio.nc_read_series(infilename)
-        if len(ds4.series.keys())==0: self.do_progress(text='An error occurred, check the console ...'); del ds4; return
-        ds4.globalattributes['controlfile_name'] = cf['controlfile_name']
-        self.update_startenddate(str(ds4.series['DateTime']['Data'][0]),
-                                 str(ds4.series['DateTime']['Data'][-1]))
-        sitename = ds4.globalattributes['site_name']
-        self.do_progress(text='Doing L5 gap filling fluxes: '+sitename+' ...')
-        if "Options" not in cf: cf["Options"]={}
+        if len(ds4.series.keys()) == 0:
+            self.do_progress(text="An error occurred, check the console ...")
+            del ds4
+            return
+        ds4.globalattributes["controlfile_name"] = cf["controlfile_name"]
+        self.update_startenddate(str(ds4.series["DateTime"]["Data"][0]),
+                                 str(ds4.series["DateTime"]["Data"][-1]))
+        sitename = ds4.globalattributes["site_name"]
+        self.do_progress(text="Doing L5 gap filling fluxes: "+sitename+" ...")
+        if "Options" not in cf:
+            cf["Options"]={}
         cf["Options"]["call_mode"] = "interactive"
-        ds5 = qcls.l5qc(cf,ds4)
-        if ds5.returncodes["solo"]=="quit":
-            self.do_progress(text='Quitting L5: '+sitename)
-            logger.info(' Quitting L5: %s', sitename)
+        ds5 = qcls.l5qc(cf, ds4)
+        if ds5.returncodes["solo"] == "quit":
+            self.do_progress(text="Quitting L5: "+sitename)
+            logger.info(" Quitting L5: %s", sitename)
         else:
-            self.do_progress(text='Finished L5: '+sitename)
-            logger.info(' Finished L5: %s', sitename)
-            self.do_progress(text='Saving L5 gap filled data ...')           # put up the progress message
+            self.do_progress(text="Finished L5: "+sitename)
+            logger.info("Finished L5: %s", sitename)
+            self.do_progress(text="Saving L5 gap filled data ...")           # put up the progress message
             outfilename = qcio.get_outfilenamefromcf(cf)
-            if len(outfilename)==0: self.do_progress(text='An error occurred, check the console ...'); return
+            if len(outfilename)==0:
+                self.do_progress(text="An error occurred, check the console ...")
+                return
             ncFile = qcio.nc_open_write(outfilename)
-            outputlist = qcio.get_outputlistfromcf(cf,'nc')
-            qcio.nc_write_series(ncFile,ds5,outputlist=outputlist)           # save the L5 data
-            self.do_progress(text='Finished saving L5 gap filled data')      # tell the user we are done
-            logger.info(' Finished saving L5 gap filled data')
+            outputlist = qcio.get_outputlistfromcf(cf, "nc")
+            qcio.nc_write_series(ncFile, ds5, outputlist=outputlist)         # save the L5 data
+            self.do_progress(text="Finished saving L5 gap filled data")      # tell the user we are done
+            logger.info("Finished saving L5 gap filled data")
         logger.info("")
 
     def do_l6qc(self):
