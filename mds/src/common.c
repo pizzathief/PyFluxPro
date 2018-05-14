@@ -58,7 +58,12 @@ static const char *dds[DETAILS_SIZE] = { "site", "year", "lat", "lon", "timezone
 static const char *timeress[TIMERES_SIZE] = { "spot", "quaterhourly", "halfhourly", "hourly", "daily", "monthly" };
 
 /* error strings */
-static const char err_unable_open_path[] = "unable to open path: %s\n\n";
+static const char err_unable_open_path1[] = "unable to open path 1: %s\n\n";
+static const char err_unable_open_path2[] = "unable to open path 2: %s\n\n";
+static const char err_unable_open_path3[] = "unable to open path 3: %s\n\n";
+static const char err_unable_open_path4[] = "unable to open path 4: %s\n\n";
+static const char err_unable_open_path5[] = "unable to open path 5: %s\n\n";
+static const char err_unable_open_path6[] = "unable to open path 6: %s\n\n";
 static const char err_unable_open_file[] = "unable to open file: %s\n\n";
 static const char err_path_too_big[] = "specified path \"%s\" is too big.\n\n";
 static const char err_filename_too_big[] = "filename \"%s\" is too big.\n\n";
@@ -358,7 +363,7 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 
 				/* scan path */
 				if ( !scan_path(p2) ) {
-					printf(err_unable_open_path, p2);
+					printf(err_unable_open_path1, p2);
 					*error = 1;
 					free(p2);
 					free_files(files, *count);
@@ -367,7 +372,7 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 
 				/* get files */
 				if ( !get_files_from_path(token_by_comma, &files, count, 0) ) {
-					printf(err_unable_open_path, token_by_comma);
+					printf(err_unable_open_path2, token_by_comma);
 					*error = 1;
 					free(p2);
 					free_files(files, *count);
@@ -412,7 +417,7 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 
 					/* scan path */
 					if ( !scan_path(p2) ) {
-						printf(err_unable_open_path, p2);
+						printf(err_unable_open_path3, p2);
 						*error = 1;
 						free(p2);
 						free_files(files, *count);
@@ -421,7 +426,7 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 
 					/* get files */
 					if ( !get_files_from_path(program_path, &files, count, 0) ) {
-						printf(err_unable_open_path, token_by_comma);
+						printf(err_unable_open_path4, token_by_comma);
 						*error = 1;
 						free(p2);
 						free_files(files, *count);
@@ -526,7 +531,9 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 				/* get token length */
 				i = strlen(token_by_plus);
 				/* token is a path ? */
-				if ( token_by_plus[token_length-1] == FOLDER_DELIMITER ) {
+				/* Peter Isaac thinks this is a bug, token_length should be replaced by i */
+				/* if ( token_by_plus[token_length-1] == FOLDER_DELIMITER ) { */
+				if ( token_by_plus[i-1] == FOLDER_DELIMITER ) {
 					/* add length of filter */
 					token_length += strlen(filter);
 
@@ -550,7 +557,7 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 
 					/* scan path */
 					if ( !scan_path(p3) ) {
-						printf(err_unable_open_path, p3);
+						printf(err_unable_open_path5, p3);
 						*error = 1;
 						free(p3);
 						free_files(files, *count);
@@ -559,7 +566,7 @@ FILES *get_files(const char *const program_path, char *string, int *const count,
 
 					/* get files */
 					if ( !get_files_from_path(token_by_plus, &files, count, 1) ) {
-						printf(err_unable_open_path, token_by_plus);
+						printf(err_unable_open_path6, token_by_plus);
 						*error = 1;
 						free(p3);
 						free_files(files, *count);

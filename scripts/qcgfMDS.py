@@ -1,6 +1,7 @@
 # standard Python modules
 import copy
 import datetime
+import glob
 import logging
 import os
 import subprocess
@@ -33,16 +34,30 @@ def GapFillFluxUsingMDS(cf, ds):
     ts = int(ds.globalattributes["nc_nrecs"])
     site_name = ds.globalattributes["site_name"]
     level = ds.globalattributes["nc_level"]
-    # define the MDS input and output file locations
-    in_base_path = "mds/input/"
-    out_base_path = "mds/output/"
+    # define the MDS input file location
+    in_base_path = os.path.join("mds", "input")
+    # get a list of CSV files in the input directory
+    in_path_files = glob.glob(os.path.join(in_base_path, "*.csv"))
+    # and clean them out
+    for in_file in in_path_files:
+        if os.path.exists(in_file):
+            os.remove(in_file)
+    # define the MDS output file location
+    out_base_path = os.path.join("mds", "output", "")
+    # get a list of CSV files in the output directory
+    out_path_files = glob.glob(os.path.join(out_base_path, "*.csv"))
+    # and clean them out
+    for out_file in out_path_files:
+        if os.path.exists(out_file):
+            os.remove(out_file)
     # get some useful odds and ends
     ldt = qcutils.GetVariable(ds, "DateTime")
     first_year = ldt["Data"][0].year
     last_year = ldt["Data"][-1].year
     # now loop over the series to be gap filled using MDS
     # open a log file for the MDS C code output
-    mdslogfile = open('mds/log/mds.log','wb')
+    log_file_path = os.path.join("mds", "log", "mds.log")
+    mdslogfile = open(log_file_path, "wb")
     for fig_num, mds_label in enumerate(ds.mds):
         logger.info(" Doing MDS gap filling for %s", ds.mds[mds_label]["target"])
         ds.mds[mds_label]["out_base_path"] = out_base_path
@@ -54,6 +69,7 @@ def GapFillFluxUsingMDS(cf, ds):
         ds.mds[mds_label]["in_file_paths"] = []
         for current_year in range(first_year, last_year+1):
             in_name = nc_name.replace(".nc","_"+str(current_year)+"_MDS.csv")
+            #in_name = str(current_year)+".csv"
             in_file_path = os.path.join(in_base_path, in_name)
             data, header, fmt = gfMDS_make_data_array(ds, current_year, ds.mds[mds_label])
             numpy.savetxt(in_file_path, data, header=header, delimiter=",", comments="", fmt=fmt)
@@ -61,17 +77,9 @@ def GapFillFluxUsingMDS(cf, ds):
         # then we construct the MDS C code command options list
         cmd = gfMDS_make_cmd_string(ds.mds[mds_label])
         # then we spawn a subprocess for the MDS C code
-        #for in_file_path in ds.mds[mds_label]["in_file_paths"]:
-            #try:
-                #f = open(in_file_path, 'rb')
-                #logger.info("file open successful %s", in_file_path)
-            #except:
-                #logger.error("file open failed %s", in_file_path)
-        #logger.info(" going to sleep ...")
-        #time.sleep(1)
-        #logger.info(" woken up ...")
         subprocess.call(cmd, stdout=mdslogfile)
-        os.rename("mds/output/mds.csv", out_file_path)
+        mds_out_file = os.path.join("mds", "output", "mds.csv")
+        os.rename(mds_out_file, out_file_path)
         # and put the MDS results into the data structure
         gfMDS_get_mds_output(ds, mds_label, out_file_path)
         # plot the MDS results
@@ -79,7 +87,7 @@ def GapFillFluxUsingMDS(cf, ds):
         drivers = ds.mds[mds_label]["drivers"]
         title = site_name+' : Comparison of tower and MDS data for '+target
         pd = gfMDS_initplot(site_name=site_name, label=target, fig_num=fig_num,
-                            title=title, nDrivers=len(drivers))
+                            title=title, nDrivers=len(drivers), show_plots=True)
         gfMDS_plot(cf, pd, ds, mds_label)
 
     # close the log file
@@ -256,7 +264,10 @@ def gfMDS_plot(cf, pd, ds, mds_label):
     Hdh = qcutils.GetVariable(ds, "Hdh")
     obs = qcutils.GetVariable(ds, target)
     mds = qcutils.GetVariable(ds, mds_label)
-    plt.ioff()
+    if pd["show_plots"]:
+        plt.ion()
+    else:
+        plt.ioff()
     fig = plt.figure(pd["fig_num"], figsize=(13,8))
     fig.clf()
     fig.canvas.set_window_title(target)
@@ -347,8 +358,14 @@ def gfMDS_plot(cf, pd, ds, mds_label):
     figname = plot_path+pd["site_name"].replace(" ","")+"_MDS_"+pd["label"]
     figname = figname+"_"+sdt+"_"+edt+'.png'
     fig.savefig(figname, format='png')
-
-    plt.ion()
+    if pd["show_plots"]:
+        plt.draw()
+        plt.pause(1)
+        plt.ioff()
+    else:
+        plt.close(fig)
+        plt.ion()
+    return
 
 def gf_getdiurnalstats(DecHour, Data, ts):
     nInts = 24*int((60/ts)+0.5)

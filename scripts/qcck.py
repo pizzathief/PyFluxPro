@@ -95,7 +95,8 @@ def ApplyTurbulenceFilter(cf,ds,ustar_threshold=None):
     # get data for the indicator series
     ustar,ustar_flag,ustar_attr = qcutils.GetSeriesasMA(ds,"ustar")
     Fsd,f,a = qcutils.GetSeriesasMA(ds,"Fsd")
-    if "solar_altitude" not in ds.series.keys(): qcts.get_synthetic_fsd(ds)
+    if "solar_altitude" not in ds.series.keys():
+        qcts.get_synthetic_fsd(ds)
     Fsd_syn,f,a = qcutils.GetSeriesasMA(ds,"Fsd_syn")
     sa,f,a = qcutils.GetSeriesasMA(ds,"solar_altitude")
     # get the day/night indicator series
