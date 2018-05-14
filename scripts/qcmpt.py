@@ -50,16 +50,18 @@ def run_mpt_code(ds, nc_file_name):
     fmt = "%12i,%f,%f,%f,%f,%f,%f,%f"
     first_year = ldt["Data"][0].year
     last_year = ldt["Data"][-1].year
-    mptlogfile = open("mpt/log/mpt.log", "wb")
-    in_base_path = "mpt/input/"
-    out_base_path = "mpt/output/"
+    log_file_path = os.path.join("mpt", "log", "mpt.log")
+    mptlogfile = open(log_file_path, "wb")
+    in_base_path = os.path.join("mpt", "input", "")
+    out_base_path = os.path.join("mpt", "output", "")
     for current_year in range(first_year, last_year+1):
         in_name = nc_file_name.replace(".nc","_"+str(current_year)+"_MPT.csv")
         in_full_path = os.path.join(in_base_path, in_name)
         out_full_path = in_full_path.replace("input", "output").replace(".csv", "_ut.txt")
         data = make_data_array(ds, current_year)
         numpy.savetxt(in_full_path, data, header=header, delimiter=",", comments="", fmt=fmt)
-        cmd = ["./mpt/bin/ustar_mp", "-input_path="+in_full_path, "-output_path="+out_base_path]
+        ustar_mp_exe = os.path.join(".", "mpt", "bin", "ustar_mp")
+        cmd = [ustar_mp_exe, "-input_path="+in_full_path, "-output_path="+out_base_path]
         subprocess.call(cmd, stdout=mptlogfile)
         if os.path.isfile(out_full_path):
             out_file_paths[current_year] = out_full_path
