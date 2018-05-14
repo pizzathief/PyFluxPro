@@ -13,7 +13,7 @@
 #define TYPES_H
 
 /* precision */
-#include "../../common/common.h"
+#include "common.h"
 
 /* constants */
 #define TOKEN_LENGTH_MAX				32

@@ -21,7 +21,7 @@
 #include "ustar.h"
 #include "bootstrapping.h"
 #include "parser.h"
-#include "../../compiler.h"
+#include "compiler.h"
 
 /* constants */
 #define PROGRAM_VERSION		"v1.0"
