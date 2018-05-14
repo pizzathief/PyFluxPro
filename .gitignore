@@ -19,8 +19,8 @@ solo/log/
 # mpt files
 mpt/bin/ustar_mp
 mpt/input/
-mpt.log/
-mpt/output
+mpt/log/
+mpt/output/
 
 # mds files
 mds/bin/gf_mds
