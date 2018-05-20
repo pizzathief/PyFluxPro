@@ -386,6 +386,8 @@ class qcgui(tk.Tk):
         self.update_startenddate(str(self.ds1.series['DateTime']['Data'][0]),
                                  str(self.ds1.series['DateTime']['Data'][-1]))
         self.ds2 = qcls.l2qc(cf, self.ds1)
+        # put a copy of the config file in self for later use
+        self.cf = cf
         logger.info(' Finished L2 QC process')
         self.do_progress(text='Finished L2 QC process')
         self.do_progress(text='Saving L2 QC ...')                     # put up the progress message
@@ -488,6 +490,8 @@ class qcgui(tk.Tk):
                                  str(self.ds2.series['DateTime']['Data'][-1]))
         self.do_progress(text='Doing L3 QC & Corrections ...')
         self.ds3 = qcls.l3qc(cf, self.ds2)
+        # put a copy of the config file in self for later use
+        self.cf = cf
         self.do_progress(text='Finished L3')
         txtstr = ' Finished L3: Standard processing for site: '
         txtstr = txtstr+self.ds3.globalattributes['site_name'].replace(' ','')
@@ -1058,14 +1062,24 @@ class qcgui(tk.Tk):
 
             Outputs L2 Excel file containing Data and Flag worksheets
             """
-        self.do_progress(text='Exporting L2 NetCDF -> Xcel ...')                     # put up the progress message
+        # check that we have a copy of the control file in self
+        if not hasattr(self, "cf"):
+            # load a control file if we don't
+            self.cf = qcio.load_controlfile(path="controlfiles")
+            if len(self.cf) == 0:
+                logger.info( " No control file chosen")
+                self.do_progress(text="Waiting for input ...")
+                return
+        self.do_progress(text="Exporting L2 NetCDF -> Excel ...")                     # put up the progress message
         # get the output filename
         outfilename = qcio.get_outfilenamefromcf(self.cf)
         # get the output list
-        outputlist = qcio.get_outputlistfromcf(self.cf,'xl')
-        qcio.nc_2xls(outfilename,outputlist=outputlist)
-        self.do_progress(text='Finished L2 Data Export')              # tell the user we are done
-        logger.info(' Finished saving L2 data')
+        outputlist = qcio.get_outputlistfromcf(self.cf, "xl")
+        qcio.nc_2xls(outfilename, outputlist=outputlist)
+        # delete the control file attribute
+        delattr(self, "cf")
+        self.do_progress(text="Finished L2 Data Export")              # tell the user we are done
+        logger.info(" Finished saving L2 data")
 
     def do_savexL3(self):
         """
@@ -1074,14 +1088,24 @@ class qcgui(tk.Tk):
 
             Outputs L3 Excel file containing Data and Flag worksheets
             """
-        self.do_progress(text='Exporting L3 NetCDF -> Xcel ...')                     # put up the progress message
+        # check that we have a copy of the control file in self
+        if not hasattr(self, "cf"):
+            # load a control file if we don't
+            self.cf = qcio.load_controlfile(path="controlfiles")
+            if len(self.cf) == 0:
+                logger.info( " No control file chosen")
+                self.do_progress(text="Waiting for input ...")
+                return
+        self.do_progress(text="Exporting L3 NetCDF -> Excel ...")                     # put up the progress message
         # get the output filename
         outfilename = qcio.get_outfilenamefromcf(self.cf)
         # get the output list
-        outputlist = qcio.get_outputlistfromcf(self.cf,'xl')
-        qcio.nc_2xls(outfilename,outputlist=outputlist)
-        self.do_progress(text='Finished L3 Data Export')              # tell the user we are done
-        logger.info(' Finished saving L3 data')
+        outputlist = qcio.get_outputlistfromcf(self.cf, "xl")
+        qcio.nc_2xls(outfilename, outputlist=outputlist)
+        # delete the control file attribute
+        delattr(self, "cf")
+        self.do_progress(text="Finished L3 Data Export")              # tell the user we are done
+        logger.info(" Finished saving L3 data")
 
     def do_xl2nc(self):
         """
