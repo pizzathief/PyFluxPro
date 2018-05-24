@@ -11,6 +11,7 @@ import netCDF4
 import numpy
 import ntpath
 import os
+import pandas
 import pdb
 import platform
 import sys
@@ -1644,7 +1645,7 @@ def nc_read_series(ncFullName,checktimestep=True,fixtimestepmethod=""):
     logger.info(msg)
     return ds
 
-def nc_read_todf(ncFullName,var_data=[]):
+def nc_read_todf(ncFullName, var_list=[], include_qcflags=False):
     """
     Purpose:
      Read an OzFlux netCDF file and return the data in an Pandas data frame.
@@ -1659,44 +1660,49 @@ def nc_read_todf(ncFullName,var_data=[]):
     logger.info(" Reading netCDF file "+ncFullName+" to Pandas data frame")
     netCDF4.default_encoding = 'latin-1'
     # check to see if the requested file exists, return empty ds if it doesn't
-    if not qcutils.file_exists(ncFullName,mode="quiet"):
+    if not qcutils.file_exists(ncFullName, mode="quiet"):
         logger.error(' netCDF file '+ncFullName+' not found')
         raise Exception("nc_read_todf: file not found")
     # file probably exists, so let's read it
-    ncFile = netCDF4.Dataset(ncFullName,"r")
+    ncFile = netCDF4.Dataset(ncFullName, "r")
+    # disable automatic masking of data when valid_range specified
+    ncFile.set_auto_mask(False)
     # now deal with the global attributes
     gattrlist = ncFile.ncattrs()
     if len(gattrlist)!=0:
         gattr = {}
         for attr in gattrlist:
             gattr[attr] = getattr(ncFile,attr)
-    # get a list of Python datetimes from the xlDatetime
-    # this may be better replaced with one of the standard OzFluxQC routines
-    dates_list=[datetime.datetime(*xlrd.xldate_as_tuple(elem,0)) for elem in ncFile.variables['xlDateTime']]
     # get a list of variables to read from the netCDF file
-    if len(var_data)==0:
+    if len(var_list) == 0:
         # get the variable list from the netCDF file contents
-        var_data = ncFile.variables.keys()
-    else:
+        var_list = [l for l in ncFile.variables.keys() if "_QCFlag" not in l]
+    if include_qcflags:
         # add the QC flags to the list entered as an argument
         var_flag = []
-        for var in var_data: var_flag.append(var+"_QCFlag")
-        var_list = var_data+var_flag
+        for var in var_list:
+            var_flag.append(var+"_QCFlag")
+        var_list = var_list+var_flag
     # read the variables and attributes from the netCDF file
     # create dictionaries to hold the data and the variable attributes
-    d = {}
+    data = {}
     vattr = {}
     for item in var_list:
-        d[item] = ncFile.variables[item][:]
-        vattrlist = ncFile.variables[item].ncattrs()
-        if len(vattrlist)!=0:
-            vattr[item] = {}
-            for attr in vattrlist:
-                vattr[item][attr] = getattr(ncFile.variables[item],attr)
+        # skip variables that do not have time as a dimension
+        dimlist = [x.lower() for x in ncFile.variables[item].dimensions]
+        if "time" not in dimlist:
+            continue
+        data[item], flag, vattr[item] = nc_read_var(ncFile, item)
+        data[item] = numpy.ma.filled(data[item], fill_value=c.missing_value)
     ncFile.close()
+    # get a list of Python datetimes from the xlDatetime
+    # this may be better replaced with one of the standard OzFluxQC routines
+    dates = netCDF4.num2date(data["time"], vattr["time"]["units"])
     # convert the dictionary to a Pandas data frame
-    df = pd.DataFrame(d,index=dates_list)
-    return df,gattr,vattr
+    df = pandas.DataFrame(data, index=dates)
+    # replace missing values with NaN
+    df.replace(to_replace=c.missing_value, value=numpy.NaN, inplace=True)
+    return df, gattr, vattr
 
 def df_droprecords(df,qc_list=[0,10]):
     # replace configured error values with NaNs

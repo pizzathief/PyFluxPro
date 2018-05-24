@@ -25,6 +25,8 @@ def GapFillFluxUsingMDS(cf, ds):
     Author: PRI
     Date: May 2018
     """
+    if "mds" not in dir(ds):
+        return
     # get the file name
     file_path = cf["Files"]["file_path"]
     file_name = cf["Files"]["in_filename"]
