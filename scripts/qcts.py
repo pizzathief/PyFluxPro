@@ -684,7 +684,7 @@ def CalculateMeteorologicalVariables(ds,Ta_name='Ta',Tv_name='Tv_SONIC_Av',ps_na
             Tv_name = "Tv_CSAT_Av"
         elif "Tv_CSAT" in ds.series.keys():
             Tv_name = "Tv_CSAT"
-        else: 
+        else:
             Tv_name = Ta_name   # use Tv_CSAT if it is in the data structure, otherwise use Ta
 
     Tv,f,a = qcutils.GetSeriesasMA(ds,Tv_name)
@@ -2459,7 +2459,9 @@ def MergeSeriesUsingDict(ds, merge_order=""):
     """ Merge series as defined in the ds.merge dictionary."""
     # check that ds has a "merge" attribute
     if "merge" not in dir(ds):
-        raise Exception("MergeSeriesUsingDict: No merge dictionary in ds")
+        msg = " MergeSeriesUsingDict: No merge dictionary in ds"
+        logger.error(msg)
+        return
     if merge_order not in ds.merge.keys():
         msg = " MergeSeriesUsingDict: merge_order ("+merge_order+") not found in merge dictionary"
         logger.info(msg)
