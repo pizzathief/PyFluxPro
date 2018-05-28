@@ -285,10 +285,12 @@ def gfSOLO_main(dsa,dsb,solo_info,output_list=[]):
     ei = qcutils.GetDateIndex(ldt,enddate,ts=ts,default=len(ldt)-1,match="exact")
     # check the start and end indices
     if si >= ei:
-        print " GapFillUsingSOLO: end datetime index ("+str(ei)+") smaller that start ("+str(si)+")"
+        msg = " GapFillUsingSOLO: end datetime index ("+str(ei)+") smaller that start ("+str(si)+")"
+        logger.warning(msg)
         return
     if si==0 and ei==-1:
-        print " GapFillUsingSOLO: no start and end datetime specified, using all data"
+        msg = " GapFillUsingSOLO: no start and end datetime specified, using all data"
+        logger.warning(msg)
         nRecs = int(dsb.globalattributes["nc_nrecs"])
     else:
         nRecs = ei - si + 1
@@ -422,11 +424,11 @@ def gfSOLO_plot(pd,dsa,dsb,driverlist,targetlabel,outputlabel,solo_info,si=0,ei=
     eqnstr = 'y = %.3fx + %.3f, r = %.3f'%(coefs[0],coefs[1],r[0][1])
     ax2.text(0.5,0.875,eqnstr,fontsize=8,horizontalalignment='center',transform=ax2.transAxes)
     # write the fit statistics to the plot
-    numpoints = numpy.ma.count(obs)
-    numfilled = numpy.ma.count(mod)-numpy.ma.count(obs)
+    numpoints = trap_masked_constant(numpy.ma.count(obs))
+    numfilled = trap_masked_constant(numpy.ma.count(mod)-numpy.ma.count(obs))
     diff = mod - obs
-    bias = numpy.ma.average(diff)
-    fractional_bias = bias/(0.5*(numpy.ma.average(obs+mod)))
+    bias = trap_masked_constant(numpy.ma.average(diff))
+    fractional_bias = trap_masked_constant(bias/(0.5*(numpy.ma.average(obs+mod))))
     dsb.solo[outputlabel]["results"]["Bias"].append(bias)
     dsb.solo[outputlabel]["results"]["Frac Bias"].append(fractional_bias)
     rmse = numpy.ma.sqrt(numpy.ma.mean((obs-mod)*(obs-mod)))
@@ -451,28 +453,28 @@ def gfSOLO_plot(pd,dsa,dsb,driverlist,targetlabel,outputlabel,solo_info,si=0,ei=
     plt.figtext(0.75,0.075,str(solo_info["iterations"]))
     plt.figtext(0.815,0.225,'Slope')
     plt.figtext(0.915,0.225,str(qcutils.round2sig(coefs[0],sig=4)))
-    dsb.solo[outputlabel]["results"]["m_ols"].append(coefs[0])
+    dsb.solo[outputlabel]["results"]["m_ols"].append(trap_masked_constant(coefs[0]))
     plt.figtext(0.815,0.200,'Offset')
     plt.figtext(0.915,0.200,str(qcutils.round2sig(coefs[1],sig=4)))
-    dsb.solo[outputlabel]["results"]["b_ols"].append(coefs[1])
+    dsb.solo[outputlabel]["results"]["b_ols"].append(trap_masked_constant(coefs[1]))
     plt.figtext(0.815,0.175,'r')
     plt.figtext(0.915,0.175,str(qcutils.round2sig(r[0][1],sig=4)))
-    dsb.solo[outputlabel]["results"]["r"].append(r[0][1])
+    dsb.solo[outputlabel]["results"]["r"].append(trap_masked_constant(r[0][1]))
     plt.figtext(0.815,0.150,'RMSE')
     plt.figtext(0.915,0.150,str(qcutils.round2sig(rmse,sig=4)))
-    dsb.solo[outputlabel]["results"]["RMSE"].append(rmse)
-    dsb.solo[outputlabel]["results"]["NMSE"].append(nmse)
+    dsb.solo[outputlabel]["results"]["RMSE"].append(trap_masked_constant(rmse))
+    dsb.solo[outputlabel]["results"]["NMSE"].append(trap_masked_constant(nmse))
     var_obs = numpy.ma.var(obs)
     plt.figtext(0.815,0.125,'Var (obs)')
     plt.figtext(0.915,0.125,'%.4g'%(var_obs))
-    dsb.solo[outputlabel]["results"]["Var (obs)"].append(var_obs)
+    dsb.solo[outputlabel]["results"]["Var (obs)"].append(trap_masked_constant(var_obs))
     var_mod = numpy.ma.var(mod)
     plt.figtext(0.815,0.100,'Var (SOLO)')
     plt.figtext(0.915,0.100,'%.4g'%(var_mod))
-    dsb.solo[outputlabel]["results"]["Var (SOLO)"].append(var_mod)
-    dsb.solo[outputlabel]["results"]["Var ratio"].append(var_obs/var_mod)
-    dsb.solo[outputlabel]["results"]["Avg (obs)"].append(numpy.ma.average(obs))
-    dsb.solo[outputlabel]["results"]["Avg (SOLO)"].append(numpy.ma.average(mod))
+    dsb.solo[outputlabel]["results"]["Var (SOLO)"].append(trap_masked_constant(var_mod))
+    dsb.solo[outputlabel]["results"]["Var ratio"].append(trap_masked_constant(var_obs/var_mod))
+    dsb.solo[outputlabel]["results"]["Avg (obs)"].append(trap_masked_constant(numpy.ma.average(obs)))
+    dsb.solo[outputlabel]["results"]["Avg (SOLO)"].append(trap_masked_constant(numpy.ma.average(mod)))
     # time series of drivers and target
     ts_axes = []
     rect = [pd["margin_left"],pd["ts_bottom"],pd["ts_width"],pd["ts_height"]]
@@ -611,9 +613,11 @@ def gfSOLO_plotsummary(ds,solo_info):
             # and loop over rows in plot
             for row,rlabel,ylabel in zip(range(len(result_list)),result_list,ylabel_list):
                 # get the results to be plotted
-                result = numpy.ma.masked_equal(ds.solo[label]["results"][rlabel],float(c.missing_value))
+                #result = numpy.ma.masked_equal(ds.solo[label]["results"][rlabel],float(c.missing_value))
                 # put the data into the right order to be plotted
-                dt,data = gfSOLO_plotsummary_getdata(dt_start,dt_end,result)
+                dt, data = gfSOLO_plotsummary_getdata(dt_start, dt_end, ds.solo[label]["results"][rlabel])
+                dt = numpy.ma.masked_equal(dt, float(c.missing_value))
+                data = numpy.ma.masked_equal(data, float(c.missing_value))
                 # plot the results
                 axs[row,col].plot(dt,data)
                 # put in the major ticks
@@ -1183,3 +1187,8 @@ def gf_getdiurnalstats(DecHour,Data,ts):
                 Mx[i] = numpy.ma.maximum(Data[li])
                 Mn[i] = numpy.ma.minimum(Data[li])
     return Num, Hr, Av, Sd, Mx, Mn
+
+def trap_masked_constant(num):
+    if numpy.ma.is_masked(num):
+        num = float(c.missing_value)
+    return num

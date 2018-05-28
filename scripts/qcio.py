@@ -565,7 +565,8 @@ def smap_updatedatadictionary(cfvars,data_dict,data,flag,smap_label,nperday,nday
     elif cfvars[smap_label]["daily"].lower()=="skip":
         data_dict[smap_label]["data"] = numpy.reshape(data,[ndays,nperday])[:,0]
     else:
-        print "smap_updatedatadictionary: unrecognised option for daily ("+str(cfvars[smap_label]["daily"])+")"
+        msg = "smap_updatedatadictionary: unrecognised option for daily ("+str(cfvars[smap_label]["daily"])+")"
+        logger.warning(msg)
     data_dict[smap_label]["fmt"] = cfvars[smap_label]["format"]
     if cfvars[smap_label]["genqc"]=="True":
         smap_qc_label = smap_qclabel(smap_label)
@@ -1244,7 +1245,6 @@ def nc_concatenate(cf):
         ncFileName = cf['Files']['In'][InFile_list[int(n)]]
         nc_file_name = os.path.split(ncFileName)
         logger.info(' Reading data from '+nc_file_name[1])
-        #print 'ncconcat: reading data from '+ncFileName
         ds_n = nc_read_series(ncFileName,fixtimestepmethod=fixtimestepmethod)
         if len(ds.series.keys())==0:
             logger.error(' An error occurred reading the netCDF file: '+nc_file_name[1])
@@ -1270,8 +1270,6 @@ def nc_concatenate(cf):
             else:
                 msg = " Both Wd and Wd_CSAT missing from file"
                 logger.warning(msg)
-        #print ds.series['DateTime']['Data'][-1],ds_n.series['DateTime']['Data'][-1]
-        #print dt[-1],dt[-1]+datetime.timedelta(minutes=ts),dt_n[0]
         if dt_n[0]<dt[-1]+datetime.timedelta(minutes=ts):
             logger.info(' Overlapping times detected in consecutive files')
             si = qcutils.GetDateIndex(dt_n,str(dt[-1]),ts=ts)+1
@@ -1991,8 +1989,8 @@ def nc_write_var(ncFile, ds, ThisOne, dim):
     try:
         ncVar = ncFile.createVariable(ThisOne, dt, dim)
     except RuntimeError:
-        print ThisOne
-        raise Exception("Error writing variable to netCDF file")
+        msg = "Error writing variable to netCDF file: "+ThisOne
+        raise Exception(msg)
     # different writes to the variable depending on whether it is 1D or 3D
     if len(dim)==1:
         ncVar[:] = ds.series[ThisOne]["Data"].tolist()
@@ -2226,16 +2224,13 @@ def xl_write_AlternateStats(ds):
             xlRow = 9
             xlCol = xlCol + 1
         for output in output_list:
-            xlResultsSheet.write(xlRow,xlCol,output)
+            xlResultsSheet.write(xlRow, xlCol, output)
             # convert masked array to ndarray
-            if numpy.ma.isMA(ds.alternate[label]["results"][output]):
-                output_array = numpy.ma.filled(ds.alternate[label]["results"][output],float(c.missing_value))
-            else:
-                output_array = numpy.array(ds.alternate[label]["results"][output],copy=True)
+            output_array = numpy.ma.filled(ds.alternate[label]["results"][output], float(c.missing_value))
             for item in output_array:
                 xlRow = xlRow + 1
                 # xlwt under Anaconda seems to only allow float64!
-                xlResultsSheet.write(xlRow,xlCol,numpy.float64(item))
+                xlResultsSheet.write(xlRow, xlCol, numpy.float64(item))
             xlRow = 9
             xlCol = xlCol + 1
     xlfile.save(xl_filename)
@@ -2248,7 +2243,8 @@ def xl_write_SOLOStats(ds):
     out_filename = get_outfilenamefromcf(cf)
     # get the Excel file name
     xl_filename = out_filename.replace('.nc','_SOLOStats.xls')
-    logger.info(' Writing SOLO fit statistics to Excel file '+xl_filename)
+    xl_name = os.path.split(xl_filename)
+    logger.info(' Writing SOLO statistics to '+xl_name[1])
     # open the Excel file
     xlfile = xlwt.Workbook()
     # list of outputs to write to the Excel file
@@ -2277,10 +2273,7 @@ def xl_write_SOLOStats(ds):
         for output in output_list:
             xlResultsSheet.write(xlRow,xlCol,output)
             # convert masked array to ndarray
-            if numpy.ma.isMA(ds.solo[label]["results"][output]):
-                output_array = numpy.ma.filled(ds.solo[label]["results"][output],float(c.missing_value))
-            else:
-                output_array = numpy.array(ds.solo[label]["results"][output],copy=True)
+            output_array = numpy.ma.filled(ds.solo[label]["results"][output],float(c.missing_value))
             for item in output_array:
                 xlRow = xlRow + 1
                 # xlwt under Anaconda seems to only allow float64!
@@ -2327,9 +2320,6 @@ def xl_write_ISD_timesteps(xl_file_path, data):
         for row, site in enumerate(site_list):
             xl_sheet.write(row+1,0,site)
             for col, year in enumerate(year_list):
-                print site,year,stat
-                if stat == "mode":
-                    pass
                 xl_sheet.write(row+1,col+1,data[site][year][stat])
     # save the workbook
     xl_book.save(xl_file_path)

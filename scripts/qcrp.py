@@ -447,7 +447,6 @@ def ERUsingLloydTaylor(cf, ds, info):
             logger.error(msg)
             logger.error(status["message"])
             return
-        #print 'Done!'
         # Write to result arrays
         year_array = numpy.array([i.year for i in date_array])
         for yr in year_array:
@@ -517,7 +516,6 @@ def ERUsingLloydTaylor(cf, ds, info):
         qcio.xl_write_data(xl_sheet,rb_results["variables"],xlCol=4)
         # Interpolate
         opt_params_dict['rb_noct'] = qcrpLT.interp_params(opt_params_dict['rb_noct'])
-        #print 'Done!'
         # *** end of estimating rb code for each window ***
         # *** start of code to calculate ER from fit parameters
         # this section could be a separate routine

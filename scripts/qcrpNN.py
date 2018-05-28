@@ -620,8 +620,6 @@ def rpFFNET_plot(pd,ds,series,driverlist,targetlabel,outputlabel,rpFFNET_info,si
         plt.draw()
         plt.ioff()
     else:
-        print "calling plt.close() in rpFFNET_plot"
-#        plt.close(fig)
         plt.ion()
 
 def rpFFNET_progress(FFNET_gui,text):
@@ -641,14 +639,14 @@ def rpFFNET_quit(ds,FFNET_gui):
 
 def rpFFNET_run_gui(ds,FFNET_gui,rpFFNET_info):
     # populate the rpFFNET_info dictionary with things that will be useful
-    # 
+    #
     rpFFNET_info["overwrite"] = True
     if FFNET_gui.owopt.get()==0: rpFFNET_info["overwrite"] = False
     rpFFNET_info["show_plots"] = True
     if FFNET_gui.pltopt.get()==0: rpFFNET_info["show_plots"] = False
     rpFFNET_info["auto_complete"] = True
     if FFNET_gui.autocompleteopt.get()==0: rpFFNET_info["auto_complete"] = False
-    # 
+    #
     rpFFNET_info["hidden"] = FFNET_gui.nodesEntry.get()
     rpFFNET_info["training"] = FFNET_gui.trainingEntry.get()
     if int(FFNET_gui.connecVar.get())==1:
@@ -1143,8 +1141,6 @@ def rpSOLO_plot(pd,ds,series,driverlist,targetlabel,outputlabel,solo_info,si=0,e
         plt.draw()
         plt.ioff()
     else:
-        print "calling plt.close() in rpSOLO_plot"
-#        plt.close(fig)
         plt.ion()
 
 def rpSOLO_progress(SOLO_gui,text):
@@ -1162,14 +1158,14 @@ def rpSOLO_resetnodesEntry(SOLO_gui):
 
 def rpSOLO_run_gui(ds,SOLO_gui,solo_info):
     # populate the solo_info dictionary with things that will be useful
-    # 
+    #
     solo_info["overwrite"] = True
     if SOLO_gui.owopt.get()==0: solo_info["overwrite"] = False
     solo_info["show_plots"] = True
     if SOLO_gui.pltopt.get()==0: solo_info["show_plots"] = False
     solo_info["auto_complete"] = True
     if SOLO_gui.autocompleteopt.get()==0: solo_info["auto_complete"] = False
-    # 
+    #
     solo_info["nodes"] = SOLO_gui.nodesEntry.get()
     solo_info["training"] = SOLO_gui.trainingEntry.get()
     solo_info["nda_factor"] = SOLO_gui.factorEntry.get()

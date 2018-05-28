@@ -372,7 +372,7 @@ def plottimeseries(cf,nFig,dsa,dsb,si,ei):
             Mx2 = numpy.ma.masked_where(Mx2==c.missing_value,Mx2)
             Mn2 = numpy.ma.masked_where(Mn2==c.missing_value,Mn2)
             hr2_ax = fig.add_axes([p['hr1_XAxOrg'],p['YAxOrg'],p['hr2_XAxLen'],p['ts_YAxLen']])
-            hr2_ax.hold(True)
+            #hr2_ax.hold(True)
             hr2_ax.plot(Hr2,Av2,'y-',Hr2,Mx2,'r-',Hr2,Mn2,'b-')
             section = qcutils.get_cfsection(cf,series=ThisOne,mode='quiet')
             if len(section)!=0:
@@ -497,12 +497,14 @@ def plot_quickcheck(cf):
     # get the number of days in the data set
     ntsInDay = float(24.0*60.0/float(ts))
     if math.modf(ntsInDay)[0]!=0:
-        print 'quickcheck: Time step is not a sub-multiple of 60 minutes ', ts
+        msg = 'quickcheck: Time step is not a sub-multiple of 60 minutes '+ts
+        logger.error(msg)
         sys.exit
     ntsInDay = int(ntsInDay)
     nDays = float(len(DateTime))/ntsInDay
     if math.modf(nDays)[0]!=0:
-        print 'quickcheck: Not a whole number of days ', nDays
+        msg = 'quickcheck: Not a whole number of days '+nDays
+        logger.error(msg)
         sys.exit
     nDays = int(nDays)
 
@@ -1115,7 +1117,7 @@ def plot_onetimeseries_left(fig,n,ThisOne,xarray,yarray,p):
             # a right axis was defined for the first graph, use it
             ts_ax_left = fig.add_axes(rect,sharex=p["ts_ax_right"][0])
     # let the axes change
-    ts_ax_left.hold(False)
+    #ts_ax_left.hold(False)
     # put this axis in the plot setup dictionary
     p["ts_ax_left"][n] = ts_ax_left
     # plot the data on this axis
@@ -1152,7 +1154,7 @@ def plot_onetimeseries_right(fig,n,ThisOne,xarray,yarray,p):
         else:
             # a right axis was defined for the first graph, use it
             ts_ax_right = fig.add_axes(rect,sharex=p["ts_ax_right"][0])
-        ts_ax_right.hold(False)
+        #ts_ax_right.hold(False)
         ts_ax_right.yaxis.tick_right()
         TextStr = ThisOne+'('+p['Units']+')'
         txtXLoc = p['ts_XAxOrg']+0.01

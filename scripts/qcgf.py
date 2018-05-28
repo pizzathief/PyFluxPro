@@ -4,7 +4,6 @@ import datetime
 import os
 import logging
 import sys
-import warnings
 # 3rd party modules
 import numpy
 import matplotlib.dates as mdt
@@ -14,9 +13,6 @@ import constants as c
 import qcio
 import qcts
 import qcutils
-
-# suppress deprecation warning from matplotlib on use of matplotlib.pyplot.pause()
-warnings.filterwarnings("ignore",".*GUI is implemented.*")
 
 logger = logging.getLogger("pfp_log")
 
@@ -313,14 +309,16 @@ def gfMDS_createdict(cf, ds, series):
         ds.mds[mds_label]["mds_label"] = mds_label
         pfp_target = ds.mds[mds_label]["target"]
         if pfp_target not in fluxnet_label_map:
-            print "Target ("+pfp_target+") not supported for MDS gap filling"
+            msg = " Target ("+pfp_target+") not supported for MDS gap filling"
+            logger.warning(msg)
             del ds.mds[mds_label]
         else:
             ds.mds[mds_label]["target_mds"] = fluxnet_label_map[pfp_target]
         pfp_drivers = ds.mds[mds_label]["drivers"]
         for pfp_driver in pfp_drivers:
             if pfp_driver not in fluxnet_label_map:
-                print "Driver ("+pfp_driver+") not supported for MDS gap filling"
+                msg = "Driver ("+pfp_driver+") not supported for MDS gap filling"
+                logger.warning(msg)
                 ds.mds[mds_label]["drivers"].remove(pfp_driver)
             else:
                 if "drivers_mds" not in ds.mds[mds_label]:

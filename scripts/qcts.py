@@ -2460,7 +2460,7 @@ def MergeSeriesUsingDict(ds, merge_order=""):
     # check that ds has a "merge" attribute
     if "merge" not in dir(ds):
         msg = " MergeSeriesUsingDict: No merge dictionary in ds"
-        logger.error(msg)
+        logger.warning(msg)
         return
     if merge_order not in ds.merge.keys():
         msg = " MergeSeriesUsingDict: merge_order ("+merge_order+") not found in merge dictionary"
@@ -2677,7 +2677,6 @@ def ReplaceOnDiff(cf,ds,series=''):
         logger.error('ReplaceOnDiff: No input series specified')
 
 def ReplaceWhereMissing(Destination,Primary,Secondary,FlagOffset=None,FlagValue=None):
-    #print time.strftime('%X')+' Merging series '+Primary+' and '+Secondary+' into '+Destination
     p_data = Primary['Data'].copy()
     p_flag = Primary['Flag'].copy()
     s_data = Secondary['Data'].copy()
@@ -2703,7 +2702,6 @@ def ReplaceWhereMissing(Destination,Primary,Secondary,FlagOffset=None,FlagValue=
     Destination['Attr']['units'] = Primary['Attr']['units']
 
 def ReplaceWhenDiffExceedsRange(DateTime,Destination,Primary,Secondary,RList):
-    #print time.strftime('%X')+' Replacing '+Primary+' with '+Secondary+' when difference exceeds threshold'
     # get the primary data series
     p_data = numpy.ma.array(Primary['Data'])
     p_flag = Primary['Flag'].copy()
@@ -2822,7 +2820,6 @@ def TaFromTv(cf,ds,Ta_out='Ta_SONIC_Av',Tv_in='Tv_SONIC_Av',Ah_in='Ah',RH_in='RH
 
 def TransformAlternate(TList,DateTime,Series,ts=30):
     # Apply polynomial transform to data series being used as replacement data for gap filling
-    #print time.strftime('%X')+' Applying polynomial transform to '+ThisOne
     si = qcutils.GetDateIndex(DateTime,TList[0],ts=ts,default=0,match='exact')
     ei = qcutils.GetDateIndex(DateTime,TList[1],ts=ts,default=-1,match='exact')
     Series = numpy.ma.masked_where(abs(Series-float(c.missing_value))<c.eps,Series)
