@@ -386,7 +386,7 @@ def gfalternate_getalternatevaratmaxr(ds_tower,ds_alternate,alternate_info,mode=
                 msg = " getalternatevaratmaxr: not enough good data in alternate "+var
                 logger.error(msg)
             rval = float(0)
-        r[idx] = rval
+        r[idx] = numpy.ma.filled(rval, float(c.missing_value))
     # save the correlation array for later plotting
     alternate_info["r"] = r
     # sort the correlation array and the alternate variable list
@@ -709,35 +709,35 @@ def gfalternate_getoutputstatistics(data_dict,stat_dict,alternate_info):
         stat_dict[label]["No. points"] = len(data_dict[label_tower]["data"])
         num = numpy.ma.count(data_dict[label]["fitcorr"])-numpy.ma.count(data_dict[label_tower]["data"])
         if num<0: num = 0
-        stat_dict[label]["No. filled"] = num
+        stat_dict[label]["No. filled"] = trap_masked_constant(num)
         # correlation coefficient
         r = numpy.ma.corrcoef(data_dict[label_tower]["data"],data_dict[label]["fitcorr"])
-        stat_dict[label]["r"] = r[0,1]
+        stat_dict[label]["r"] = trap_masked_constant(r[0,1])
         # means
         avg = numpy.ma.mean(data_dict[label_tower]["data"])
-        stat_dict[label]["Avg (Tower)"] = avg
+        stat_dict[label]["Avg (Tower)"] = trap_masked_constant(avg)
         avg = numpy.ma.mean(data_dict[label]["fitcorr"])
-        stat_dict[label]["Avg (Alt)"] = avg
+        stat_dict[label]["Avg (Alt)"] = trap_masked_constant(avg)
         # variances
         var_tower = numpy.ma.var(data_dict[label_tower]["data"])
-        stat_dict[label]["Var (Tower)"] = var_tower
+        stat_dict[label]["Var (Tower)"] = trap_masked_constant(var_tower)
         var_alt = numpy.ma.var(data_dict[label]["fitcorr"])
-        stat_dict[label]["Var (Alt)"] = var_alt
-        if var_alt!=0:
+        stat_dict[label]["Var (Alt)"] = trap_masked_constant(var_alt)
+        if var_alt != 0:
             stat_dict[label]["Var ratio"] = var_tower/var_alt
         else:
             stat_dict[label]["Var ratio"] = float(c.missing_value)
         # RMSE & NMSE
         error = (data_dict[label_tower]["data"]-data_dict[label]["fitcorr"])
         rmse = numpy.ma.sqrt(numpy.ma.average(error*error))
-        stat_dict[label]["RMSE"] = rmse
+        stat_dict[label]["RMSE"] = trap_masked_constant(rmse)
         data_range = numpy.ma.maximum(data_dict[label_tower]["data"])-numpy.ma.minimum(data_dict[label_tower]["data"])
         nmse = rmse/data_range
-        stat_dict[label]["NMSE"] = nmse
+        stat_dict[label]["NMSE"] = trap_masked_constant(nmse)
         # bias & fractional bias
-        stat_dict[label]["Bias"] = numpy.ma.average(error)
+        stat_dict[label]["Bias"] = trap_masked_constant(numpy.ma.average(error))
         norm_error = (error)/(0.5*(data_dict[label_tower]["data"]+data_dict[label]["fitcorr"]))
-        stat_dict[label]["Frac Bias"] = numpy.ma.average(norm_error)
+        stat_dict[label]["Frac Bias"] = trap_masked_constant(numpy.ma.average(norm_error))
 
 def gfalternate_getreplacedata(data_dict,stat_dict,alternate_info):
     label_output = alternate_info["label_output"]
@@ -1097,6 +1097,7 @@ def gfalternate_plotcomposite(nfig,data_dict,stat_dict,diel_avg,alternate_info,p
     # draw the plot on the screen
     if alternate_info["show_plots"]:
         plt.draw()
+        plt.pause(0.1)
         plt.ioff()
     else:
         plt.ion()
@@ -1586,3 +1587,8 @@ def gfalternate_update_alternate_info(ds_tower,alternate_info):
         alternate_info["min_points"] = 0
         alternate_info["fit_type"] = "replace"
         alternate_info["lag"] = "no"
+
+def trap_masked_constant(num):
+    if numpy.ma.is_masked(num):
+        num = float(c.missing_value)
+    return num

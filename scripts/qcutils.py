@@ -1039,11 +1039,13 @@ def FixNonIntegralTimeSteps(ds,fixtimestepmethod=""):
     ans = fixtimestepmethod
     if ans=="": ans = raw_input("Do you want to [Q]uit, [I]nterploate or [R]ound? ")
     if ans.lower()[0]=="q":
-        print "Quiting ..."
+        msg = "Quiting ..."
+        logger.error(msg)
         sys.exit()
     if ans.lower()[0]=="i":
-        print "Interpolation to regular time step not implemented yet ..."
-        sys.exit()
+        msg = "Interpolation to regular time step not implemented yet ..."
+        logger.error(msg)
+        return
     if ans.lower()[0]=="r":
         logger.info(" Rounding to the nearest time step")
         ldt_rounded = numpy.array([rounddttots(dt,ts=ts) for dt in ldt])
@@ -1187,9 +1189,11 @@ def GetAltNameFromCF(cf,ThisOne):
         if 'AltVarName' in cf['Variables'][ThisOne].keys():
             ThisOne = str(cf['Variables'][ThisOne]['AltVarName'])
         else:
-            print 'GetAltNameFromCF: AltVarName key not in control file for '+str(ThisOne)
+            msg = 'GetAltNameFromCF: AltVarName key not in control file for '+str(ThisOne)
+            logger.warning(msg)
     else:
-        print 'GetAltNameFromCF: '+str(ThisOne)+' not in control file'
+        msg = 'GetAltNameFromCF: '+str(ThisOne)+' not in control file'
+        logger.warning(msg)
     return ThisOne
 
 def GetAttributeDictionary(ds,ThisOne):
@@ -1209,9 +1213,11 @@ def GetcbTicksFromCF(cf,ThisOne):
         if 'Ticks' in cf['Variables'][ThisOne].keys():
             Ticks = eval(cf['Variables'][ThisOne]['Ticks'])
         else:
-            print 'GetcbTicksFromCF: Ticks key not in control file for '+str(ThisOne)
+            msg = 'GetcbTicksFromCF: Ticks key not in control file for '+str(ThisOne)
+            logger.warning(msg)
     else:
-        print 'GetcbTicksFromCF: '+str(ThisOne)+' not in control file'
+        msg = 'GetcbTicksFromCF: '+str(ThisOne)+' not in control file'
+        logger.warning(msg)
     return Ticks
 
 def GetRangesFromCF(cf,ThisOne,mode="verbose"):
@@ -1373,11 +1379,14 @@ def GetPlotTitleFromCF(cf, nFig):
             if 'Title' in cf['Plots'][str(nFig)]:
                 Title = str(cf['Plots'][str(nFig)]['Title'])
             else:
-                print 'GetPlotTitleFromCF: Variables key not in control file for plot '+str(nFig)
+                msg = 'GetPlotTitleFromCF: Variables key not in control file for plot '+str(nFig)
+                logger.warning(msg)
         else:
-            print 'GetPlotTitleFromCF: '+str(nFig)+' key not in Plots section of control file'
+            msg = 'GetPlotTitleFromCF: '+str(nFig)+' key not in Plots section of control file'
+            logger.warning(msg)
     else:
-        print 'GetPlotTitleFromCF: Plots key not in control file'
+        msg = 'GetPlotTitleFromCF: Plots key not in control file'
+        logger.warning(msg)
     return Title
 
 def GetPlotVariableNamesFromCF(cf, n):
@@ -1386,11 +1395,14 @@ def GetPlotVariableNamesFromCF(cf, n):
             if 'Variables' in cf['Plots'][str(n)]:
                 SeriesList = eval(cf['Plots'][str(n)]['Variables'])
             else:
-                print 'GetPlotVariableNamesFromCF: Variables key not in control file for plot '+str(n)
+                msg = 'GetPlotVariableNamesFromCF: Variables key not in control file for plot '+str(n)
+                logger.warning(msg)
         else:
-            print 'GetPlotVariableNamesFromCF: '+str(n)+' key not in Plots section of control file'
+            msg = 'GetPlotVariableNamesFromCF: '+str(n)+' key not in Plots section of control file'
+            logger.warning(msg)
     else:
-        print 'GetPlotVariableNamesFromCF: Plots key not in control file'
+        msg = 'GetPlotVariableNamesFromCF: Plots key not in control file'
+        logger.warning(msg)
     return SeriesList
 
 def GetSeries(ds,ThisOne,si=0,ei=-1,mode="truncate"):
@@ -2313,7 +2325,7 @@ def parse_rangecheck_limits(s):
         except:
             # and error if we can't
             msg = "parse_rangecheck_limits: unable to parse string "+s
-            print msg
+            logger.error(msg)
     else:
         # might be a list as a string
         try:
