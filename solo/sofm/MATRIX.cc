@@ -57,7 +57,7 @@ double *Vd_alloc(int n1)
 
     V = (double *) calloc(n1, sizeof(double));
     if(V==NULL){
-	fprintf(stderr,"\nCould Not Allocate Memory");
+	fprintf(stderr,"\nCould Not Allocate Memory 01\n");
 	exit(1);
     }
     return V;
@@ -72,13 +72,13 @@ double **M2Dd_alloc(int n1, int n2)
 
     a = (double **) calloc(n1, sizeof(double *));
     if(a==NULL){
-	fprintf(stderr,"\nCould Not Allocate Memory");
+	fprintf(stderr,"\nCould Not Allocate Memory 02\n");
 	exit(1);
     }
     for(i=0; i<n1; i++){
 	a[i] = (double *) calloc(n2, sizeof(double));
 	if(a[i]==NULL){
-	    fprintf(stderr,"Could Not Allocate Memory");
+	    fprintf(stderr,"Could Not Allocate Memory 03\n");
 	    exit(1);
 	}
     }
@@ -93,20 +93,20 @@ double ***M3Dd_alloc(int n1, int n2, int n3)
 
     a = (double ***) calloc(n1, sizeof(double **));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 04\n");
         exit(1); 
     } 
     for(i=0; i<n1; i++){
 	a[i] = (double **) calloc(n2, sizeof(double *)); 
         if(a[i]==NULL){ 
-            fprintf(stderr,"Could Not Allocate Memory"); 
+            fprintf(stderr,"Could Not Allocate Memory 05\n"); 
             exit(1); 
         } 
  
         for(j=0; j<n2; j++){
             a[i][j] = (double *) calloc(n3, sizeof(double));          
             if(a[i][j]==NULL){  
-                fprintf(stderr,"Could Not Allocate Memory");  
+                fprintf(stderr,"Could Not Allocate Memory 06\n");  
                 exit(1);  
             }  
  	}
@@ -122,28 +122,28 @@ double ****M4Dd_alloc(int n1, int n2, int n3, int n4)
 
     a = (double ****) calloc(n1, sizeof(double ***)); 
     if(a==NULL){    
-        fprintf(stderr,"\nCould Not Allocate Memory"); 
+        fprintf(stderr,"\nCould Not Allocate Memory 07\n"); 
         exit(1);  
     }  
 
     for(i=0; i<n1; i++){
         a[i] = (double ***) calloc(n2, sizeof(double **));          
         if(a[i]==NULL){  
-            fprintf(stderr,"Could Not Allocate Memory");  
+            fprintf(stderr,"Could Not Allocate Memory 08\n");  
             exit(1);  
         }  
   
         for(j=0; j<n2; j++){
             a[i][j] = (double **) calloc(n3, sizeof(double *));          
             if(a[i][j]==NULL){   
-                fprintf(stderr,"Could Not Allocate Memory");   
+                fprintf(stderr,"Could Not Allocate Memory 09\n");   
                 exit(1);   
             }      
 	
 	    for(k=0; k<n3; k++){
 		a[i][j][k] = (double *) calloc(n4, sizeof(double));
                 if(a[i][j][k]==NULL){   
-                    fprintf(stderr,"Could Not Allocate Memory"); 
+                    fprintf(stderr,"Could Not Allocate Memory 10\n"); 
                     exit(1);   
                 } 
             } /* ENF OF k */
@@ -168,7 +168,7 @@ float *V_alloc(int n1)
  
     V = (float *) calloc(n1, sizeof(float));
     if(V==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 11\n");
         exit(1);
     }
     return V;
@@ -183,13 +183,13 @@ float **M2D_alloc(int n1, int n2)
  
     a = (float **) calloc(n1, sizeof(float *));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 12\n");
         exit(1);
     }
     for(i=0; i<n1; i++){
         a[i] = (float *) calloc(n2, sizeof(float));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 13\n");
             exit(1);
         }
     }
@@ -205,20 +205,20 @@ float ***M3D_alloc(int n1, int n2, int n3)
 
     a = (float ***) calloc(n1, sizeof(float **));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 14\n");
         exit(1);
     }
     for(i=0; i<n1; i++){
         a[i] = (float **) calloc(n2, sizeof(float *));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 15\n");
             exit(1);
         }
 
         for(j=0; j<n2; j++){
             a[i][j] = (float *) calloc(n3, sizeof(float));
             if(a[i][j]==NULL){
-                fprintf(stderr,"Could Not Allocate Memory");
+                fprintf(stderr,"Could Not Allocate Memory 16\n");
                 exit(1);
             }
         }
@@ -235,28 +235,28 @@ float ****M4D_alloc(int n1, int n2, int n3, int n4)
  
     a = (float ****) calloc(n1, sizeof(float ***));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 17\n");
         exit(1);
     }
  
     for(i=0; i<n1; i++){
         a[i] = (float ***) calloc(n2, sizeof(float **));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 18\n");
             exit(1);
         }
 
         for(j=0; j<n2; j++){
             a[i][j] = (float **) calloc(n3, sizeof(float *));
             if(a[i][j]==NULL){
-                fprintf(stderr,"Could Not Allocate Memory");
+                fprintf(stderr,"Could Not Allocate Memory 19\n");
                 exit(1);
             }
 
             for(k=0; k<n3; k++){
                 a[i][j][k] = (float *) calloc(n4, sizeof(float));
                 if(a[i][j][k]==NULL){
-                    fprintf(stderr,"Could Not Allocate Memory");
+                    fprintf(stderr,"Could Not Allocate Memory 20\n");
                     exit(1);
                 }
             } /* ENF OF k */
@@ -282,7 +282,7 @@ int *IntV_alloc(int n1)
 
     V = (int *) calloc(n1, sizeof(int));
     if(V==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 21\n");
         exit(1);
     }
     return V;
@@ -297,13 +297,13 @@ int **IntM2D_alloc(int n1, int n2)
 
     a = (int **) calloc(n1, sizeof(int *));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 22\n");
         exit(1);
     }
     for(i=0; i<n1; i++){
         a[i] = (int *) calloc(n2, sizeof(int));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 23\n");
             exit(1);
         }
     }
@@ -320,20 +320,20 @@ int ***IntM3D_alloc(int n1, int n2, int n3)
 
     a = (int ***) calloc(n1, sizeof(int **));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 24\n");
         exit(1);
     }
     for(i=0; i<n1; i++){
         a[i] = (int **) calloc(n2, sizeof(int *));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 25\n");
             exit(1);
         }
 
         for(j=0; j<n2; j++){
             a[i][j] = (int *) calloc(n3, sizeof(int));
             if(a[i][j]==NULL){
-                fprintf(stderr,"Could Not Allocate Memory");
+                fprintf(stderr,"Could Not Allocate Memory 26\n");
                 exit(1);
             }
         }
@@ -350,28 +350,28 @@ int ****IntM4D_alloc(int n1, int n2, int n3, int n4)
 
     a = (int ****) calloc(n1, sizeof(int ***));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 27\n");
         exit(1);
     }
 
     for(i=0; i<n1; i++){
         a[i] = (int ***) calloc(n2, sizeof(int **));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 28\n");
             exit(1);
         }
  
         for(j=0; j<n2; j++){
             a[i][j] = (int **) calloc(n3, sizeof(int *));
             if(a[i][j]==NULL){
-                fprintf(stderr,"Could Not Allocate Memory");
+                fprintf(stderr,"Could Not Allocate Memory 29\n");
                 exit(1);
             }
  
             for(k=0; k<n3; k++){
                 a[i][j][k] = (int *) calloc(n4, sizeof(int));
                 if(a[i][j][k]==NULL){
-                    fprintf(stderr,"Could Not Allocate Memory");
+                    fprintf(stderr,"Could Not Allocate Memory 30\n");
                     exit(1);
                 }
             } /* ENF OF k */
@@ -388,7 +388,7 @@ long *IntVd_alloc(int n1)
  
     V = (long *) calloc(n1, sizeof(long int));
     if(V==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 31\n");
         exit(1);
     }   
     return V;
@@ -402,13 +402,13 @@ long **IntM2Dd_alloc(int n1, int n2)
 
     a = (long **) calloc(n1, sizeof(long *));
     if(a==NULL){
-        fprintf(stderr,"\nCould Not Allocate Memory");
+        fprintf(stderr,"\nCould Not Allocate Memory 32\n");
         exit(1);
     }
     for(i=0; i<n1; i++){
         a[i] = (long *) calloc(n2, sizeof(long));
         if(a[i]==NULL){
-            fprintf(stderr,"Could Not Allocate Memory");
+            fprintf(stderr,"Could Not Allocate Memory 33\n");
             exit(1);
         }
     }

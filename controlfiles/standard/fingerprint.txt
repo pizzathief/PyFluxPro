@@ -5,7 +5,7 @@
         Upper = 1200
     [[Ta]]
         nc_varname = "Ta"
-        Lower = -10
+        Lower = -25
         Upper = 50
     [[Fa]]
         nc_varname = "Fa"

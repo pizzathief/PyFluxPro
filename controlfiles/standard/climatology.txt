@@ -47,18 +47,3 @@
         Format = "0.000"
     [[ustar]]
         Format = "0.00"
-    [[EF]]
-        Format = "0.00"
-        [[[RangeCheck]]]
-            Lower = -2
-            Upper = 2
-    [[BR]]
-        Format = "0.00"
-        [[[RangeCheck]]]
-            Lower = -20
-            Upper = 20
-    [[WUE]]
-        Format = "0.00000"
-        [[[RangeCheck]]]
-            Lower = -2
-            Upper = 2

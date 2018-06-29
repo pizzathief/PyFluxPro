@@ -1,5 +1,6 @@
 configobj
 python-dateutil
+jupyter
 matplotlib
 netcdf4
 numpy

@@ -1,19 +1,25 @@
-import sys
-import logging
+# standard modules
 import ast
-import constants as c
 import copy
-import numpy
+import logging
 import os
+import sys
+import time
+# 3rd party modules
+import numpy
+import xlrd
+# PFP modules
+import constants as c
+import meteorologicalfunctions as mf
 import qcck
 import qcgf
+import qcgfALT
+import qcgfMDS
+import qcgfSOLO
 import qcio
 import qcrp
 import qcts
 import qcutils
-import time
-import xlrd
-import meteorologicalfunctions as mf
 
 logger = logging.getLogger("pfp_log")
 
@@ -183,6 +189,10 @@ def l3qc(cf,ds2):
         # correct the H2O & CO2 flux due to effects of flux on density measurements
         qcts.Fe_WPL(cf, ds3)
         qcts.Fc_WPL(cf, ds3)
+    # **************************************
+    # *** Calculate Monin-Obukhov length ***
+    # **************************************
+    qcts.CalculateMoninObukhovLength(ds3)
     # **************************
     # *** CO2 and Fc section ***
     # **************************
@@ -291,21 +301,21 @@ def l4qc(cf,ds3):
     # gap fill using climatology
     qcgf.GapFillFromClimatology(ds4)
     # do the gap filling using the ACCESS output
-    qcgf.GapFillFromAlternate(cf,ds4,ds_alt)
+    qcgfALT.GapFillFromAlternate(cf,ds4,ds_alt)
     if ds4.returncodes["alternate"]=="quit": return ds4
     # gap fill using SOLO
-    qcgf.GapFillUsingSOLO(cf,ds3,ds4)
+    qcgfSOLO.GapFillUsingSOLO(cf,ds3,ds4)
     if ds4.returncodes["solo"]=="quit": return ds4
     # merge the first group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="prerequisite")
-    ## re-calculate the ground heat flux but only if requested in control file
-    #opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
-    #if opt.lower()!="no":
-        #qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
-    ## re-calculate the net radiation
-    #qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
-    ## re-calculate the available energy
-    #qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
+    # re-calculate the ground heat flux but only if requested in control file
+    opt = qcutils.get_keyvaluefromcf(cf,["Options"],"CorrectFgForStorage",default="No",mode="quiet")
+    if opt.lower()!="no":
+        qcts.CorrectFgForStorage(cf,ds4,Fg_out='Fg',Fg_in='Fg_Av',Ts_in='Ts',Sws_in='Sws')
+    # re-calculate the net radiation
+    qcts.CalculateNetRadiation(cf,ds4,Fn_out='Fn',Fsd_in='Fsd',Fsu_in='Fsu',Fld_in='Fld',Flu_in='Flu')
+    # re-calculate the available energy
+    qcts.CalculateAvailableEnergy(ds4,Fa_out='Fa',Fn_in='Fn',Fg_in='Fg')
     # merge the second group of gap filled drivers into a single series
     qcts.MergeSeriesUsingDict(ds4,merge_order="standard")
     # re-calculate the water vapour concentrations
@@ -323,41 +333,43 @@ def l4qc(cf,ds3):
 
     return ds4
 
-def l5qc(cf,ds4):
-    ds5 = qcio.copy_datastructure(cf,ds4)
+def l5qc(cf, ds4):
+    ds5 = qcio.copy_datastructure(cf, ds4)
     # ds4 will be empty (logical false) if an error occurs in copy_datastructure
     # return from this routine if this is the case
-    if not ds5: return ds5
+    if not ds5:
+        return ds5
     # set some attributes for this level
-    qcutils.UpdateGlobalAttributes(cf,ds5,"L5")
+    qcutils.UpdateGlobalAttributes(cf, ds5, "L5")
     ds5.cf = cf
     # create a dictionary to hold the gap filling data
     ds_alt = {}
     # check to see if we have any imports
-    qcgf.ImportSeries(cf,ds5)
+    qcgf.ImportSeries(cf, ds5)
     # re-apply the quality control checks (range, diurnal and rules)
-    qcck.do_qcchecks(cf,ds5)
+    qcck.do_qcchecks(cf, ds5)
     # now do the flux gap filling methods
     label_list = qcutils.get_label_list_from_cf(cf)
-    for ThisOne in label_list:
+    for label in label_list:
         # parse the control file for information on how the user wants to do the gap filling
-        qcgf.GapFillParseControlFile(cf,ds5,ThisOne,ds_alt)
+        qcgf.GapFillParseControlFile(cf, ds5, label, ds_alt)
     # *** start of the section that does the gap filling of the fluxes ***
     # apply the turbulence filter (if requested)
-    qcck.ApplyTurbulenceFilter(cf,ds5)
+    qcck.ApplyTurbulenceFilter(cf, ds5)
     # fill short gaps using interpolation
-    #qcgf.GapFillUsingInterpolation(cf,ds5)
+    qcgf.GapFillUsingInterpolation(cf, ds5)
     # do the gap filling using SOLO
-    qcgf.GapFillUsingSOLO(cf,ds4,ds5)
-    if ds5.returncodes["solo"]=="quit": return ds5
-    ## gap fill using marginal distribution sampling
-    #qcgf.GapFillFluxUsingMDS(cf,ds5)
-    ## gap fill using ratios
-    #qcgf.GapFillFluxFromDayRatio(cf,ds5)
+    qcgfSOLO.GapFillUsingSOLO(cf, ds4, ds5)
+    if ds5.returncodes["solo"] == "quit":
+        return ds5
+    # gap fill using marginal distribution sampling
+    qcgfMDS.GapFillFluxUsingMDS(cf, ds5)
     # gap fill using climatology
     qcgf.GapFillFromClimatology(ds5)
     # merge the gap filled drivers into a single series
-    qcts.MergeSeriesUsingDict(ds5,merge_order="standard")
+    qcts.MergeSeriesUsingDict(ds5, merge_order="standard")
+    # calculate Monin-Obukhov length
+    qcts.CalculateMoninObukhovLength(ds5)
     # write the percentage of good data as a variable attribute
     qcutils.get_coverage_individual(ds5)
     # write the percentage of good data for groups
@@ -380,7 +392,7 @@ def l6qc(cf,ds5):
     Fc_list = [label for label in ds6.series.keys() if label[0:2] == "Fc"]
     qcutils.CheckUnits(ds6, Fc_list, "umol/m2/s", convert_units=True)
     ## apply the turbulence filter (if requested)
-    #qcck.ApplyTurbulenceFilter(cf,ds6)
+    qcck.ApplyTurbulenceFilter(cf,ds6)
     # get ER from the observed Fc
     qcrp.GetERFromFc(cf, ds6, l6_info)
     # estimate ER using SOLO

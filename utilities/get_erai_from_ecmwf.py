@@ -33,8 +33,8 @@ if sys.argv[1].lower()=="australia":
 elif sys.argv[1].lower()=="usa":
     erai_info["area"] = "70/229.5/30/300"
     target_directory = "/home/peter/AmeriFlux/ERAI/"
-    start_date = "2016-01-01"
-    end_date = "2017-01-01"
+    start_date = "2017-01-01"
+    end_date = "2017-10-31"
 else:
     print "Unrecognised country option entered on command line"
     print "Valid country options are:"
